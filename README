@@ -1,1 +1,2 @@
-The purpose of this work is to produce a generic polymorphic, object-oriented, and test-driven project design in FORTRAN. This code base folows gnu programming guidelines.
+# fortified
+Fortran Project Framework with Polymorphic, Object-Oriented, and Test-Driven Design
