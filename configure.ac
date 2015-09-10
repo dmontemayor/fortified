@@ -3,7 +3,6 @@
 
 AC_PREREQ([2.63])
 AC_INIT([App], [0.0.0], [dmontemayor@qc.cuny.edu])
-AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE
 
