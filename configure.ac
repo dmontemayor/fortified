@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 # minimum autoconf version number  
-AC_PREREQ([2.68])
+AC_PREREQ([2.63])
 
 # Initialize autoconf
 AC_INIT([fortified], [0.0.0], [dmontemayor@qc.cuny.edu], [fortified-gnu])
