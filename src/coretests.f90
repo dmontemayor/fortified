@@ -172,29 +172,29 @@ subroutine coretests
      stop
   end if
 
-  write(*,*)'checking single real assert returns -1 for NAN numbers.....' 
-  dum_doub=0_double
-  dum_sing=0_single/dum_doub
-  call assert(dum_sing,dum_sing,iostat=ierr)
-  call assert(0/0_single,0/0_single,iostat=ierr)
-  if(ierr.NE.-1)then
-     write(*,*)'single real assert: iostat option does not return -1 for NAN numbers'
-     stop
-  end if
-
-  write(*,*)'checking single real assert returns 0 when two not equal numbers are within tolerance.....'
-  call assert(1_single,2_single,1_single,iostat=ierr)
-  if(ierr.NE.0)then
-     write(*,*)'single real assert: does not return 0 when two not equal numbers are within tolerance'
-     stop
-  end if
-
-  write(*,*)'checking single real assert returns 1 when two not equal numbers are not within tolerance.....'
-  call assert(-1_single,1_single,1_single,iostat=ierr)
-  if(ierr.NE.1)then
-     write(*,*)'single real assert: does not return 1 when two not equal numbers are not within tolerance'
-     stop
-  end if
+!!$  write(*,*)'checking single real assert returns -1 for NAN numbers.....' 
+!!$  dum_doub=0_double
+!!$  dum_sing=0_single/dum_doub
+!!$  call assert(dum_sing,dum_sing,iostat=ierr)
+!!$  call assert(0/0_single,0/0_single,iostat=ierr)
+!!$  if(ierr.NE.-1)then
+!!$     write(*,*)'single real assert: iostat option does not return -1 for NAN numbers'
+!!$     stop
+!!$  end if
+!!$
+!!$  write(*,*)'checking single real assert returns 0 when two not equal numbers are within tolerance.....'
+!!$  call assert(1_single,2_single,1_single,iostat=ierr)
+!!$  if(ierr.NE.0)then
+!!$     write(*,*)'single real assert: does not return 0 when two not equal numbers are within tolerance'
+!!$     stop
+!!$  end if
+!!$
+!!$  write(*,*)'checking single real assert returns 1 when two not equal numbers are not within tolerance.....'
+!!$  call assert(-1_single,1_single,1_single,iostat=ierr)
+!!$  if(ierr.NE.1)then
+!!$     write(*,*)'single real assert: does not return 1 when two not equal numbers are not within tolerance'
+!!$     stop
+!!$  end if
 
 
 
