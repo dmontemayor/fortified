@@ -11,8 +11,8 @@ classfiles = src/TEMPLATE.f90
 
 bin_PROGRAMS = App test
 
-App_FCFLAGS = -O3 -I $(EXEDIR)
-test_FCFLAGS = -O3 -I $(EXEDIR)
+App_FCFLAGS = -O3 -J src/
+test_FCFLAGS = -O3 -J src/
 
 App_SOURCES = $(corefiles) $(classfiles) src/driver.f90
 test_SOURCES = $(corefiles) $(testfiles) $(classfiles) src/test_driver.f90
