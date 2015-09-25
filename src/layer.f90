@@ -1,25 +1,19 @@
 !>\brief
-!! Class Template
+!! layer class
 !!\details
-!! Use this template to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a display, \a store, \a update, \a reset, \a check, and \a test methods.
-!! These methods must be present for the class to integrate properly.
-!! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
-!! Follow the examples commented in the source code to define the various attributes of your class.
-!! DO NOT OVERWRITE THIS FILE. Make a copy and title it \a myclass.f90 where 'myclass' is your choice
-!! one-word title for your new class.
-!! Finally, Replace instances of the string 'TEMPLATE' in this template with the same
-!! one-word title 'myclass' you chose.
+!! A layer is a network of interconnected nodes. 
+!!\author
+!! Daniel Montemayor Sept 2015
 !<------------------------------------------------------------------------
-module TEMPLATE_class
+module LAYER_class
   use type_kinds
   implicit none
   private
 
-  public::TEMPLATE
+  public::LAYER
   public::make, kill, display, store, update, reset, check, test
 
-  type TEMPLATE
+  type LAYER
      logical::initialized=.false.
 !!$     type(primitive)::primitive
      !**********     Enter your derived type's attributes here     **********!
@@ -37,58 +31,58 @@ module TEMPLATE_class
      ! real(double),dimension(:,:),pointer::matrix     !a real matrix        !
      ! complex(double),dimension(:,:),pointer::Zmatrix !a complex matrix     !
      !***********************************************************************!
-  end type TEMPLATE
+  end type LAYER
 
-  !> Creates the TEMPLATE object.
+  !> Creates the LAYER object.
   interface make
-     module procedure TEMPLATE_init
+     module procedure LAYER_init
   end interface
 
-  !> Destroys the TEMPLATE object.
+  !> Destroys the LAYER object.
   interface kill
-     module procedure TEMPLATE_kill
+     module procedure LAYER_kill
   end interface
 
-  !> Displays the current state of the TEMPLATE object.
+  !> Displays the current state of the LAYER object.
   interface display
-     module procedure TEMPLATE_display
+     module procedure LAYER_display
   end interface
 
-  !> Stores the current state of the TEMPLATE object.
+  !> Stores the current state of the LAYER object.
   interface store
-     module procedure TEMPLATE_store
+     module procedure LAYER_store
   end interface
 
-  !> Recaluclates the TEMPLATE object.
+  !> Recaluclates the LAYER object.
   interface update
-     module procedure TEMPLATE_update
+     module procedure LAYER_update
   end interface
 
-  !> Reinitializes the TEMPLATE object.
+  !> Reinitializes the LAYER object.
   interface reset
-     module procedure TEMPLATE_reset
+     module procedure LAYER_reset
   end interface
 
-  !> Checks that the TEMPLATE object.
+  !> Checks that the LAYER object.
   interface check
-     module procedure TEMPLATE_check
+     module procedure LAYER_check
   end interface
 
-  !> Unit tests that excercise the TEMPLATE methods.
+  !> Unit tests that excercise the LAYER methods.
   interface test
-     module procedure TEMPLATE_test
+     module procedure LAYER_test
   end interface
 
 contains
 
   !======================================================================
-  !> \brief Creates and initializes the TEMPLATE object.
-  !> \param this is the TEMPLATE object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored TEMPLATE file.
+  !> \brief Creates and initializes the LAYER object.
+  !> \param this is the LAYER object to be initialized.
+  !> \param[in] file is an optional string containing the name of a previously stored LAYER file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine TEMPLATE_init(this,file)
-    type(TEMPLATE),intent(inout)::this
+  subroutine LAYER_init(this,file)
+    type(LAYER),intent(inout)::this
     character*(*),intent(in),optional::file
 !!$    character(len=title)::filetype
 !!$    character(len=path)::infile
@@ -96,13 +90,13 @@ contains
 !!$    integer::unit
 !!$    logical::usedefault,usedunit
 !!$
-!!$    call Note('Begin TEMPLATE_init.')
+!!$    call Note('Begin LAYER_init.')
 !!$
 !!$    !check if input file is present and valid
 !!$    if(present(file))then
 !!$
 !!$       !check if file is there
-!!$       if(check(file).EQ.1)call stop('TEMPLATE_init: cannot find input file '//file)
+!!$       if(check(file).EQ.1)call stop('LAYER_init: cannot find input file '//file)
 !!$
 !!$       !assign a unique unit label
 !!$       unit=newunit()
@@ -115,8 +109,8 @@ contains
 !!$       filetype=adjustl(filetype)
 !!$
 !!$       !check if input file is the right kind of file
-!!$       if(trim(filetype).NE.'TEMPLATE')& 
-!!$            call Stop('TEMPLATE_init: input file is not valid.')
+!!$       if(trim(filetype).NE.'LAYER')& 
+!!$            call Stop('LAYER_init: input file is not valid.')
 !!$
 !!$    end if
 !!$    
@@ -183,18 +177,18 @@ contains
 !!$    end if
 !!$
 !!$    !do a final check before we exit
-!!$    if(check(file).EQ.1)call stop('TEMPLATE_init: failed final check!')
+!!$    if(check(file).EQ.1)call stop('LAYER_init: failed final check!')
 
-  end subroutine TEMPLATE_init
+  end subroutine LAYER_init
 
   !======================================================================
-  !> \brief Destroys the TEMPLATE object.
-  !> \param this is the TEMPLATE object to be destroyed.
+  !> \brief Destroys the LAYER object.
+  !> \param this is the LAYER object to be destroyed.
   !====================================================================
-  subroutine TEMPLATE_kill(this)
-    type(TEMPLATE),intent(inout)::this
+  subroutine LAYER_kill(this)
+    type(LAYER),intent(inout)::this
  
-!!$    call note('Begin TEMPLATE_kill.')
+!!$    call note('Begin LAYER_kill.')
 !!$
 !!$    !kill the primitive
 !!$    call kill(this%primitive)
@@ -218,16 +212,16 @@ contains
 !!$    !Decalare this derived type un-initialized
 !!$    this%initialized=.false.
 
-  end subroutine TEMPLATE_kill
+  end subroutine LAYER_kill
 
   !======================================================================
-  !> \brief Computes the current state of TEMPLATE object.
-  !> \param this is the TEMPLATE  object to be updated.
+  !> \brief Computes the current state of LAYER object.
+  !> \param this is the LAYER  object to be updated.
   !======================================================================
-  subroutine TEMPLATE_update(this)
-    type(TEMPLATE),intent(inout)::this
+  subroutine LAYER_update(this)
+    type(LAYER),intent(inout)::this
 
-!!$    call Note('Begin TEMPLATE_update.')
+!!$    call Note('Begin LAYER_update.')
 !!$    
 !!$    !Primitives usually dont get updated
 !!$    !    call update(this%primitive)    
@@ -252,19 +246,19 @@ contains
 !!$    !************************************************************************!
 !!$
 !!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('TEMPLATE_update: failed final check!')
+!!$    !if(check(this).EQ.1)call stop('LAYER_update: failed final check!')
 
-  end subroutine TEMPLATE_update
+  end subroutine LAYER_update
 
   !======================================================================
-  !> \brief Re-initiallizes the TEMPLATE object.
-  !> \param this is the TEMPLATE  object to be re-initialized.
+  !> \brief Re-initiallizes the LAYER object.
+  !> \param this is the LAYER  object to be re-initialized.
   !======================================================================
-  subroutine TEMPLATE_reset(this)
-    type(TEMPLATE),intent(inout)::this
+  subroutine LAYER_reset(this)
+    type(LAYER),intent(inout)::this
 !!$    integer(long)::istate,jstate
 !!$
-!!$    call Note('Begin TEMPLATE_reset.')
+!!$    call Note('Begin LAYER_reset.')
 !!$
 !!$    !reset the primitive
 !!$    call reset(this%primitive)
@@ -286,26 +280,26 @@ contains
 !!$
 !!$    !update now that we have changed some values and do a final check
 !!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('TEMPLATE_reset: failed final check!')
+!!$    if(check(this).EQ.1)call stop('LAYER_reset: failed final check!')
 
-  end subroutine TEMPLATE_reset
+  end subroutine LAYER_reset
 
   !======================================================================
-  !> \brief Stores the current state of the TEMPLATE object to file.
-  !> \param[in] this is the TEMPLATE  object to be updated.
+  !> \brief Stores the current state of the LAYER object to file.
+  !> \param[in] this is the LAYER  object to be updated.
   !> \param[in] file is a string containing the location of the store file.
   !======================================================================
-  subroutine TEMPLATE_store(this,file)
-    type(TEMPLATE),intent(in)::this
+  subroutine LAYER_store(this,file)
+    type(LAYER),intent(in)::this
     character*(*),intent(in)::file
 
 !!$    integer(short)::unit
 !!$    logical::usedunit      
 !!$
-!!$    call note('Begin TEMPLATE_store.')
+!!$    call note('Begin LAYER_store.')
 !!$    call Note('input file= '//file)
 !!$    if(check(this).NE.0)then
-!!$       call warn('TEMPLATE_store: failed check.','not saving object.')
+!!$       call warn('LAYER_store: failed check.','not saving object.')
 !!$    else
 !!$
 !!$       !assign a unique unit label
@@ -315,7 +309,7 @@ contains
 !!$       open(unit,file=file)
 !!$
 !!$       !always write the data type on the first line
-!!$       write(unit,*)'TEMPLATE'
+!!$       write(unit,*)'LAYER'
 !!$
 !!$       !store the primitive
 !!$       call store(this%primitive,file//'.primitive')
@@ -344,27 +338,27 @@ contains
 !!$       !finished saving all attributes - now close store file
 !!$       close(unit)
 !!$    end if
-  end subroutine TEMPLATE_store
+  end subroutine LAYER_store
 
 
   !======================================================================
-  !> \brief Displays the TEMPLATE object.
-  !> \param[in] this is the TEMPLATE object.
+  !> \brief Displays the LAYER object.
+  !> \param[in] this is the LAYER object.
   !> \param[in] msg is an optional string message to preface the displayed object.
   !======================================================================
-  subroutine TEMPLATE_display(this,msg)
-    type(TEMPLATE),intent(in)::this
+  subroutine LAYER_display(this,msg)
+    type(LAYER),intent(in)::this
     character*(*),intent(in),optional::msg
 
-!!$    call Note('Begin TEMPLATE_display.')
+!!$    call Note('Begin LAYER_display.')
 !!$
 !!$    if(check(this).NE.0)then
-!!$       call warn('TEMPLATE_display: failed check','displaying nothing.')
+!!$       call warn('LAYER_display: failed check','displaying nothing.')
 !!$       return
 !!$    end if
 !!$
 !!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   TEMPLATE   -------------------'
+!!$    write(Dunit,*)'-------------------   LAYER   -------------------'
 !!$    if(present(msg))write(Dunit,*)msg
 !!$    write(Dunit,*)'____________________________________________________'
 !!$    
@@ -391,36 +385,36 @@ contains
 !!$    ! end do                                                              !
 !!$    !*********************************************************************!
 !!$
-!!$    call display(this%primitive,msg='TEMPLATE primitive')
+!!$    call display(this%primitive,msg='LAYER primitive')
 !!$    write(Dunit,*)'===================================================='
 
-  end subroutine TEMPLATE_display
+  end subroutine LAYER_display
 
   !======================================================================
-  !> \brief Checks the TEMPLATE object.
-  !> \param[in] this is the TEMPLATE object to be checked.
+  !> \brief Checks the LAYER object.
+  !> \param[in] this is the LAYER object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function TEMPLATE_check(this)
-    type(TEMPLATE),intent(in)::this
+  integer(short)function LAYER_check(this)
+    type(LAYER),intent(in)::this
 
 !!$    !initiate with no problems found 
-!!$    TEMPLATE_check=0
+!!$    LAYER_check=0
 !!$    if(.not.paranoid)return
 !!$
-!!$    call Note('Checking TEMPLATE.')
+!!$    call Note('Checking LAYER.')
 !!$
 !!$
 !!$    !check that this derived type is initialized
 !!$    if(.not.this%initialized)then
-!!$       call Warn('TEMPLATE_check: TEMPLATE object not initialized.')
-!!$       TEMPLATE_check=1
+!!$       call Warn('LAYER_check: LAYER object not initialized.')
+!!$       LAYER_check=1
 !!$       return
 !!$    end if
 !!$
 !!$    !check the primitive
-!!$    if(check(this%primitive))call stop('TEMPLATE_check: failed primitive check!')
+!!$    if(check(this%primitive))call stop('LAYER_check: failed primitive check!')
 !!$
 !!$
 !!$    !********    Check all attributes are within acceptable values    *******!
@@ -435,22 +429,22 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
 !!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('TEMPLATE_check: ndim not a number.')                                   !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim not a number.')                                   !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'ndim' is too big to fit in its memory                                     !
 !!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('TEMPLATE_check: ndim is too big.')                                     !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim is too big.')                                     !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'ndim' can only be positive                               !
 !!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('TEMPLATE_check: ndim not a positive integer.')                         !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim not a positive integer.')                         !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -460,23 +454,23 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is not a number                                                      !
 !!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('TEMPLATE_check: var is not a number.')                                 !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is not a number.')                                 !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is too big to fit in its memory                                      !
 !!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('TEMPLATE_check: var is too big.')                                      !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is too big.')                                      !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !   return                                                                             !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'var' can not be zero:                                    !
 !!$    ! !      'var' can not be smaller than the smallest computable value                   !
 !!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('TEMPLATE_check: var is too small.')                                    !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is too small.')                                    !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -486,62 +480,62 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' points to something                                             !
 !!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('TEMPLATE_check: matrix memory not associated.')                        !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: matrix memory not associated.')                        !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' has the right dimensions                                        !
 !!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('TEMPLATE_check: number of matrix elements not = N*M.')                 !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: number of matrix elements not = N*M.')                 !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check for NAN values in the matrix                                                  !
 !!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('TEMPLATE_check: matirx has NAN values.')                               !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: matirx has NAN values.')                               !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if any matrix element values are too big for thier memory                     !
 !!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('TEMPLATE_check: matrix has huge values.')                              !
+!!$    !    call Warn('LAYER_check: matrix has huge values.')                              !
 !!$    !    mappingH_check=1                                                                  !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    !**************************************************************************************!
 
-  end function TEMPLATE_check
+  end function LAYER_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the TEMPLATE methods.
-  !> \param[in] this is the TEMPLATE object whose methods will be excercised.
+  !> \brief Tests the LAYER methods.
+  !> \param[in] this is the LAYER object whose methods will be excercised.
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine TEMPLATE_test(this)
-    type(TEMPLATE),intent(in)::this
+  subroutine LAYER_test(this)
+    type(LAYER),intent(in)::this
 
 !!$    !initiate with no problems found 
-!!$    TEMPLATE_check=0
+!!$    LAYER_check=0
 !!$    if(.not.paranoid)return
 !!$
-!!$    call Note('Checking TEMPLATE.')
+!!$    call Note('Checking LAYER.')
 !!$
 !!$
 !!$    !check that this derived type is initialized
 !!$    if(.not.this%initialized)then
-!!$       call Warn('TEMPLATE_check: TEMPLATE object not initialized.')
-!!$       TEMPLATE_check=1
+!!$       call Warn('LAYER_check: LAYER object not initialized.')
+!!$       LAYER_check=1
 !!$       return
 !!$    end if
 !!$
 !!$    !check the primitive
-!!$    if(check(this%primitive))call stop('TEMPLATE_check: failed primitive check!')
+!!$    if(check(this%primitive))call stop('LAYER_check: failed primitive check!')
 !!$
 !!$
 !!$    !********    Check all attributes are within acceptable values    *******!
@@ -556,22 +550,22 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
 !!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('TEMPLATE_check: ndim not a number.')                                   !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim not a number.')                                   !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'ndim' is too big to fit in its memory                                     !
 !!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('TEMPLATE_check: ndim is too big.')                                     !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim is too big.')                                     !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'ndim' can only be positive                               !
 !!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('TEMPLATE_check: ndim not a positive integer.')                         !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: ndim not a positive integer.')                         !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -581,23 +575,23 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is not a number                                                      !
 !!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('TEMPLATE_check: var is not a number.')                                 !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is not a number.')                                 !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is too big to fit in its memory                                      !
 !!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('TEMPLATE_check: var is too big.')                                      !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is too big.')                                      !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !   return                                                                             !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'var' can not be zero:                                    !
 !!$    ! !      'var' can not be smaller than the smallest computable value                   !
 !!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('TEMPLATE_check: var is too small.')                                    !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: var is too small.')                                    !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -607,37 +601,37 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' points to something                                             !
 !!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('TEMPLATE_check: matrix memory not associated.')                        !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: matrix memory not associated.')                        !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' has the right dimensions                                        !
 !!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('TEMPLATE_check: number of matrix elements not = N*M.')                 !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: number of matrix elements not = N*M.')                 !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check for NAN values in the matrix                                                  !
 !!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('TEMPLATE_check: matirx has NAN values.')                               !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    call Warn('LAYER_check: matirx has NAN values.')                               !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if any matrix element values are too big for thier memory                     !
 !!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('TEMPLATE_check: matrix has huge values.')                              !
+!!$    !    call Warn('LAYER_check: matrix has huge values.')                              !
 !!$    !    mappingH_check=1                                                                  !
-!!$    !    TEMPLATE_check=1                                                                  !
+!!$    !    LAYER_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    !**************************************************************************************!
 
-  end subroutine TEMPLATE_test
+  end subroutine LAYER_test
   !-----------------------------------------
 
-end module TEMPLATE_class
+end module LAYER_class
 

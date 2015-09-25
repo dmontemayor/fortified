@@ -19,11 +19,15 @@ program test
      write(*,*)'help'
      write(*,*)'all'
      write(*,*)'core'
+     write(*,*)'layer'
      write(*,*)
   case('all')
      call coretests
+     call layertests
   case('core')
      call coretests
+  case('layer')
+     call layertests
   case default
      write(*,*)'Unknown test (try: test help)'
   end select
