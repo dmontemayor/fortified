@@ -1,0 +1,4 @@
+  case('core')
+     call coretests
+  case('template')
+     call template_test

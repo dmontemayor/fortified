@@ -16,8 +16,8 @@ module TEMPLATE_class
   implicit none
   private
 
-  public::TEMPLATE
-  public::make, kill, display, store, update, reset, check, test
+  public::TEMPLATE, TEMPLATE_test
+  public::make, kill, display, store, update, reset, check
 
   type TEMPLATE
      logical::initialized=.false.
@@ -72,11 +72,6 @@ module TEMPLATE_class
   !> Checks that the TEMPLATE object.
   interface check
      module procedure TEMPLATE_check
-  end interface
-
-  !> Unit tests that excercise the TEMPLATE methods.
-  interface test
-     module procedure TEMPLATE_test
   end interface
 
 contains
@@ -523,8 +518,8 @@ contains
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine TEMPLATE_test(this)
-    type(TEMPLATE),intent(in)::this
+  subroutine TEMPLATE_test
+    !type(TEMPLATE),intent(in)::this
 
 !!$    !initiate with no problems found 
 !!$    TEMPLATE_check=0

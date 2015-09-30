@@ -1,5 +1,3 @@
-program test
-  use layer_class
   implicit none
 
   character(len=50)::cmd
@@ -21,23 +19,3 @@ program test
      write(*,*)'all'
      write(*,*)'core'
      write(*,*)'template'
-     write(*,*)'layer'
-     write(*,*)
-  case('all')
-     call coretests
-     call template_test
-     call layer_test
-  case('core')
-     call coretests
-  case('template')
-     call template_test
-  case('layer')
-     call layer_test
-  case default
-     write(*,*)'Unknown test (try: test help)'
-  end select
-
-  
-  write(*,*) 'ALL TESTS PASSED!'
-  
-end program test

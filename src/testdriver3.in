@@ -1,0 +1,4 @@
+     write(*,*)
+  case('all')
+     call coretests
+     call template_test

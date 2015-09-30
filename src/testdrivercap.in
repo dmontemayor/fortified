@@ -1,0 +1,8 @@
+  case default
+     write(*,*)'Unknown test (try: test help)'
+  end select
+
+  
+  write(*,*) 'ALL TESTS PASSED!'
+  
+end program test

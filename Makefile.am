@@ -7,7 +7,7 @@ EXTRA_DIST = m4/NOTES data/NOTES data/gencubicdataset.f90 data/cubicdataset.dat
 
 corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90
 classfiles = src/TEMPLATE.f90 src/layer.f90
-testfiles = src/testing.f90 src/coretests.f90 src/layertests.f90
+testfiles = src/testing.f90 src/coretests.f90
 
 bin_PROGRAMS = App test
 
@@ -15,5 +15,5 @@ App_FCFLAGS = -O3 -J src/
 test_FCFLAGS = -O3 -J src/
 
 App_SOURCES = $(corefiles) $(classfiles) src/driver.f90
-test_SOURCES = $(corefiles) $(classfiles) $(testfiles) src/test_driver.f90
+test_SOURCES = $(corefiles) $(testfiles) $(classfiles) src/test_driver.f90
 
