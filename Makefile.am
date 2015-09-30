@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4 --install
-EXTRA_DIST = mr/NOTES
+EXTRA_DIST = m4/NOTES data/NOTES data/gencubicdataset.f90 data/cubicdataset.dat
 
 #SUBDIRS = src
 #EXTRA_DIST = etc libexec share Doxyfile DoxygenLayout.xml
