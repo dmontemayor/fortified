@@ -1,12 +1,17 @@
 !>\brief
-!! layer class
+!! layer abstract class
 !!\details
-!! A layer is a network of interconnected nodes. 
-!!\author
+!! A layer is a network of N independent real valued nodes. Node states are
+!! depend on the input signal I a 1xN vector where element I_k determines
+!! the activity (state) of node k. The layer abstract class forms the basis
+!! for all artificial neural network models.
+ !!\author
 !! Daniel Montemayor Sept 2015
 !<------------------------------------------------------------------------
 module layer_class
   use type_kinds
+  use testing_class
+  use functions
   implicit none
   private
 
@@ -15,10 +20,10 @@ module layer_class
 
   type layer
      logical::initialized=.false.
-!!$     type(primitive)::primitive
      !**********     Enter your derived type's attributes here     **********!
-
-
+     integer(long)::N=huge(1_long)
+     real(double),dimension(:),pointer::node
+     real(double),dimension(:),pointer::input
 
      !***********************************************************************!
      !=======================================================================!
@@ -77,103 +82,25 @@ contains
   !> \param[in] file is an optional string containing the name of a previously stored layer file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine layer_init(this,file)
+  subroutine layer_init(this,N)
     type(layer),intent(inout)::this
-    character*(*),intent(in),optional::file
-!!$    character(len=title)::filetype
-!!$    character(len=path)::infile
-!!$
-!!$    integer::unit
-!!$    logical::usedefault,usedunit
-!!$
-!!$    call Note('Begin layer_init.')
-!!$
-!!$    !check if input file is present and valid
-!!$    if(present(file))then
-!!$
-!!$       !check if file is there
-!!$       if(check(file).EQ.1)call stop('layer_init: cannot find input file '//file)
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open the file
-!!$       open(unit,file=file)
-!!$
-!!$       !read the file type - should always be on the first line
-!!$       read(unit,*)filetype
-!!$       filetype=adjustl(filetype)
-!!$
-!!$       !check if input file is the right kind of file
-!!$       if(trim(filetype).NE.'layer')& 
-!!$            call Stop('layer_init: input file is not valid.')
-!!$
-!!$    end if
-!!$    
-!!$    ! prepare primative
-!!$    if(present(file))then
-!!$       read(unit,*)infile
-!!$       infile=adjustl(infile)
-!!$       call make(this%primitive,trim(infile))
-!!$    else
-!!$       call make(this%primitive)
-!!$    end if
-!!$
-!!$    !******     Initiate all your derived type's attributes below      ******!
-!!$    !************************************************************************!
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********           Example - Setup attribute 'var'            **********!
-!!$    !                                                                        !
-!!$    ! if(present(file))then                                                  !
-!!$    !    read(unit,*)this%var          !Read from input file if present      !
-!!$    ! else                                                                   !
-!!$    !    write(*,*)'Please enter VAR.' !manually enter information           !
-!!$    !    read(*,*)this%var                                                   !
-!!$    ! end if                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********   Example - Setup a matrix attribute called 'matrix'   ********!
-!!$    !                                                                        !
-!!$    ! if(associated(this%matrix))nullify(this%matrix) !cleanup memory        !
-!!$    ! allocate(this%matirx(N,M))                      !create an NxM matrix  !
-!!$    !                                                                        !
-!!$    ! !Now fill that matrix with data from the input file or manually        !
-!!$    ! if(present(file))then                                                  !
-!!$    !    read(unit,*)((this%matrix(i,j),j=1,M),i=1,N) !read M loop first     !
-!!$    ! else                                                                   !
-!!$    !    write(*,*)'Enter value of matrix element:'                          !
-!!$    !    do i=1,N                                                            !
-!!$    !       do j=1,M                                                         !
-!!$    !          write(*,*)'index=',i,j      !prompt user the matrix index     !
-!!$    !          read(*,*)this%matrix(i,j)   !read data manually from keyboard !
-!!$    !       end do                                                           !
-!!$    !    end do                                                              !
-!!$    ! end if                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$
-!!$    !finished reading data - now close input file
-!!$    if(present(file))close(unit)
-!!$
-!!$    !declare that initialization is complete
-!!$    this%initialized=.true.
-!!$
-!!$    !update (or reset if brand new) this derived type
-!!$    if(present(file))then
-!!$       call update(this)
-!!$    else
-!!$       call reset(this)
-!!$    end if
-!!$
-!!$    !do a final check before we exit
-!!$    if(check(file).EQ.1)call stop('layer_init: failed final check!')
+    integer(long),intent(in)::N
+
+    !declare initialization in progress
+    this%initialized=.false.
+
+    this%N=N !assign number of nodes from input
+    if(N.LE.0)return
+
+    if(associated(this%node))nullify(this%node) !cleanup up memory
+    allocate(this%node(0:this%N))               !allocate nodes (zeroth node is for bias and is always 1)
+    this%node(0)=1_double
+
+    if(associated(this%input))nullify(this%input) !cleanup up memory
+    allocate(this%input(this%N))                  !allocate input array
+
+    !declare initialization complete
+    this%initialized=.true.
 
   end subroutine layer_init
 
@@ -184,29 +111,11 @@ contains
   subroutine layer_kill(this)
     type(layer),intent(inout)::this
  
-!!$    call note('Begin layer_kill.')
-!!$
-!!$    !kill the primitive
-!!$    call kill(this%primitive)
-!!$
-!!$
-!!$    !*******************       Nullify all pointers    **********************!
-!!$
-!!$ 
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !******        Example - cleanup matrix attribute 'matrix'       ********!
-!!$    !                                                                        !
-!!$    ! if(associated(this%matrix))nullify(this%matrix)                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$
-!!$    !Decalare this derived type un-initialized
-!!$    this%initialized=.false.
+    if(associated(this%node))nullify(this%node)
+    if(associated(this%input))nullify(this%input)
+
+    !un-initialize object
+    this%initialized=.false.
 
   end subroutine layer_kill
 
@@ -394,237 +303,103 @@ contains
   !======================================================================
   integer(short)function layer_check(this)
     type(layer),intent(in)::this
+    integer(short)::errsum=0
 
-!!$    !initiate with no problems found 
-!!$    layer_check=0
-!!$    if(.not.paranoid)return
-!!$
-!!$    call Note('Checking layer.')
-!!$
-!!$
-!!$    !check that this derived type is initialized
-!!$    if(.not.this%initialized)then
-!!$       call Warn('layer_check: layer object not initialized.')
-!!$       layer_check=1
-!!$       return
-!!$    end if
-!!$
-!!$    !check the primitive
-!!$    if(check(this%primitive))call stop('layer_check: failed primitive check!')
-!!$
-!!$
-!!$    !********    Check all attributes are within acceptable values    *******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********     Example - check an integer attribute 'ndim'    ************************!
-!!$    !                                                                                      !
-!!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
-!!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('layer_check: ndim not a number.')                                   !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'ndim' is too big to fit in its memory                                     !
-!!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('layer_check: ndim is too big.')                                     !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'ndim' can only be positive                               !
-!!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('layer_check: ndim not a positive integer.')                         !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********    Example - check a real number attribute 'var'   ************************!
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is not a number                                                      !
-!!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('layer_check: var is not a number.')                                 !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is too big to fit in its memory                                      !
-!!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('layer_check: var is too big.')                                      !
-!!$    !    layer_check=1                                                                  !
-!!$    !   return                                                                             !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'var' can not be zero:                                    !
-!!$    ! !      'var' can not be smaller than the smallest computable value                   !
-!!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('layer_check: var is too small.')                                    !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !*********          Example - check an NxM matrix attribute 'matrix'        ***********!
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' points to something                                             !
-!!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('layer_check: matrix memory not associated.')                        !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' has the right dimensions                                        !
-!!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('layer_check: number of matrix elements not = N*M.')                 !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check for NAN values in the matrix                                                  !
-!!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('layer_check: matirx has NAN values.')                               !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if any matrix element values are too big for thier memory                     !
-!!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('layer_check: matrix has huge values.')                              !
-!!$    !    mappingH_check=1                                                                  !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
+    !initiate with no problems found 
+    layer_check=0
+
+    !check that layer object is initialized
+    call assert(this%initialized,msg='layer_check: layer not initialized.',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !********    Check all attributes are within acceptable values    *******!
+    !check number of nodes N is NaN or Huge
+    call assert(this%N,this%N,msg='layer_check: N is NaN or Huge',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check number of nodes is positive
+    call assert(this%N.GT.0,msg='layer_check: N is not a positive integer',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check node array points to something
+    call assert(associated(this%node),msg='layer_check: node memory not associated',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check node array is correct size
+    call assert(size(this%node),this%N+1,msg='layer_check: node array size is not N+1',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check zeroth node array element is has value 1.0
+    call assert(this%node(0).EQ.1_double,msg='layer_check: zeroth node array element is not 1.0',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check input array points to something
+    call assert(associated(this%input),msg='layer_check: input memory not associated',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+    !check input array is correct size
+    call assert(size(this%input),this%N,msg='layer_check: input array size is not N',iostat=layer_check)
+    if(layer_check.NE.0)return
+
+
 
   end function layer_check
   !-----------------------------------------
   !======================================================================
   !> \brief Tests the layer methods.
   !> \param[in] this is the layer object whose methods will be excercised.
-  !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
-  !> \remark Will stop after first failed check.
+  !> \remark Will stop after first failed test
   !======================================================================
   subroutine layer_test
-!    type(layer),intent(in)::this
+    type(layer)::this
+    integer(short)::ierr
 
-!!$    !initiate with no problems found 
-!!$    layer_check=0
-!!$    if(.not.paranoid)return
-!!$
-!!$    call Note('Checking layer.')
-!!$
-!!$
-!!$    !check that this derived type is initialized
-!!$    if(.not.this%initialized)then
-!!$       call Warn('layer_check: layer object not initialized.')
-!!$       layer_check=1
-!!$       return
-!!$    end if
-!!$
-!!$    !check the primitive
-!!$    if(check(this%primitive))call stop('layer_check: failed primitive check!')
-!!$
-!!$
-!!$    !********    Check all attributes are within acceptable values    *******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********     Example - check an integer attribute 'ndim'    ************************!
-!!$    !                                                                                      !
-!!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
-!!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('layer_check: ndim not a number.')                                   !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'ndim' is too big to fit in its memory                                     !
-!!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('layer_check: ndim is too big.')                                     !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'ndim' can only be positive                               !
-!!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('layer_check: ndim not a positive integer.')                         !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********    Example - check a real number attribute 'var'   ************************!
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is not a number                                                      !
-!!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('layer_check: var is not a number.')                                 !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is too big to fit in its memory                                      !
-!!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('layer_check: var is too big.')                                      !
-!!$    !    layer_check=1                                                                  !
-!!$    !   return                                                                             !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'var' can not be zero:                                    !
-!!$    ! !      'var' can not be smaller than the smallest computable value                   !
-!!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('layer_check: var is too small.')                                    !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !*********          Example - check an NxM matrix attribute 'matrix'        ***********!
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' points to something                                             !
-!!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('layer_check: matrix memory not associated.')                        !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' has the right dimensions                                        !
-!!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('layer_check: number of matrix elements not = N*M.')                 !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check for NAN values in the matrix                                                  !
-!!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('layer_check: matirx has NAN values.')                               !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if any matrix element values are too big for thier memory                     !
-!!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('layer_check: matrix has huge values.')                              !
-!!$    !    mappingH_check=1                                                                  !
-!!$    !    layer_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
+    write(*,*)'test layer can be created with 4 nodes.'
+    call make(this,N=4)
+    call assert(check(this).EQ.0,msg='layer object was not created properly.')
+    call kill(this)
+
+    write(*,*)'test layer kill method sets initiallization flag to false.'
+    call make(this,N=4)
+    call kill(this)
+    call assert(.not.this%initialized,msg='layer object remains initialized after killed.')
+
+    write(*,*)'test layer kill method cleans up node memory.'
+    call make(this,N=4)
+    call kill(this)
+    call assert(.not.associated(this%node),msg='kill layer method does not nullify node array pointer.')
+
+    write(*,*)'test layer kill method cleans up input memory.'
+    call make(this,N=4)
+    call kill(this)
+    call assert(.not.associated(this%input),msg='kill layer method does not nullify input array pointer.')
+
+    write(*,*)'test layer remains uninitiallized when created with 0 nodes.'
+    call make(this,N=0)
+    call assert(.not.this%initialized,msg='layer object remains initialized with zero node number.')
+    call kill(this)
+
+    write(*,*)'test layer remains uninitiallized when created with -4 nodes.'
+    call make(this,N=-4)
+    call assert(.not.this%initialized,msg='layer object remains initialized with -4 node number.')
+    call kill(this)
+
+    write(*,*)'test layer node array remains unassociated when created with 0 nodes.'
+    call make(this,N=0)
+    call assert(.not.associated(this%node),msg='layer node array pointer is associated when created with 0 nodes.')
+    call kill(this)
+
+    write(*,*)'test layer input array remains unassociated when created with -4 nodes.'
+    call make(this,N=-4)
+    call assert(.not.associated(this%input),msg='layer input array pointer is associated when created with -4 nodes.')
+    call kill(this)
+
+    !test for node memory leaks with double make
+    write(*,*)'Test that succesive makes destroy previously held data.'
+    call make(this,N=5)
+    this%node(5)=99.9
+    call make(this,N=4)
+    call assert(this%node(5).NE.99.9,msg='second make did not prevent accesing previously stored node data.')
 
   end subroutine layer_test
   !-----------------------------------------

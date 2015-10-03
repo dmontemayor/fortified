@@ -91,6 +91,14 @@ contains
 !!$    integer::unit
 !!$    logical::usedefault,usedunit
 !!$
+
+
+    !declare initialization complete
+    this%initialized=.true.
+
+
+
+
 !!$    call Note('Begin TEMPLATE_init.')
 !!$
 !!$    !check if input file is present and valid
@@ -398,22 +406,16 @@ contains
   !> \remark Will exit after first failed check.
   !======================================================================
   integer(short)function TEMPLATE_check(this)
+    use testing_class
     type(TEMPLATE),intent(in)::this
 
-!!$    !initiate with no problems found 
-!!$    TEMPLATE_check=0
-!!$    if(.not.paranoid)return
-!!$
-!!$    call Note('Checking TEMPLATE.')
-!!$
-!!$
-!!$    !check that this derived type is initialized
-!!$    if(.not.this%initialized)then
-!!$       call Warn('TEMPLATE_check: TEMPLATE object not initialized.')
-!!$       TEMPLATE_check=1
-!!$       return
-!!$    end if
-!!$
+    !initiate with no problems found 
+    TEMPLATE_check=0
+    !call Note('Checking TEMPLATE.')
+
+    !check that object is initialized
+    call assert(this%initialized,msg='TEMPLATE_check: TEMPLATE object not initialized.',iostat=TEMPLATE_check)
+
 !!$    !check the primitive
 !!$    if(check(this%primitive))call stop('TEMPLATE_check: failed primitive check!')
 !!$
@@ -519,117 +521,12 @@ contains
   !> \remark Will stop after first failed check.
   !======================================================================
   subroutine TEMPLATE_test
-    !type(TEMPLATE),intent(in)::this
+    use testing_class
+    type(TEMPLATE)::this
 
-!!$    !initiate with no problems found 
-!!$    TEMPLATE_check=0
-!!$    if(.not.paranoid)return
-!!$
-!!$    call Note('Checking TEMPLATE.')
-!!$
-!!$
-!!$    !check that this derived type is initialized
-!!$    if(.not.this%initialized)then
-!!$       call Warn('TEMPLATE_check: TEMPLATE object not initialized.')
-!!$       TEMPLATE_check=1
-!!$       return
-!!$    end if
-!!$
-!!$    !check the primitive
-!!$    if(check(this%primitive))call stop('TEMPLATE_check: failed primitive check!')
-!!$
-!!$
-!!$    !********    Check all attributes are within acceptable values    *******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********     Example - check an integer attribute 'ndim'    ************************!
-!!$    !                                                                                      !
-!!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
-!!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('TEMPLATE_check: ndim not a number.')                                   !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'ndim' is too big to fit in its memory                                     !
-!!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('TEMPLATE_check: ndim is too big.')                                     !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'ndim' can only be positive                               !
-!!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('TEMPLATE_check: ndim not a positive integer.')                         !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********    Example - check a real number attribute 'var'   ************************!
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is not a number                                                      !
-!!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('TEMPLATE_check: var is not a number.')                                 !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is too big to fit in its memory                                      !
-!!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('TEMPLATE_check: var is too big.')                                      !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !   return                                                                             !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'var' can not be zero:                                    !
-!!$    ! !      'var' can not be smaller than the smallest computable value                   !
-!!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('TEMPLATE_check: var is too small.')                                    !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !*********          Example - check an NxM matrix attribute 'matrix'        ***********!
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' points to something                                             !
-!!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('TEMPLATE_check: matrix memory not associated.')                        !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' has the right dimensions                                        !
-!!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('TEMPLATE_check: number of matrix elements not = N*M.')                 !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check for NAN values in the matrix                                                  !
-!!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('TEMPLATE_check: matirx has NAN values.')                               !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if any matrix element values are too big for thier memory                     !
-!!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('TEMPLATE_check: matrix has huge values.')                              !
-!!$    !    mappingH_check=1                                                                  !
-!!$    !    TEMPLATE_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
+    !TEMPLATE can be created
+    call make(this)
+    call assert(check(this).EQ.0,msg='TEMPLATE object was not created properly.')
 
   end subroutine TEMPLATE_test
   !-----------------------------------------

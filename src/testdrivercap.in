@@ -1,5 +1,6 @@
   case default
      write(*,*)'Unknown test (try: test help)'
+     stop
   end select
 
   
