@@ -11,7 +11,6 @@
 module layer_class
   use type_kinds
   use testing_class
-  use functions
   implicit none
   private
 
@@ -24,7 +23,7 @@ module layer_class
      integer(long)::N=huge(1_long)
      real(double),dimension(:),pointer::node
      real(double),dimension(:),pointer::input
-
+     character(len=label)::activation
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
@@ -79,12 +78,14 @@ contains
   !======================================================================
   !> \brief Creates and initializes the layer object.
   !> \param this is the layer object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored layer file.
-!!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
+  !> \param[in] N is the number of nodes in layer.
+  !> \param[in] activation is an optional string determining layer activation function.
+  !> \remark If no activation is provided linear activity is assumed.
   !=====================================================================
-  subroutine layer_init(this,N)
+  subroutine layer_init(this,N,activation)
     type(layer),intent(inout)::this
     integer(long),intent(in)::N
+    character(len=*),optional,intent(in)::activation
 
     !declare initialization in progress
     this%initialized=.false.
@@ -93,11 +94,13 @@ contains
     if(N.LE.0)return
 
     if(associated(this%node))nullify(this%node) !cleanup up memory
-    allocate(this%node(0:this%N))               !allocate nodes (zeroth node is for bias and is always 1)
-    this%node(0)=1_double
+    allocate(this%node(this%N))               !allocate nodes
 
     if(associated(this%input))nullify(this%input) !cleanup up memory
     allocate(this%input(this%N))                  !allocate input array
+
+    this%activation='linear'!default activation
+    if(present(activation))this%activation=activation
 
     !declare initialization complete
     this%initialized=.true.
@@ -124,34 +127,22 @@ contains
   !> \param this is the layer  object to be updated.
   !======================================================================
   subroutine layer_update(this)
-    type(layer),intent(inout)::this
+    use functions 
+   type(layer),intent(inout)::this
 
-!!$    call Note('Begin layer_update.')
-!!$    
-!!$    !Primitives usually dont get updated
-!!$    !    call update(this%primitive)    
-!!$
-!!$
-!!$    !******   Recompute any attribute values that might have evolved   ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !*****    Example - attribute 'var' is always equall to the trace   *****!
-!!$    !                   of the primitive's denisity                          !
-!!$    !                                                                        !
-!!$    ! this%var=0._double                                                     !
-!!$    ! do istate=1,this%primitive%nstate                                             !
-!!$    !    this%var=this%var+this%primitive%den(istate,istate)                        !
-!!$    ! end do                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('layer_update: failed final check!')
+    !default update
+    this%node(1:this%N)=this%input
+
+    select case(trim(this%activation))
+    case ('linear')
+       this%node(1:this%N)=linear(this%input)
+    case ('logistic')
+       this%node(1:this%N)=logistic(this%input)
+    case ('tanh')
+       this%node(1:this%N)=tanh(this%input)
+    case ('gaussian')
+       this%node(1:this%N)=gaussian(this%input)
+    end select
 
   end subroutine layer_update
 
@@ -326,11 +317,7 @@ contains
     if(layer_check.NE.0)return
 
     !check node array is correct size
-    call assert(size(this%node),this%N+1,msg='layer_check: node array size is not N+1',iostat=layer_check)
-    if(layer_check.NE.0)return
-
-    !check zeroth node array element is has value 1.0
-    call assert(this%node(0).EQ.1_double,msg='layer_check: zeroth node array element is not 1.0',iostat=layer_check)
+    call assert(size(this%node),this%N,msg='layer_check: node array size is not N',iostat=layer_check)
     if(layer_check.NE.0)return
 
     !check input array points to something
@@ -394,12 +381,76 @@ contains
     call assert(.not.associated(this%input),msg='layer input array pointer is associated when created with -4 nodes.')
     call kill(this)
 
-    !test for node memory leaks with double make
     write(*,*)'Test that succesive makes destroy previously held data.'
     call make(this,N=5)
     this%node(5)=99.9
     call make(this,N=4)
     call assert(this%node(5).NE.99.9,msg='second make did not prevent accesing previously stored node data.')
+    call kill(this)
+
+    write(*,*)'Test that default activation sets node states equal to input.'
+    call make(this,N=2)
+    this%input(1)=0.12345
+    call update(this)
+    call assert(this%node(1).EQ.0.12345,msg='default activation does not set node state equal to input signal.')
+    call kill(this)
+
+    write(*,*)'Test layer object can be initiallized with linear activation'
+    call make(this,N=2,activation='linear')
+    call assert(check(this).EQ.0,msg='layer cannot be initiallized with linear activation.')
+    call kill(this)
+
+    write(*,*)'Test update layer with linear activation node state equals input=0.12345.'
+    call make(this,N=2,activation='linear')
+    this%input=0.12345
+    call update(this)
+    call assert(this%node(1).EQ.0.12345,msg='linear activation layer node does not equal input=0.12345')
+    call kill(this)
+
+    write(*,*)'Test update layer with logistic activation node=0.5 when input=0.0 .'
+    call make(this,N=2,activation='logistic')
+    this%input=0_double
+    call update(this)
+    call assert(this%node(1).EQ.0.5_double,msg='logistic activation layer node does not equal 0.5 when input=0.0')
+    call kill(this)
+
+    write(*,*)'Test update layer with logistic activation node=1/(1+e) when input=-1.0 .'
+    call make(this,N=2,activation='logistic')
+    this%input=-1_double
+    call update(this)
+    call assert(this%node(1).EQ.1/(1+exp(1.0_double)),&
+         msg='logistic activation layer node does not equal 1/(1+e) when input=-1.0')
+    call kill(this)
+
+    write(*,*)'Test update layer with tanh activation node=0.0 when input=0.0 .'
+    call make(this,N=2,activation='tanh')
+    this%input=0.0_double
+    call update(this)
+    call assert(this%node(1).EQ.0.0_double,msg='tanh activation layer node does not equal 0.0 when input=0.0')
+    call kill(this)
+
+    write(*,*)'Test update layer with tanh activation node=tanh(-1) when input=-1.0 .'
+    call make(this,N=2,activation='tanh')
+    this%input=-1_double
+    call update(this)
+    call assert(this%node(1).EQ.tanh(-1.0_double),&
+         msg='tanh activation layer node does not equal tanh(-1) when input=-1.0')
+    call kill(this)
+
+    write(*,*)'Test update layer with gaussian activation node=1.0 when input=0.0 .'
+    call make(this,N=2,activation='gaussian')
+    this%input=0.0_double
+    call update(this)
+    call assert(this%node(1).EQ.1.0_double,msg='gaussian activation layer node does not equal 1.0 when input=0.0')
+    call kill(this)
+
+    write(*,*)'Test update layer with gaussian activation node=exp(-0.5) when input=-1.0 .'
+    call make(this,N=2,activation='gaussian')
+    this%input=-1_double
+    call update(this)
+    call assert(this%node(1).EQ.exp(-0.5_double),&
+         msg='gaussian activation layer node does not equal exp(-0.5) when input=-1.0')
+    call kill(this)
 
   end subroutine layer_test
   !-----------------------------------------

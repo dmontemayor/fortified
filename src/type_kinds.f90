@@ -16,7 +16,7 @@ module type_kinds
   Public :: byte,short,long
 
   !Floating point Kinds
-  Public :: single,double
+  Public :: single,double,realptr
 
   !String Lengths
   Public :: line,extline,label,path,comment 
@@ -45,5 +45,10 @@ module type_kinds
   integer, parameter:: double=selected_real_kind(15,307)
   !!> quad precision float size 128-bit
   !integer, parameter:: quad=selected_real_kind(33,4931)
+
+  !pointer to double precision float (needed for arrays of pointers)
+  type realptr
+     real(double),pointer::ptr
+  end type realptr
 
 end module type_kinds

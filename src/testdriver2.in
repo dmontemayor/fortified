@@ -16,6 +16,6 @@
      write(*,*)'available classname:'
      write(*,*)
      write(*,*)'help'
-     write(*,*)'all'
+     !write(*,*)'all'
      write(*,*)'core'
      write(*,*)'template'

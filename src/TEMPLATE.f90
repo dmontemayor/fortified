@@ -218,8 +218,8 @@ contains
 !!$    !************************************************************************!
 !!$
 !!$
-!!$    !Decalare this derived type un-initialized
-!!$    this%initialized=.false.
+    !un-initialized TEMPLATE object
+    this%initialized=.false.
 
   end subroutine TEMPLATE_kill
 
@@ -415,6 +415,7 @@ contains
 
     !check that object is initialized
     call assert(this%initialized,msg='TEMPLATE_check: TEMPLATE object not initialized.',iostat=TEMPLATE_check)
+    if(TEMPLATE_check.NE.0)return
 
 !!$    !check the primitive
 !!$    if(check(this%primitive))call stop('TEMPLATE_check: failed primitive check!')
@@ -524,10 +525,14 @@ contains
     use testing_class
     type(TEMPLATE)::this
 
-    !TEMPLATE can be created
+    write(*,*)'test TEMPLATE can be created.'
     call make(this)
     call assert(check(this).EQ.0,msg='TEMPLATE object was not created properly.')
+    write(*,*)'test TEMPLATE kill method sets initiallization flag to false.'
+    call kill(this)
+    call assert(.not.this%initialized,msg='TEMPLATE object remains initialized after killed.')
 
+    write(*,*)'ALL TEMPLATE TESTS PASSED!'
   end subroutine TEMPLATE_test
   !-----------------------------------------
 

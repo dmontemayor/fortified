@@ -9,10 +9,11 @@ module testing_class
      module procedure assert_logical
      module procedure assert_shortinteq
      module procedure assert_longinteq
-     module procedure assert_singlerealeq
-     module procedure assert_doublerealeq
+     !module procedure assert_singlerealeq
+     !module procedure assert_singlerealeqtol
+     !module procedure assert_doublerealeq
      !module procedure assert_quadrealeq
-     module procedure assert_streq
+     !module procedure assert_streq
   end interface
 
 contains
@@ -76,37 +77,42 @@ contains
     end if
     stop 
  end subroutine assert_longinteq
-!-------------------------
-  subroutine assert_singlerealeq(a,b,tol,msg,iostat)
-    real(single),intent(in)::a,b
-    real(single),optional,intent(in)::tol
-    character(len=*),optional,intent(in)::msg
-    integer(short),optional,intent(out)::iostat
-    logical::inputOK=.false.
-    stop
-  end subroutine assert_singlerealeq
-!-------------------------
-  subroutine assert_doublerealeq(a,b,c,msg,iostat)
-    real(double),intent(in)::a,b,c
-    character(len=*),optional,intent(in)::msg
-    integer(short),optional,intent(out)::iostat
-    stop
-  end subroutine assert_doublerealeq
-!-------------------------
-!  subroutine assert_quadrealeq(a,b,c,msg,iostat)
-!    real(quad),intent(in)::a,b,c
-!    character(len=*),intent(in)::msg
-!    integer(short),optional,intent(out)::iostat
-!  end subroutine assert_quadrealeq
-!-------------------------
-  subroutine assert_streq(a,b,msg,iostat)
-    character(len=*),intent(in)::a,b
-    character(len=*),optional,intent(in)::msg
-    integer(short),optional,intent(out)::iostat
-    logical::inputOK=.false.
-    stop
-  end subroutine assert_streq
-!-------------------------
+!!$!-------------------------
+!!$  subroutine assert_singlerealeq(a,b,msg,iostat)
+!!$    real(single),intent(in)::a,b
+!!$    character(len=*),optional,intent(in)::msg
+!!$    integer(short),optional,intent(out)::iostat
+!!$    stop
+!!$  end subroutine assert_singlerealeq
+!!$!-------------------------
+!!$  subroutine assert_singlerealeqtol(a,b,tol,msg,iostat)
+!!$    real(single),intent(in)::a,b,tol
+!!$    character(len=*),optional,intent(in)::msg
+!!$    integer(short),optional,intent(out)::iostat
+!!$    stop
+!!$  end subroutine assert_singlerealeqtol
+!!$!-------------------------
+!!$  subroutine assert_doublerealeq(a,b,c,msg,iostat)
+!!$    real(double),intent(in)::a,b,c
+!!$    character(len=*),optional,intent(in)::msg
+!!$    integer(short),optional,intent(out)::iostat
+!!$    stop
+!!$  end subroutine assert_doublerealeq
+!!$!-------------------------
+!!$!  subroutine assert_quadrealeq(a,b,c,msg,iostat)
+!!$!    real(quad),intent(in)::a,b,c
+!!$!    character(len=*),intent(in)::msg
+!!$!    integer(short),optional,intent(out)::iostat
+!!$!  end subroutine assert_quadrealeq
+!!$!-------------------------
+!!$  subroutine assert_streq(a,b,msg,iostat)
+!!$    character(len=*),intent(in)::a,b
+!!$    character(len=*),optional,intent(in)::msg
+!!$    integer(short),optional,intent(out)::iostat
+!!$    logical::inputOK=.false.
+!!$    stop
+!!$  end subroutine assert_streq
+!!$!-------------------------
 
 
 end module testing_class
