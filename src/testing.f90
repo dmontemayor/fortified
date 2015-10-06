@@ -11,7 +11,7 @@ module testing_class
      module procedure assert_longinteq
      !module procedure assert_singlerealeq
      !module procedure assert_singlerealeqtol
-     !module procedure assert_doublerealeq
+     module procedure assert_doublerealeq
      !module procedure assert_quadrealeq
      !module procedure assert_streq
   end interface
@@ -92,13 +92,27 @@ contains
 !!$    stop
 !!$  end subroutine assert_singlerealeqtol
 !!$!-------------------------
-!!$  subroutine assert_doublerealeq(a,b,c,msg,iostat)
-!!$    real(double),intent(in)::a,b,c
-!!$    character(len=*),optional,intent(in)::msg
-!!$    integer(short),optional,intent(out)::iostat
-!!$    stop
-!!$  end subroutine assert_doublerealeq
-!!$!-------------------------
+  subroutine assert_doublerealeq(a,b,msg,iostat)
+    real(double),intent(in)::a,b
+    character(len=*),optional,intent(in)::msg
+    integer(short),optional,intent(out)::iostat
+    logical::inputOK=.true.
+    if(present(iostat))iostat=-1
+    if(abs(a).GE.huge(a))inputOK=.false.
+    if(abs(b).GE.huge(b))inputOK=.false.
+    if(a.ne.a)inputOK=.false.
+    if(b.ne.b)inputOK=.false.
+    if(abs(a-b).LT.epsilon(a).and.inputOK)then
+       if(present(iostat))iostat=0
+       return
+    else
+       write(*,*)msg
+       if(present(iostat).and.inputOK)iostat=1
+       if(present(iostat))return
+    end if
+    stop
+  end subroutine assert_doublerealeq
+!-------------------------
 !!$!  subroutine assert_quadrealeq(a,b,c,msg,iostat)
 !!$!    real(quad),intent(in)::a,b,c
 !!$!    character(len=*),intent(in)::msg
