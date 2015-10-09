@@ -661,13 +661,6 @@ contains
           end if
        end do
        rewind(111)
-
-       do i=1,this%ffn%layer%N
-          write(500+epoch,*)this%ffn%W(i,1:2)
-       end do
-       write(500+epoch,*)
-       write(500+epoch,*)
-
     end do
     close(111)
     open(222,file='zpottraining.dat')
@@ -687,96 +680,96 @@ contains
     call kill(this)
     call kill(sourcelayer)
 
-stop
-    write(*,*)'test training SOM with protstruct dataset to recover 3 labels&
-         & alphahelix, betasheet, and randomcoil with acceptable accuracy.'
-    resname(1)='A'!Alanine ALA
-    resname(2)='R'!Arginine ARG
-    resname(3)='N'!Asparagine ASN
-    resname(4)='D'!Aspartic acid ASP
-    resname(5)='C'!Cysteine CYS
-    resname(6)='Q'!Glutamine GLN
-    resname(7)='E'!Glutamic acid GLU
-    resname(8)='G'!Glycine GLY
-    resname(9)='H'!Histidine HIS
-    resname(10)='I'!Isoleucine ILE
-    resname(11)='L'!Leucine LEU
-    resname(12)='K'!Lysine LYS
-    resname(13)='M'!Methionine MET
-    resname(14)='F'!Phenylalanine PHE
-    resname(15)='P'!Proline PRO
-    resname(16)='S'!Serine SER
-    resname(17)='T'!Threonine THR
-    resname(18)='W'!Tryptophan TRP
-    resname(19)='Y'!Tyrosine TYR
-    resname(20)='V'!Valine VAL
-    call make (sourcelayer,N=60)
-    call make(this,N=3)
-    call link(this%ffn,sourcelayer)
-    this%sigmadecay=0.001
-    !this%learningdecay=0.001
-    open(111,file='data/protstructdataset.dat')
-    do epoch=0,5!000
-       write(*,*)'epoch=',epoch
-       ierr=0
-       do while(ierr.EQ.0)
-          read(111,*,iostat=ierr)residue
-          if(ierr.EQ.0)then
-             select case (residue)
-             case('#')!comment
-             case('<')!begin of sequence
-                !clear sequence register
-                nres=0
-                seq=''
-             case('e')!end of sequence 
-                !begin sequence analysis
-                !write(*,*)nres,trim(seq)
-                !loop over residues
-                do i=1,nres
-                   sourcelayer%input=0._double
-                   !get current residue
-                   do j=1,20
-                      if(seq(i:i).EQ.resname(j))sourcelayer%input(j)=1.0_double
-                   end do
-                   !get next residude distance
-                   do j=1,20
-                      k=nres
-                      do while (k.GT.i)
-                         if(seq(k:k).EQ.resname(j))sourcelayer%input(20+j)=k-i
-                         k=k-1
-                      end do
-                   end do
-                   !get previous residue distance
-                   do j=1,20
-                      k=1
-                      do while (k.LT.i)
-                         if(seq(k:k).EQ.resname(j))sourcelayer%input(40+j)=i-k
-                         k=k+1
-                      end do
-                   end do
-
-                   !load points into SOM and train
-                   write(*,*)trim(seq)
-                   write(*,*)sourcelayer%input(1:20)
-                   write(*,*)sourcelayer%input(21:39)
-                   write(*,*)sourcelayer%input(41:60)
-                   stop
-                   call update(sourcelayer)
-                   call trainstep(this,epoch)
-                end do
-             case default
-                if(any(resname.EQ.residue))then
-                   nres=nres+1
-                   !push to sequence
-                   seq=trim(seq)//residue
-                end if
-             end select
-          end if
-       end do
-       rewind(111)
-    end do
-    close(111)
-
+!!$stop
+!!$    write(*,*)'test training SOM with protstruct dataset to recover 3 labels&
+!!$         & alphahelix, betasheet, and randomcoil with acceptable accuracy.'
+!!$    resname(1)='A'!Alanine ALA
+!!$    resname(2)='R'!Arginine ARG
+!!$    resname(3)='N'!Asparagine ASN
+!!$    resname(4)='D'!Aspartic acid ASP
+!!$    resname(5)='C'!Cysteine CYS
+!!$    resname(6)='Q'!Glutamine GLN
+!!$    resname(7)='E'!Glutamic acid GLU
+!!$    resname(8)='G'!Glycine GLY
+!!$    resname(9)='H'!Histidine HIS
+!!$    resname(10)='I'!Isoleucine ILE
+!!$    resname(11)='L'!Leucine LEU
+!!$    resname(12)='K'!Lysine LYS
+!!$    resname(13)='M'!Methionine MET
+!!$    resname(14)='F'!Phenylalanine PHE
+!!$    resname(15)='P'!Proline PRO
+!!$    resname(16)='S'!Serine SER
+!!$    resname(17)='T'!Threonine THR
+!!$    resname(18)='W'!Tryptophan TRP
+!!$    resname(19)='Y'!Tyrosine TYR
+!!$    resname(20)='V'!Valine VAL
+!!$    call make (sourcelayer,N=60)
+!!$    call make(this,N=3)
+!!$    call link(this%ffn,sourcelayer)
+!!$    this%sigmadecay=0.001
+!!$    !this%learningdecay=0.001
+!!$    open(111,file='data/protstructdataset.dat')
+!!$    do epoch=0,5!000
+!!$       write(*,*)'epoch=',epoch
+!!$       ierr=0
+!!$       do while(ierr.EQ.0)
+!!$          read(111,*,iostat=ierr)residue
+!!$          if(ierr.EQ.0)then
+!!$             select case (residue)
+!!$             case('#')!comment
+!!$             case('<')!begin of sequence
+!!$                !clear sequence register
+!!$                nres=0
+!!$                seq=''
+!!$             case('e')!end of sequence 
+!!$                !begin sequence analysis
+!!$                !write(*,*)nres,trim(seq)
+!!$                !loop over residues
+!!$                do i=1,nres
+!!$                   sourcelayer%input=0._double
+!!$                   !get current residue
+!!$                   do j=1,20
+!!$                      if(seq(i:i).EQ.resname(j))sourcelayer%input(j)=1.0_double
+!!$                   end do
+!!$                   !get next residude distance
+!!$                   do j=1,20
+!!$                      k=nres
+!!$                      do while (k.GT.i)
+!!$                         if(seq(k:k).EQ.resname(j))sourcelayer%input(20+j)=k-i
+!!$                         k=k-1
+!!$                      end do
+!!$                   end do
+!!$                   !get previous residue distance
+!!$                   do j=1,20
+!!$                      k=1
+!!$                      do while (k.LT.i)
+!!$                         if(seq(k:k).EQ.resname(j))sourcelayer%input(40+j)=i-k
+!!$                         k=k+1
+!!$                      end do
+!!$                   end do
+!!$
+!!$                   !load points into SOM and train
+!!$                   write(*,*)trim(seq)
+!!$                   write(*,*)sourcelayer%input(1:20)
+!!$                   write(*,*)sourcelayer%input(21:39)
+!!$                   write(*,*)sourcelayer%input(41:60)
+!!$                   stop
+!!$                   call update(sourcelayer)
+!!$                   call trainstep(this,epoch)
+!!$                end do
+!!$             case default
+!!$                if(any(resname.EQ.residue))then
+!!$                   nres=nres+1
+!!$                   !push to sequence
+!!$                   seq=trim(seq)//residue
+!!$                end if
+!!$             end select
+!!$          end if
+!!$       end do
+!!$       rewind(111)
+!!$    end do
+!!$    close(111)
+!!$
 !!$    !calculate class correlation matrix
 !!$    if(allocated(mat))deallocate(mat)
 !!$    allocate(mat(3,3))
