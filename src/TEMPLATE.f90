@@ -1,5 +1,5 @@
 !>\brief
-!! Class Template
+!! template class
 !!\details
 !! Use this template to help you start building a new object and methods.
 !! Do not remove the \a make, \a kill, \a display, \a store, \a update, \a reset, \a check, and \a test methods.

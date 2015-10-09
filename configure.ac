@@ -52,7 +52,7 @@ AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])
 
 # make sure src/ is present in build directory
 AC_CONFIG_COMMANDS([create_user_datadir],[mkdir ./data/])
-AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/doublewelldataset.dat $ac_top_srcdir/data/zpotdataset.dat ./data/])
+AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/doublewelldataset.dat $ac_top_srcdir/data/zpotdataset.dat $ac_top_srcdir/data/protstructdataset.dat ./data/])
 
 # create unique driver in build directory
 AC_CONFIG_COMMANDS([create_system_driver],[cp $ac_top_srcdir/src/driver.f90 src/driver.f90])

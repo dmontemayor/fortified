@@ -372,9 +372,11 @@ contains
     type(SOM)::this
     type(layer)::sourcelayer
 
-    real(double),allocatable::vector(:)
+    real(double),allocatable::vector(:),mat(:,:)
     real(double)::x,y,z
-    integer(long)::i,ierr,epoch
+    integer(long)::i,j,k,ierr,epoch,nres,count
+    character::residue,resname(20),label
+    character(len=1000)::seq,labseq
 
     write(*,*)'test som can be created with 4 nodes.'
     call make(this,N=4)
@@ -659,6 +661,13 @@ contains
           end if
        end do
        rewind(111)
+
+       do i=1,this%ffn%layer%N
+          write(500+epoch,*)this%ffn%W(i,1:2)
+       end do
+       write(500+epoch,*)
+       write(500+epoch,*)
+
     end do
     close(111)
     open(222,file='zpottraining.dat')
@@ -677,6 +686,208 @@ contains
     call assert(z.LT.1.07E-3,msg='SOM zpotential training MSE is greater than 1.07E-3')
     call kill(this)
     call kill(sourcelayer)
+
+stop
+    write(*,*)'test training SOM with protstruct dataset to recover 3 labels&
+         & alphahelix, betasheet, and randomcoil with acceptable accuracy.'
+    resname(1)='A'!Alanine ALA
+    resname(2)='R'!Arginine ARG
+    resname(3)='N'!Asparagine ASN
+    resname(4)='D'!Aspartic acid ASP
+    resname(5)='C'!Cysteine CYS
+    resname(6)='Q'!Glutamine GLN
+    resname(7)='E'!Glutamic acid GLU
+    resname(8)='G'!Glycine GLY
+    resname(9)='H'!Histidine HIS
+    resname(10)='I'!Isoleucine ILE
+    resname(11)='L'!Leucine LEU
+    resname(12)='K'!Lysine LYS
+    resname(13)='M'!Methionine MET
+    resname(14)='F'!Phenylalanine PHE
+    resname(15)='P'!Proline PRO
+    resname(16)='S'!Serine SER
+    resname(17)='T'!Threonine THR
+    resname(18)='W'!Tryptophan TRP
+    resname(19)='Y'!Tyrosine TYR
+    resname(20)='V'!Valine VAL
+    call make (sourcelayer,N=60)
+    call make(this,N=3)
+    call link(this%ffn,sourcelayer)
+    this%sigmadecay=0.001
+    !this%learningdecay=0.001
+    open(111,file='data/protstructdataset.dat')
+    do epoch=0,5!000
+       write(*,*)'epoch=',epoch
+       ierr=0
+       do while(ierr.EQ.0)
+          read(111,*,iostat=ierr)residue
+          if(ierr.EQ.0)then
+             select case (residue)
+             case('#')!comment
+             case('<')!begin of sequence
+                !clear sequence register
+                nres=0
+                seq=''
+             case('e')!end of sequence 
+                !begin sequence analysis
+                !write(*,*)nres,trim(seq)
+                !loop over residues
+                do i=1,nres
+                   sourcelayer%input=0._double
+                   !get current residue
+                   do j=1,20
+                      if(seq(i:i).EQ.resname(j))sourcelayer%input(j)=1.0_double
+                   end do
+                   !get next residude distance
+                   do j=1,20
+                      k=nres
+                      do while (k.GT.i)
+                         if(seq(k:k).EQ.resname(j))sourcelayer%input(20+j)=k-i
+                         k=k-1
+                      end do
+                   end do
+                   !get previous residue distance
+                   do j=1,20
+                      k=1
+                      do while (k.LT.i)
+                         if(seq(k:k).EQ.resname(j))sourcelayer%input(40+j)=i-k
+                         k=k+1
+                      end do
+                   end do
+
+                   !load points into SOM and train
+                   write(*,*)trim(seq)
+                   write(*,*)sourcelayer%input(1:20)
+                   write(*,*)sourcelayer%input(21:39)
+                   write(*,*)sourcelayer%input(41:60)
+                   stop
+                   call update(sourcelayer)
+                   call trainstep(this,epoch)
+                end do
+             case default
+                if(any(resname.EQ.residue))then
+                   nres=nres+1
+                   !push to sequence
+                   seq=trim(seq)//residue
+                end if
+             end select
+          end if
+       end do
+       rewind(111)
+    end do
+    close(111)
+
+!!$    !calculate class correlation matrix
+!!$    if(allocated(mat))deallocate(mat)
+!!$    allocate(mat(3,3))
+!!$    mat=0.0_double
+!!$    count=0
+!!$    nres=0
+!!$    open(111,file='data/protstructdataset.dat')
+!!$    ierr=0
+!!$    do while(ierr.EQ.0)
+!!$       read(111,*,iostat=ierr)residue,label
+!!$       if(ierr.EQ.0)then
+!!$          select case (residue)
+!!$          case('#')!comment
+!!$          case('<')!begin of sequence
+!!$             !clear sequence register
+!!$             nres=0
+!!$             seq=''
+!!$             labseq=''
+!!$          case('e')!end of sequence 
+!!$             !begin sequence analysis
+!!$             !write(*,*)nres,trim(seq)
+!!$             !write(*,*)nres,trim(labseq)
+!!$             !write(*,*)seq(nres:nres)//' '//labseq(nres:nres)
+!!$             !stop
+!!$             !loop over residues
+!!$             do i=1,nres
+!!$                sourcelayer%input=0._double
+!!$                !get current residue
+!!$                do j=1,20
+!!$                   if(seq(i:i).EQ.resname(j))sourcelayer%input(j)=1.0_double
+!!$                end do
+!!$                !get next residude distance
+!!$                do j=1,20
+!!$                   k=nres
+!!$                   do while (k.GT.i)
+!!$                      if(seq(k:k).EQ.resname(j))sourcelayer%input(20+j)=k-i
+!!$                      k=k-1
+!!$                   end do
+!!$                end do
+!!$                !get previous residue distance
+!!$                do j=1,20
+!!$                   k=1
+!!$                   do while (k.LT.i)
+!!$                      if(seq(k:k).EQ.resname(j))sourcelayer%input(40+j)=i-k
+!!$                      k=k+1
+!!$                   end do
+!!$                end do
+!!$                !find nearest SOM label
+!!$                do j=1,3
+!!$                   !get distance of input coord with SOM node j
+!!$                   x=sqrt(sum( (this%ffn%W(j,1:60)-sourcelayer%input(1:60))**2))
+!!$                   if(j.EQ.1)then
+!!$                      !autoamtic save mindistance z and label k if first label
+!!$                      z=x
+!!$                      k=j
+!!$                   end if
+!!$                   if(x.LE.z)then
+!!$                      !save mindistance z and label k
+!!$                      z=x
+!!$                      k=j
+!!$                   end if
+!!$                end do
+!!$                
+!!$                !correlate SOM label k with training label j
+!!$                select case(labseq(i:i))
+!!$                case ('h')
+!!$                   j=1
+!!$                case ('e')
+!!$                   j=2
+!!$                case ('_')
+!!$                   j=3
+!!$                case default
+!!$                   write(*,*)nres,i
+!!$                   write(*,*)trim(seq)
+!!$                   write(*,*)trim(labseq)
+!!$                   write(*,*)'unkown label program will stop. ***'//labseq(i:i)//'***'
+!!$                   stop
+!!$                end select
+!!$                mat(k,j)=mat(k,j)+1_double
+!!$                count=count+1
+!!$             end do
+!!$          case default
+!!$             if(any(resname.EQ.residue))then
+!!$                nres=nres+1
+!!$                !push to sequence
+!!$                seq=trim(seq)//residue
+!!$                labseq=trim(labseq)//label
+!!$             end if
+!!$          end select
+!!$       end if
+!!$    end do
+!!$    close(111)
+!!$    mat=mat/real(count,double)
+!!$    write(*,*)'-----------correlation matrix-----------'
+!!$    write(*,*)'              h                         e                          _'
+!!$    do k=1,3
+!!$       write(*,*)k,(mat(k,j),j=1,3)
+!!$    end do
+!!$    write(*,*)'----------------------------------------'
+!!$
+!!$    open(222,file='protstructtraining.dat')
+!!$    write(222,*)'-----------correlation matrix-----------'
+!!$    write(222,*)'              h                         e                          _'
+!!$    do k=1,3
+!!$       write(222,*)k,(mat(k,j),j=1,3)
+!!$    end do
+!!$    write(222,*)'----------------------------------------'
+!!$    close(222)
+!!$!    call assert(z.LT.1.07E-3,msg='SOM zpotential training MSE is greater than 1.07E-3')
+!!$    call kill(this)
+!!$    call kill(sourcelayer)
 
 
   end subroutine SOM_test
