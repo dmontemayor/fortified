@@ -14,12 +14,17 @@ AC_CONFIG_SRCDIR([src/math.f90])
 AC_CONFIG_SRCDIR([src/rand.f90])
 AC_CONFIG_SRCDIR([src/TEMPLATE.f90])
 AC_CONFIG_SRCDIR([src/driver.f90])
-#AC_CONFIG_SRCDIR([src/test_driver.f90])
 AC_CONFIG_SRCDIR([src/testdriver1.in])
 AC_CONFIG_SRCDIR([src/testdriver2.in])
 AC_CONFIG_SRCDIR([src/testdriver3.in])
 AC_CONFIG_SRCDIR([src/testdriver4.in])
 AC_CONFIG_SRCDIR([src/testdrivercap.in])
+
+# derived classes
+AC_CONFIG_SRCDIR([src/layer.f90])
+AC_CONFIG_SRCDIR([src/ffn.f90])
+AC_CONFIG_SRCDIR([src/som.f90])
+AC_CONFIG_SRCDIR([src/device.f90])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -52,7 +57,7 @@ AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])
 
 # make sure src/ is present in build directory
 AC_CONFIG_COMMANDS([create_user_datadir],[mkdir ./data/])
-AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/doublewelldataset.dat $ac_top_srcdir/data/zpotdataset.dat $ac_top_srcdir/data/protstructdataset.dat ./data/])
+AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/doublewelldataset.dat $ac_top_srcdir/data/zpotdataset.dat $ac_top_srcdir/data/zpot.plt $ac_top_srcdir/data/protstructdataset.dat $ac_top_srcdir/data/cubicdataset.dat $ac_top_srcdir/data/cubic.plt ./data/])
 
 # create unique driver in build directory
 AC_CONFIG_COMMANDS([create_system_driver],[cp $ac_top_srcdir/src/driver.f90 src/driver.f90])

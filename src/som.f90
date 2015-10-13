@@ -73,13 +73,13 @@ contains
   subroutine SOM_trainstep(this,S)
     type(SOM),intent(inout)::this
     integer(long),intent(in)::S
-    real(double)::dW(this%ffn%layer%N,this%ffn%M),NF(this%ffn%layer%N)
+    real(double)::dW(this%ffn%layer%N,this%ffn%nsource),NF(this%ffn%layer%N)
 
     integer(long)::i,j,winningnode,N,M
     real(double)::xmax,x,LF
 
     N=this%ffn%layer%N
-    M=this%ffn%M
+    M=this%ffn%nsource
 
     !calculate distances
     do i=1,N
@@ -574,13 +574,13 @@ contains
     call link(this%ffn,sourcelayer)
     this%ffn%W=0.0_double
     x=0_double
-    do i=0,this%ffn%M-1
+    do i=0,this%ffn%nsource-1
        x=x+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     x=sqrt(x)
     call trainstep(this,0)
     y=0_double
-    do i=0,this%ffn%M-1
+    do i=0,this%ffn%nsource-1
        y=y+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     y=sqrt(y)
@@ -595,13 +595,13 @@ contains
     call make(this,N=1)
     call link(this%ffn,sourcelayer)
     x=0_double
-    do i=0,this%ffn%M-1
+    do i=0,this%ffn%nsource-1
        x=x+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     x=sqrt(x)
     call trainstep(this,0)
     y=0_double
-    do i=0,this%ffn%M-1
+    do i=0,this%ffn%nsource-1
        y=y+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     y=sqrt(y)
@@ -676,7 +676,7 @@ contains
        z=z+(this%ffn%W(i,2)-y)**2
     end do
     z=z/500.0
-    call assert(z.LT.1.07E-3,msg='SOM zpotential training MSE is greater than 1.07E-3')
+    call assert(z.LT.1.5E-3,msg='SOM zpotential training MSE is greater than 1.5E-3')
     call kill(this)
     call kill(sourcelayer)
 

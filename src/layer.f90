@@ -21,7 +21,7 @@ module layer_class
      logical::initialized=.false.
      !**********     Enter your derived type's attributes here     **********!
      integer(long)::N=huge(1_long)
-     real(double),dimension(:),pointer::node
+     real(double),dimension(:),pointer::node,dnode
      real(double),dimension(:),pointer::input
      character(len=label)::activation
      !***********************************************************************!
@@ -74,7 +74,6 @@ module layer_class
 
 
 contains
-
   !======================================================================
   !> \brief Creates and initializes the layer object.
   !> \param this is the layer object to be initialized.
@@ -99,6 +98,9 @@ contains
     if(associated(this%input))nullify(this%input) !cleanup up memory
     allocate(this%input(this%N))                  !allocate input array
 
+    if(associated(this%dnode))nullify(this%dnode) !cleanup up memory
+    allocate(this%dnode(this%N))               !allocate nodes
+
     this%activation='linear'!default activation
     if(present(activation))this%activation=activation
 
@@ -116,6 +118,7 @@ contains
  
     if(associated(this%node))nullify(this%node)
     if(associated(this%input))nullify(this%input)
+    if(associated(this%dnode))nullify(this%dnode)
 
     !un-initialize object
     this%initialized=.false.
@@ -125,23 +128,30 @@ contains
   !======================================================================
   !> \brief Computes the current state of layer object.
   !> \param this is the layer  object to be updated.
+  !> \param derivative is an optional boolean that when true will calcuate
+  !> the derivative of the activation function wrt to input at current input
   !======================================================================
-  subroutine layer_update(this)
+  subroutine layer_update(this,derivative)
     use functions 
-   type(layer),intent(inout)::this
-
-    !default update
-    this%node(1:this%N)=this%input
+    type(layer),intent(inout)::this
+    logical,intent(in),optional::derivative
 
     select case(trim(this%activation))
     case ('linear')
        this%node(1:this%N)=linear(this%input)
+       if(present(derivative).and.derivative)this%dnode=1.0_double
     case ('logistic')
        this%node(1:this%N)=logistic(this%input)
+       if(present(derivative).and.derivative)this%dnode=dlogistic(this%input)
     case ('tanh')
        this%node(1:this%N)=tanh(this%input)
+       if(present(derivative).and.derivative)this%dnode=dtanh(this%input)
     case ('gaussian')
        this%node(1:this%N)=gaussian(this%input)
+       if(present(derivative).and.derivative)this%dnode=dgaussian(this%input)
+    case default
+       this%node(1:this%N)=this%input
+       if(present(derivative).and.derivative)this%dnode=1.0_double
     end select
 
   end subroutine layer_update
@@ -328,7 +338,13 @@ contains
     call assert(size(this%input),this%N,msg='layer_check: input array size is not N',iostat=layer_check)
     if(layer_check.NE.0)return
 
+    !check dnode array points to something
+    call assert(associated(this%dnode),msg='layer_check: dnode memory not associated',iostat=layer_check)
+    if(layer_check.NE.0)return
 
+    !check dnode array is correct size
+    call assert(size(this%dnode),this%N,msg='layer_check: dnode array size is not N',iostat=layer_check)
+    if(layer_check.NE.0)return
 
   end function layer_check
   !-----------------------------------------
@@ -385,7 +401,7 @@ contains
     call make(this,N=5)
     this%node(5)=99.9
     call make(this,N=4)
-    call assert(this%node(5).NE.99.9,msg='second make did not prevent accesing previously stored node data.')
+    call assert(this%node(4).NE.99.9,msg='second make did not prevent accesing previously stored node data.')
     call kill(this)
 
     write(*,*)'Test that default activation sets node states equal to input.'
@@ -450,6 +466,27 @@ contains
     call update(this)
     call assert(this%node(1).EQ.exp(-0.5_double),&
          msg='gaussian activation layer node does not equal exp(-0.5) when input=-1.0')
+    call kill(this)
+
+    write(*,*)'test layer kill method cleans up dnode memory.'
+    call make(this,N=4)
+    call kill(this)
+    call assert(.not.associated(this%dnode),msg='kill layer method does not nullify node array pointer.')
+
+    write(*,*)'test update layer does not update dnode without derivative flag'
+    call make (this,N=4)
+    this%dnode=3.0_double
+    this%input=0.5_double
+    call update(this)
+    call assert(all(this%dnode.EQ.3.0_double),msg='update layer has changed dnode without derivative flag.')
+    call kill(this)
+
+    write(*,*)'test update layer does update dnode with true derivative flag'
+    call make (this,N=4)
+    this%dnode=3.0_double
+    this%input=0.5_double
+    call update(this,derivative=.true.)
+    call assert(all(this%dnode.EQ.1.0_double),msg='update layer has not changed dnode with true derivative flag.')
     call kill(this)
 
   end subroutine layer_test
