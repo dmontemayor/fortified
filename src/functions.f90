@@ -3,16 +3,23 @@ module functions
   implicit none
   private
 
-  public:: linear, logistic, gaussian,mexhat
-  public:: dlogistic, dtanh, dgaussian
+  public:: logistic, dlogistic, bernoulli
+  public:: gaussian, dgaussian, mexhat
+  public:: dtanh
 
 contains
 !---------
-  function linear(x)
+  function bernoulli(x)
     real(double),intent(in)::x(:)
-    real(double)::linear(size(x))
-    linear=x
-  end function linear
+    real(double)::bernoulli(size(x)),r(size(x))
+    bernoulli=1/(1+exp(-x))
+    call random_number(r)
+    where(r.LT.bernoulli)
+       bernoulli=1._double
+    elsewhere
+       bernoulli=0._double
+    end where
+  end function bernoulli
 !---------
   function logistic(x)
     real(double),intent(in)::x(:)

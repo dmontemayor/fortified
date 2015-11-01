@@ -10,7 +10,7 @@ program genzpotdataset
   integer,parameter::nsample=500
   integer:: i
   real*8::x,y,z,P
-  open(111,file='zpotdataset.dat')
+  open(111,file='zpot.dat')
   i=0
   do while(i.LT.nsample)
      call random_number(x)
@@ -27,5 +27,5 @@ program genzpotdataset
   write(111,*)'#zpot data set: with probaility dist P(x,y)=exp(-3*(y-x*(x-1)*(x+1))**2)'
   close(111)
 
-  write(*,*)'Data set generated in zpotdataset.dat'
+  write(*,*)'Data set generated in zpot.dat'
 end program genzpotdataset

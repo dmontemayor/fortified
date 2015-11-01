@@ -14,6 +14,8 @@ AC_CONFIG_SRCDIR([src/math.f90])
 AC_CONFIG_SRCDIR([src/rand.f90])
 AC_CONFIG_SRCDIR([src/TEMPLATE.f90])
 AC_CONFIG_SRCDIR([src/driver.f90])
+AC_CONFIG_SRCDIR([src/functions.f90])
+AC_CONFIG_SRCDIR([src/progressbar.f90])
 AC_CONFIG_SRCDIR([src/testdriver1.in])
 AC_CONFIG_SRCDIR([src/testdriver2.in])
 AC_CONFIG_SRCDIR([src/testdriver3.in])
@@ -25,6 +27,26 @@ AC_CONFIG_SRCDIR([src/layer.f90])
 AC_CONFIG_SRCDIR([src/ffn.f90])
 AC_CONFIG_SRCDIR([src/som.f90])
 AC_CONFIG_SRCDIR([src/device.f90])
+AC_CONFIG_SRCDIR([src/rnn.f90])
+
+# auxilary data files
+AC_CONFIG_SRCDIR([data/gendoublewelldataset.f90])
+AC_CONFIG_SRCDIR([data/doublewell.dat])
+AC_CONFIG_SRCDIR([data/genzpotdataset.f90])
+AC_CONFIG_SRCDIR([data/zpot.dat])
+AC_CONFIG_SRCDIR([data/zpot.plt])
+AC_CONFIG_SRCDIR([data/gencubicdataset.f90])
+AC_CONFIG_SRCDIR([data/cubic.dat])
+AC_CONFIG_SRCDIR([data/cubic.plt])
+AC_CONFIG_SRCDIR([data/genxordataset.f90])
+AC_CONFIG_SRCDIR([data/xor.dat])
+AC_CONFIG_SRCDIR([data/xor.plt])
+AC_CONFIG_SRCDIR([data/genxorsequentialdataset.f90])
+AC_CONFIG_SRCDIR([data/xor.seqdat])
+AC_CONFIG_SRCDIR([data/xorseq.plt])
+AC_CONFIG_SRCDIR([data/protstruct.seqdat])
+AC_CONFIG_SRCDIR([data/protstruct_test.seqdat])
+
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -57,7 +79,7 @@ AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])
 
 # make sure src/ is present in build directory
 AC_CONFIG_COMMANDS([create_user_datadir],[mkdir ./data/])
-AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/doublewelldataset.dat $ac_top_srcdir/data/zpotdataset.dat $ac_top_srcdir/data/zpot.plt $ac_top_srcdir/data/protstructdataset.dat $ac_top_srcdir/data/cubicdataset.dat $ac_top_srcdir/data/cubic.plt ./data/])
+AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/*.dat $ac_top_srcdir/data/*.seqdat $ac_top_srcdir/data/*.plt ./data/])
 
 # create unique driver in build directory
 AC_CONFIG_COMMANDS([create_system_driver],[cp $ac_top_srcdir/src/driver.f90 src/driver.f90])

@@ -2,7 +2,8 @@
 !! device class
 !!\details
 !! A linked list of ffn layers begining with a visible layer and followed by
-!! a series of ffn objects. The device class can train the network by backpropagation.
+!! a series of ffn objects. The device class can train the network by
+!! backpropagation.
 !<------------------------------------------------------------------------
 module DEVICE_class
   use type_kinds
@@ -91,6 +92,10 @@ contains
   !> \param this is the DEVICE object to be measured.
   !> \param[in] dataset is a realmatrix of size  Ninput + Noutput x Nsample
   !>  containing a batch of Nsample training data vetor pairs.
+  !> \param[in] file is an optional string name of output file to save analysis
+  !> \param[inout] mse is an optional real output for mean square error
+  !> \param[inout] xrange is an optional real output for dataset xrange 
+  !> \param[inout] xmin is an optional real output for dataset minimum x value
   !=====================================================================
   subroutine DEVICE_measure(this,dataset,mse,file,xrange,xmin)
     use testing_class
@@ -125,7 +130,7 @@ contains
           !forward pass input
           call forwardpass(this)
           !accumulate mse
-          mse=mse+sum((dataset(nx+1:ny,i)-this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny))**2)
+          mse=mse+sum((dataset(nx+1:nx+ny,i)-this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny))**2)
        end do
        mse=mse/real(nsample,double)
     end if
@@ -165,7 +170,7 @@ contains
     real(double)::zsum
 
     !!check device
-    !call assert(check(this).EQ.0,msg='DEVICE_backprop: inpu device did not pass check',iostat=ierr)
+    !call assert(check(this).EQ.0,msg='DEVICE_backprop: input device did not pass check',iostat=ierr)
     !if(ierr.NE.0)return
 
     !setup io
@@ -511,13 +516,14 @@ contains
   !======================================================================
   subroutine DEVICE_test
     use testing_class
+    use progressbar
     !use layer_class
     !use ffn_class
 
     type(DEVICE)::this
     type(ffn)::ffn1,ffn2
 
-    integer(long)::i,epoch
+    integer(long)::i,epoch,nepoch
     real(double),allocatable::dataset(:,:)
     real(double)::MSE0,MSE,xmin,xmax,xrange
 
@@ -636,83 +642,142 @@ contains
     call kill(ffn1)
 
 
-    write(*,*)'test training by back propagation reduces MSE with zpottraining set on 2 layer device.'
-    call make(this,N=1)!for x value
-    this%learningrate=1E-8
-    call make(ffn1,N=30,activation='tanh')
-    call make(ffn2,N=1) !for y value
+!!$    write(*,*)'test training by back propagation reduces MSE with zpot dataset on 2 layer device.'
+!!$    call make(this,N=1)!for x value
+!!$    this%learningrate=1E-8
+!!$    nepoch=50000
+!!$    call make(ffn1,N=30,activation='tanh')
+!!$    call make(ffn2,N=1) !for y value
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(2,500)) 
+!!$    !read training set
+!!$    open(111,file='data/zpot.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_zpot.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,500).EQ.0.and.check(this).EQ.0)then
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/zpot.plt')
+!!$    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1)
+!!$
+!!$
+!!$    write(*,*)'test training by back propagation reduces MSE with cubic dataset on 2 layer device.'
+!!$    call make(this,N=1)
+!!$    this%learningrate=1E-11
+!!$    nepoch=50000
+!!$    call make(ffn1,N=20,activation='tanh')
+!!$    call make(ffn2,N=1)
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    ffn2%W(1,:)=-60.0
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(2,500)) 
+!!$    !read training set
+!!$    open(111,file='data/cubic.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_cubic.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,1000).EQ.0.and.check(this).EQ.0)then
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/cubic.plt')
+!!$    call assert(MSE.LT.MSE0,msg='cubic dataset MSE is not reduced by training with backpropagation.')
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1) 
+
+
+    write(*,*)'test backprop training reduces MSE for xor dataset with 2 layer.'
+    call make(this,N=2)
+    this%learningrate=1E-5
+    nepoch=10000
+    call make(ffn1,N=100,activation='oscillator')
+    call make(ffn2,N=1,activation='bernoulli')
+!!$    this%learningrate=1E-5
+!!$    nepoch=50000
+!!$    call make(ffn1,N=50,activation='oscillator')
+!!$    call make(ffn2,N=1,activation='bernoulli')
+    !this%learningrate=1E-6
+    !nepoch=500000
+    !call make(ffn1,N=8,activation='oscillator')
+    !call make(ffn2,N=1,activation='bernoulli')
     call link(this,ffn1)
     call link(this,ffn2)
     !allocate dataset
     if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(2,500)) 
+    allocate(dataset(3,500)) 
     !read training set
-    open(111,file='data/zpotdataset.dat')
+    open(111,file='data/xor.dat')
     do i=1,500
        read(111,*)dataset(:,i)
     end do
     close(111)
-    !!get starting error
-    call measure(this,dataset,MSE=MSE0)!get original MSE
-    open(123,file='testbackprop_zpotdataset.error')
-    do epoch=0,50000
+    !get starting MSE
+    call measure(this,dataset,MSE=MSE0)
+    open(123,file='testbackprop_xor.error')
+    do epoch=0,nepoch
        call backprop(this,dataset)
-       if(mod(epoch,500).EQ.0.and.check(this).EQ.0)then
+       if(mod(epoch,nepoch/100).EQ.0.and.check(this).EQ.0)then
+          call progress(epoch,nepoch)
           this%learningrate=this%learningrate*.95
-          call measure(this,dataset,MSE=MSE,file='testbackprop_zpotdataset.out')!get new MSE
+          !get new MSE
+          call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
           write(123,*)epoch,MSE
           flush(123)
        end if
     end do
     close(123)
-    call measure(this,dataset,MSE=MSE,file='testbackprop_zpotdataset.out')!get new MSE
+    !get final MSE
+    call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
     !cleanup data set 
     if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/zpot.plt')
+    call system('gnuplot -persist data/xor.plt')
     call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
     call kill(this)
     call kill(ffn2)
     call kill(ffn1)
-
-
-    write(*,*)'test training by back propagation reduces MSE with cubictraining set on 2 layer device.'
-    call make(this,N=1)
-    this%learningrate=1E-10
-    call make(ffn1,N=20,activation='tanh')
-    call make(ffn2,N=1)
-    call link(this,ffn1)
-    call link(this,ffn2)
-    ffn2%W(1,:)=-60.0
-    !allocate dataset
-    if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(2,500)) 
-    !read training set
-    open(111,file='data/cubicdataset.dat')
-    do i=1,500
-       read(111,*)dataset(:,i)
-    end do
-    close(111)
-    call measure(this,dataset,MSE=MSE0)!get original MSE
-    open(123,file='testbackprop_cubicdataset.error')
-    do epoch=0,50000
-       call backprop(this,dataset)
-       if(mod(epoch,500).EQ.0.and.check(this).EQ.0)then
-          this%learningrate=this%learningrate*.95
-          call measure(this,dataset,MSE=MSE,file='testbackprop_cubicdataset.out')!get new MSE
-          write(123,*)epoch,MSE
-          flush(123)
-       end if
-    end do
-    close(123)
-    call measure(this,dataset,MSE=MSE,file='testbackprop_cubicdataset.out')!get new MSE
-    !cleanup data set 
-    if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/cubic.plt')
-    call assert(MSE.LT.MSE0,msg='cubictrainingset MSE is not reduced by training with backpropagation.')
-    call kill(this)
-    call kill(ffn2)
-    call kill(ffn1) 
-
 
 
     write(*,*)'ALL DEVICE TESTS PASSED!'

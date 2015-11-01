@@ -14,7 +14,7 @@ program gendoublewelldataset
   integer,parameter::nsample=500
   integer:: i
   real*8::x,y,z,P,N
-  open(111,file='doublewelldataset.dat')
+  open(111,file='doublewell.dat')
   N=1+exp(-.5*((1+1)**2+(2+2)**2))
   i=0
   do while(i.LT.nsample)
@@ -32,5 +32,5 @@ program gendoublewelldataset
   write(111,*)'#doublewell data set: with probaility dist P(x,y)=exp(-1/2*((x-1)**2+(y-2)**2))+exp(-1/2*((x+1)**2+(y+2)**2))'
   close(111)
 
-  write(*,*)'Data set generated in doublewelldataset.dat'
+  write(*,*)'Data set generated in doublewell.dat'
 end program gendoublewelldataset

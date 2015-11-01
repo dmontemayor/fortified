@@ -138,7 +138,7 @@ contains
 
     select case(trim(this%activation))
     case ('linear')
-       this%node(1:this%N)=linear(this%input)
+       this%node(1:this%N)=this%input
        if(present(derivative).and.derivative)this%dnode=1.0_double
     case ('logistic')
        this%node(1:this%N)=logistic(this%input)
@@ -149,6 +149,12 @@ contains
     case ('gaussian')
        this%node(1:this%N)=gaussian(this%input)
        if(present(derivative).and.derivative)this%dnode=dgaussian(this%input)
+    case ('bernoulli')
+       this%node(1:this%N)=bernoulli(this%input)
+       if(present(derivative).and.derivative)this%dnode=dlogistic(this%input)
+    case ('oscillator')
+       this%node(1:this%N)=sin(this%input)
+       if(present(derivative).and.derivative)this%dnode=cos(this%input)
     case default
        this%node(1:this%N)=this%input
        if(present(derivative).and.derivative)this%dnode=1.0_double

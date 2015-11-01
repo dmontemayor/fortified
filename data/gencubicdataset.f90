@@ -20,7 +20,7 @@ program gencubicdataset
   Evar=0.
   pi=acos(-1D0)
   
-  open(111,file='cubicdataset.dat')
+  open(111,file='cubic.dat')
   do i=1,nsample
      call random_number(x)
      x=(x-.5)*10
@@ -42,5 +42,5 @@ program gencubicdataset
   write(111,*)'#cubic data set: y=Ax**3+gran*s, A=2.0, s=10.0, Specific Error=',sqrt(Evar)
   close(111)
 
-  write(*,*)'Data set generated in cubicdataset.dat'
+  write(*,*)'Data set generated in cubic.dat'
 end program gencubicdataset
