@@ -29,6 +29,9 @@ AC_CONFIG_SRCDIR([src/som.f90])
 AC_CONFIG_SRCDIR([src/device.f90])
 AC_CONFIG_SRCDIR([src/rnn.f90])
 
+# auxilary modules
+AC_CONFIG_SRCDIR([src/MDutils.f90])
+
 # auxilary data files
 AC_CONFIG_SRCDIR([data/gendoublewelldataset.f90])
 AC_CONFIG_SRCDIR([data/doublewell.dat])
