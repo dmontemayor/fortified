@@ -94,22 +94,26 @@ contains
   !>  containing a batch of Nsample training data vetor pairs.
   !> \param[in] file is an optional string name of output file to save analysis
   !> \param[inout] mse is an optional real output for mean square error
-  !> \param[inout] xrange is an optional real output for dataset xrange 
-  !> \param[inout] xmin is an optional real output for dataset minimum x value
+  !> \param[inout] bce is an optional real output for binary cross entropy
+  !!> \param[inout] xrange is an optional real output for dataset xrange 
+  !!> \param[inout] xmin is an optional real output for dataset minimum x value
   !> \param[in] nmeasure is an optional integer to repeat the measurement
   !>            ,average measurement is returned
   !=====================================================================
-  subroutine DEVICE_measure(this,dataset,mse,file,xrange,xmin,nmeasure)
+  !subroutine DEVICE_measure(this,dataset,mse,bce,file,nmeasure,xrange,xmin)
+  subroutine DEVICE_measure(this,dataset,mse,bce,file,nmeasure)
     use testing_class
     type(DEVICE),intent(inout)::this
     real(double),intent(in)::dataset(:,:)
-    real(double),intent(inout),optional::mse,xrange,xmin
+    real(double),intent(inout),optional::mse,bce
     character(len=*),intent(in),optional::file
     integer(long),intent(in),optional::nmeasure
+    !real(double),intent(inout),optional::xrange,xmin
 
     integer(short)::ierr
     integer(long)::i,j,nsample,nx,ny,nmeas
-    real(double)::xL,x0
+    real(double),allocatable::prob(:)
+    !real(double)::xL,x0
 
     !setup io
     nx=this%vislayer%N
@@ -144,12 +148,39 @@ contains
        end do
        mse=mse/real(nsample*nmeas,double)
     end if
+
+    if(present(bce))then
+       !calculate bce
+       if(allocated(prob))deallocate(prob)
+       allocate(prob(ny))
+       bce=0._double
+       do i=1,nsample
+          !load input
+          this%vislayer%input(1:nx)=dataset(1:nx,i)
+
+          !repeat measurement
+          prob=0._double
+          do j=1,nmeas
+             !forward pass input
+             call forwardpass(this)
+             !accumulate prob
+             prob=prob+this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny)
+          end do
+          prob=prob/real(nmeas,double)
+          !accumulate bce
+          bce=bce+sum(log(prob)*dataset(nx+1:nx+ny,i)&
+               +log(1-prob)*(1-dataset(nx+1:nx+ny,i)))
+       end do
+       !normalize bce
+       bce=bce/real(nsample*nmeas,double)
+       if(allocated(prob))deallocate(prob)
+    end if
     
     if(present(file))then
-       xL=1.0_double
-       if(present(xrange))xL=xrange
-       x0=0._double
-       if(present(xmin))x0=xmin
+       !xL=1.0_double
+       !if(present(xrange))xL=xrange
+       !x0=0._double
+       !if(present(xmin))x0=xmin
        open(2232,file=file)
        do i=1,nsample
           !load input
@@ -157,7 +188,8 @@ contains
           !forward pass input
           call forwardpass(this)
           !dump output
-          write(2232,*)i,this%vislayer%input(1:nx)*xL+x0,this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny)
+          write(2232,*)i,this%vislayer%input(1:nx),this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny)
+!!$          write(2232,*)i,this%vislayer%input(1:nx)*xL+x0,this%hiddenlayer(this%nlayer)%ffn%layer%node(1:ny)
        end do
        close(2232)
     end if
@@ -213,6 +245,7 @@ contains
           do ilayer=1,this%nlayer
              if(this%hiddenlayer(ilayer)%rank.EQ.irank)then
                 if(this%hiddenlayer(ilayer)%ffn%nmark.EQ.0)then
+
                    !ffn is an output layer
                    this%hiddenlayer(ilayer)%ffn%error(1:ny)=&
                         (dataset(nx+1:nx+ny,isample)-this%hiddenlayer(ilayer)%ffn%layer%node(1:ny))&
@@ -356,11 +389,22 @@ contains
   !> \param this is the DEVICE object to be initialized.
   !> \param[in] file is an optional string containing the name of a previously stored DEVICE file.
   !=====================================================================
-  subroutine DEVICE_init(this,N)
+  subroutine DEVICE_init(this,N,activation,loss)
     type(DEVICE),intent(inout)::this
     integer(long),intent(in)::N
+    character(len=*),optional,intent(in)::activation,loss
 
-    call make(this%vislayer,N=N)
+!softmax=
+!square =1/2N sum_i^N(y_i-yhat_i)
+!binarycrossentropy=-1/N sum_i^N(log(p_i)*yhat_i+log(1-p_i)*(1-yhat_i)
+
+
+    if(present(activation))then
+       call make(this%vislayer,N=N,activation=activation)
+    else
+       call make(this%vislayer,N=N)
+    end if
+
     this%nlayer=0
     this%rank=0
     this%learningrate=0.001
@@ -520,9 +564,7 @@ contains
   !-----------------------------------------
   !======================================================================
   !> \brief Tests the DEVICE methods.
-  !> \param[in] this is the DEVICE object whose methods will be excercised.
-  !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
-  !> \remark Will stop after first failed check.
+  !> \return Will print to stdio result of tests
   !======================================================================
   subroutine DEVICE_test
     use testing_class
@@ -535,7 +577,7 @@ contains
     integer(short)::ierr
     integer(long)::epoch,nepoch,ndump,batch,nbatch,sample,nsample,nx,resid
     real(double),allocatable::dataset(:,:),dataset2(:,:,:),histogram(:)
-    real(double)::MSE0,MSE,MSEtemp
+    real(double)::MSE0,MSE,MSEtemp,accuracy
     integer(long),allocatable::batchlen(:)
     character(len=1)::char1,char1out
     logical::bit1,bit2
@@ -609,7 +651,6 @@ contains
     call kill(ffn1)
     call kill(this)
 
-
     write(*,*)'test forward pass updated layer dnode when passed with derivative flag.'
     call make(this,N=1)
     call make(ffn1,N=1)
@@ -678,7 +719,8 @@ contains
 !!$    open(123,file='testbackprop_zpot.error')
 !!$    do epoch=0,nepoch
 !!$       call backprop(this,dataset)
-!!$       if(mod(epoch,500).EQ.0.and.check(this).EQ.0)then
+!!$       if(mod(epoch,500).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
 !!$          call progress(epoch,nepoch)
 !!$          this%learningrate=this%learningrate*.95
 !!$          !get new MSE
@@ -697,7 +739,6 @@ contains
 !!$    call kill(this)
 !!$    call kill(ffn2)
 !!$    call kill(ffn1)
-!!$
 !!$
 !!$    write(*,*)'test training by back propagation reduces MSE with cubic dataset on 2 layer device.'
 !!$    call make(this,N=1)
@@ -722,7 +763,8 @@ contains
 !!$    open(123,file='testbackprop_cubic.error')
 !!$    do epoch=0,nepoch
 !!$       call backprop(this,dataset)
-!!$       if(mod(epoch,1000).EQ.0.and.check(this).EQ.0)then
+!!$       if(mod(epoch,1000).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
 !!$          call progress(epoch,nepoch)
 !!$          this%learningrate=this%learningrate*.95
 !!$          !get new MSE
@@ -741,13 +783,12 @@ contains
 !!$    call kill(this)
 !!$    call kill(ffn2)
 !!$    call kill(ffn1) 
-
-
-!!$    write(*,*)'test backprop training reduces MSE for xor dataset with 2 layer.'
+!!$
+!!$    write(*,*)'test backprop training reduces MSE for xor dataset with sigmoid hidden layer.'
 !!$    call make(this,N=2)
 !!$    this%learningrate=1E-5
 !!$    nepoch=10000
-!!$    call make(ffn1,N=100,activation='oscillator')
+!!$    call make(ffn1,N=100,activation='tanh')
 !!$    call make(ffn2,N=1,activation='bernoulli')
 !!$    call link(this,ffn1)
 !!$    call link(this,ffn2)
@@ -765,7 +806,8 @@ contains
 !!$    open(123,file='testbackprop_xor.error')
 !!$    do epoch=0,nepoch
 !!$       call backprop(this,dataset)
-!!$       if(mod(epoch,nepoch/100).EQ.0.and.check(this).EQ.0)then
+!!$       if(mod(epoch,nepoch/100).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
 !!$          call progress(epoch,nepoch)
 !!$          this%learningrate=this%learningrate*.95
 !!$          !get new MSE
@@ -784,18 +826,62 @@ contains
 !!$    call kill(this)
 !!$    call kill(ffn2)
 !!$    call kill(ffn1)
+!!$
+!!$     write(*,*)'test backprop training reduces MSE for xor dataset with sinusoid hidden layer.'
+!!$    call make(this,N=2)
+!!$    this%learningrate=1E-5
+!!$    nepoch=10000
+!!$    call make(ffn1,N=100,activation='oscillator')
+!!$    call make(ffn2,N=1,activation='bernoulli')
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(3,500)) 
+!!$    !read training set
+!!$    open(111,file='data/xor.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_xorsinusoid.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,nepoch/100).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/xorsinusoid.plt')
+!!$    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1)
+!!$
 
-    write(*,*)'test backprop training reduces MSE for protstruct dataset with 2 layer.'
+    write(*,*)'test backprop training reduces MSE for protstruct dataset with tanh hidden layer.'
 
     nx=5*9
     nbatch=111
-    !nsample=100
-    nepoch=10000
-    ndump=1000
+    nsample=3
+    nepoch=100
+    ndump=100
 
     call make(this,N=nx)
-    this%learningrate=1E-5
-    call make(ffn1,N=200,activation='oscillator')
+    this%learningrate=1E-6
+    call make(ffn1,N=1000,activation='oscillator')
     call make(ffn2,N=2,activation='bernoulli')
     call link(this,ffn1)
     call link(this,ffn2)
@@ -821,109 +907,122 @@ contains
     end do
     close(111)
 
-    !!get starting MSE
-    !MSE0=0.0_double
-    !do batch=1,nbatch
-    !   call measure(this,dataset2(:,1:batchlen(batch),batch)&
-    !        ,MSE=MSEtemp,nmeasure=nsample)
-    !   MSE0=MSE0+MSEtemp
-    !end do
-    !MSE0=MSE0/real(nbatch)
+    !get starting MSE
+    MSE0=0.0_double
+    do batch=1,nbatch
+       call measure(this,dataset2(:,1:batchlen(batch),batch)&
+            ,MSE=MSEtemp,nmeasure=nsample)
+       !call measure(this,dataset2(:,1:batchlen(batch),batch)&
+       !     ,BCE=MSEtemp,nmeasure=nsample)
+       MSE0=MSE0+MSEtemp
+    end do
+    MSE0=MSE0/real(nbatch)
 
     !open output file
-    !open(123,file='testbackprop_protstruct.error')
+    open(123,file='testbackprop_protstruct.error')
     do epoch=0,nepoch
        do batch=1,nbatch
           call backprop(this,dataset2(:,1:batchlen(batch),batch))
        end do
        if(mod(epoch,nepoch/ndump).EQ.0.and.check(this).EQ.0)then
           call progress(epoch,nepoch)
-          this%learningrate=this%learningrate*.95
-          !!get new MSE
-          !MSE=0.0_double
-          !do batch=1,nbatch
-          !   call measure(this,dataset2(:,1:batchlen(batch),batch)&
-          !        ,MSE=MSEtemp,nmeasure=nsample)
-          !   MSE=MSE+MSEtemp
-          !end do
-          !MSE=MSE/real(nbatch)
-          !write(123,*)epoch,MSE
-          !flush(123)
+          !this%learningrate=this%learningrate*.97
+          !get new MSE
+          MSE=0.0_double
+          do batch=1,nbatch
+             call measure(this,dataset2(:,1:batchlen(batch),batch)&
+                  ,MSE=MSEtemp,nmeasure=nsample)
+            ! call measure(this,dataset2(:,1:batchlen(batch),batch)&
+            !      ,BCE=MSEtemp,nmeasure=nsample)
+             MSE=MSE+MSEtemp
+          end do
+          MSE=MSE/real(nbatch)
+          write(123,*)epoch,MSE
+          flush(123)
        end if
     end do
     close(123)
 
-    !write final prediction for batch 1
+    !write final prediction for batches 1-10
+    nsample=10
     open(333,file='testbackprop_protstruct.out')
     write(333,*)'True State | Predicted States with Probability | Max Prob state | accuracy'
     if(allocated(histogram))deallocate(histogram)
     allocate(histogram(0:3))
-    ncorrect=0
-    batch=1
-    do resid=1,batchlen(batch)
-       !load input
-       this%vislayer%input(1:nx)=dataset2(1:nx,resid,batch)
-
-       !repeat measurement
-       histogram=0.0_double
-       do sample=1,nsample
-          !forward pass input
-          call forwardpass(this)
-
-          !get output state and accumulate histogram
-          i=int(this%hiddenlayer(this%nlayer)%ffn%layer%node(1))
-          j=int(this%hiddenlayer(this%nlayer)%ffn%layer%node(2))
-          histogram(i*2+j)=histogram(i*2+j)+1.0_double
-
-       end do
-       histogram=histogram/real(nsample)
-
-       write(333,*)!start on newline
-
-       !Translate input to human readable
-       !write(333,fmt='(A1,1X)',advance='no') 'X'
-
-       !Translate dataset label to human readable
-       i=dataset2(nx+1,resid,batch)
-       j=dataset2(nx+2,resid,batch)
-       bit1=.false.
-       bit2=.false.
-       if(i.EQ.1)bit1=.true.
-       if(j.EQ.1)bit2=.true.
-       char1=secondarystruct(bit1,bit2)
-       write(333,fmt='(2(A1,1X))',advance='no') char1,'|'
-
-       !write predicted state with probabilities
-       do i=0,1
-          do j=0,1
-             !Translate output state to human readable
-             bit1=.false.
-             bit2=.false.
-             if(i.EQ.1)bit1=.true.
-             if(j.EQ.1)bit2=.true.
-             char1out=secondarystruct(bit1,bit2)
-             write(333,fmt='(4(A1,1X,F8.6,1X))',advance='no')&
-                  char1out,histogram(i*2+j)
+    !batch=1
+    accuracy=0
+    do batch=1,10
+       ncorrect=0
+       do resid=1,batchlen(batch)
+          !load input
+          this%vislayer%input(1:nx)=dataset2(1:nx,resid,batch)
+          
+          !repeat measurement
+          histogram=0.0_double
+          do sample=1,nsample
+             !forward pass input
+             call forwardpass(this)
+             
+             !get output state and accumulate histogram
+             i=int(this%hiddenlayer(this%nlayer)%ffn%layer%node(1))
+             j=int(this%hiddenlayer(this%nlayer)%ffn%layer%node(2))
+             histogram(i*2+j)=histogram(i*2+j)+1.0_double
+             
           end do
+          histogram=histogram/real(nsample)
+          
+          write(333,*)!start on newline
+          
+          !Translate input to human readable
+          !write(333,fmt='(A1,1X)',advance='no') 'X'
+          
+          !Translate dataset label to human readable
+          i=dataset2(nx+1,resid,batch)
+          j=dataset2(nx+2,resid,batch)
+          bit1=.false.
+          bit2=.false.
+          if(i.EQ.1)bit1=.true.
+          if(j.EQ.1)bit2=.true.
+          char1=secondarystruct(bit1,bit2)
+          write(333,fmt='(2(A1,1X))',advance='no') char1,'|'
+                    
+          !write max prob predicted state
+          i= (maxloc(histogram,1)-1)/2
+          j= mod(maxloc(histogram,1)-1,2)
+          bit1=.false.
+          bit2=.false.
+          if(i.EQ.1)bit1=.true.
+          if(j.EQ.1)bit2=.true.
+          char1out=secondarystruct(bit1,bit2)
+          write(333,fmt='(2(A1,1X))',advance='no') char1out,'|'
+          
+          !write accuracy
+          if(char1.EQ.char1out)ncorrect=ncorrect+1
+          write(333,fmt='(F8.6,1X,A1,1X)',advance='no') ncorrect/real(resid),'|'
+
+          !write predicted state with probabilities
+          do i=0,1
+             do j=0,1
+                !Translate output state to human readable
+                bit1=.false.
+                bit2=.false.
+                if(i.EQ.1)bit1=.true.
+                if(j.EQ.1)bit2=.true.
+                char1out=secondarystruct(bit1,bit2)
+                write(333,fmt='(4(A1,1X,F8.6,1X))',advance='no')&
+                     char1out,histogram(i*2+j)
+             end do
+          end do
+          
        end do
-
-       !write max prob predicted state
-       i= (maxloc(histogram,1)-1)/2
-       j= mod(maxloc(histogram,1)-1,2)
-       bit1=.false.
-       bit2=.false.
-       if(i.EQ.1)bit1=.true.
-       if(j.EQ.1)bit2=.true.
-       char1out=secondarystruct(bit1,bit2)
-       write(333,fmt='(2(A1,1X))',advance='no') '|',char1out
-
-       !write accuracy
-       if(char1.EQ.char1out)ncorrect=ncorrect+1
-       write(333,fmt='(A1,1X,F8.6,1X)',advance='no') '|',ncorrect/real(resid)
-       
+       write(333,*)
+       write(333,*)'batch=',batch, 'accuracy=',ncorrect/real(batchlen(batch))
+       write(333,*)'---------------------------------------------------------'
+       accuracy=accuracy+ncorrect/real(batchlen(batch))
     end do
+    write(333,*)'Average accuracy=',accuracy/real(batch)
     close(333)
-
+       
     call system('gnuplot -persist data/protstruct.plt')
     call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
     

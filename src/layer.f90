@@ -10,7 +10,6 @@
 !<------------------------------------------------------------------------
 module layer_class
   use type_kinds
-  use testing_class
   implicit none
   private
 
@@ -19,22 +18,13 @@ module layer_class
 
   type layer
      logical::initialized=.false.
-     !**********     Enter your derived type's attributes here     **********!
      integer(long)::N=huge(1_long)
+     character(len=label)::activation
      real(double),dimension(:),pointer::node,dnode
      real(double),dimension(:),pointer::input
-     character(len=label)::activation
-     !***********************************************************************!
-     !=======================================================================!
-     !***   Here are some example attributes your derived type may have   ***!
-     ! type(primitive)::primitive2                     !an extra primitive   !
-     ! integer(short)::label                           !a short integer      !
-     ! integer(long)::ndim                             !a long integer       !
-     ! real(double)::var                               !a real variable      !
-     ! complex(double)::zed                            !a complex variable   !
-     ! real(double),dimension(:,:),pointer::matrix     !a real matrix        !
-     ! complex(double),dimension(:,:),pointer::Zmatrix !a complex matrix     !
-     !***********************************************************************!
+     !for future: RMBs and RNNs
+     !real(double),dimension(:),pointer::mirror,dmirror
+     !real(double),dimension(:),pointer::minput
   end type layer
 
   !> Creates the layer object.
@@ -132,14 +122,22 @@ contains
   !> the derivative of the activation function wrt to input at current input
   !======================================================================
   subroutine layer_update(this,derivative)
+    use math
     use functions 
     type(layer),intent(inout)::this
     logical,intent(in),optional::derivative
+
+    !consider: ReLU=max(0,x), and softplus=ln(1+e^x),dsoftplu=logistic
+    ! also leaky ReLU=max(x,ax) for 1>a>0
+    ! alo noisy units f(x)=acitvation(x)+sigma*gran()
 
     select case(trim(this%activation))
     case ('linear')
        this%node(1:this%N)=this%input
        if(present(derivative).and.derivative)this%dnode=1.0_double
+    case ('softplus')
+       this%node(1:this%N)=softplus(this%input)
+       if(present(derivative).and.derivative)this%dnode=logistic(this%input)
     case ('logistic')
        this%node(1:this%N)=logistic(this%input)
        if(present(derivative).and.derivative)this%dnode=dlogistic(this%input)
@@ -148,13 +146,21 @@ contains
        if(present(derivative).and.derivative)this%dnode=dtanh(this%input)
     case ('gaussian')
        this%node(1:this%N)=gaussian(this%input)
-       if(present(derivative).and.derivative)this%dnode=dgaussian(this%input)
+       if(present(derivative).and.derivative)&
+            this%dnode=-this%input*gaussian(this%input)
     case ('bernoulli')
        this%node(1:this%N)=bernoulli(this%input)
        if(present(derivative).and.derivative)this%dnode=dlogistic(this%input)
     case ('oscillator')
        this%node(1:this%N)=sin(this%input)
        if(present(derivative).and.derivative)this%dnode=cos(this%input)
+    case ('poisson')
+       this%node(1:this%N)=poisson(this%input)
+       if(present(derivative).and.derivative)this%dnode=-exp(-this%input)
+    case ('softmax')
+       this%node(1:this%N)=softmax(this%input)
+       if(present(derivative).and.derivative)&
+            this%dnode=diag(dsoftmax(-this%input))
     case default
        this%node(1:this%N)=this%input
        if(present(derivative).and.derivative)this%dnode=1.0_double
@@ -168,31 +174,6 @@ contains
   !======================================================================
   subroutine layer_reset(this)
     type(layer),intent(inout)::this
-!!$    integer(long)::istate,jstate
-!!$
-!!$    call Note('Begin layer_reset.')
-!!$
-!!$    !reset the primitive
-!!$    call reset(this%primitive)
-!!$
-!!$    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********    Example - attribute 'var' is always initially a     ********!
-!!$    !                      Gaussian random number                            !
-!!$    !                                                                        !
-!!$    ! this%var=gran()                                                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !update now that we have changed some values and do a final check
-!!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('layer_reset: failed final check!')
 
   end subroutine layer_reset
 
@@ -306,9 +287,10 @@ contains
   !> \brief Checks the layer object.
   !> \param[in] this is the layer object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
-  !> \remark Will exit after first failed check.
+  !> \remark Will return after first failed check.
   !======================================================================
   integer(short)function layer_check(this)
+    use testing_class
     type(layer),intent(in)::this
     integer(short)::errsum=0
 
@@ -360,6 +342,7 @@ contains
   !> \remark Will stop after first failed test
   !======================================================================
   subroutine layer_test
+    use testing_class
     type(layer)::this
     integer(short)::ierr
 

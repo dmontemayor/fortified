@@ -7,7 +7,7 @@ corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/fun
 
 auxfiles = src/MDutils.f90
 
-classfiles = src/TEMPLATE.f90 src/layer.f90 src/ffn.f90 src/som.f90 src/device.f90 src/rnn.f90
+classfiles = src/TEMPLATE.f90 src/layer.f90 src/bpg.f90 src/ffn.f90 src/som.f90 src/device.f90
 
 testfiles = src/coretests.f90
 

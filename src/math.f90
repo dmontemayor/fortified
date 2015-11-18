@@ -6,16 +6,59 @@
 !! \todo
 !! * Add cross and dot product operators
 !<===========================================================
-module math_class
+module math
   use type_kinds
   implicit none
 
   real(double),parameter::pi=3.1415926535898_double
   real(double),parameter::twopi=pi*2.0_double
   complex(double),parameter::eye=(0.0_double,1.0_double)
-  public::iden,trace,cnorm,fnorm
+  public::iden,trace,cnorm,fnorm,krondelta,diag
+
+  interface krondelta
+     module procedure krondelta_real
+     module procedure krondelta_int
+  end interface krondelta
 
 contains
+!---------------------------
+  !> \brief diagonal elements of a square matirx
+  !! \param[in] A square real matrix
+  !!<
+  function diag(A)
+    real(double),intent(in)::A(:,:)
+    real(double)::diag(size(A,1))
+    integer(long)::i
+    diag=huge(diag)
+    if(size(A,1).NE.size(A,2))then
+       write(*,*)'Error Diag function: input matrix is not square!'       
+       return
+    end if
+    do i=1,size(A,1)
+       diag(i)=A(i,i)
+    end do
+  end function diag
+!---------------------------
+  !> \brief kronecker delta function
+  !!<
+  function krondelta_real(X,Y)
+    real(double),intent(in)::X,Y
+    real(double)::krondelta_real
+    
+    krondelta_real=0._double
+    if(x.EQ.y)krondelta_real=1.0_double
+  end function krondelta_real
+!---------------------------
+  !> \brief kronecker delta function
+  !!<
+  function krondelta_int(X,Y)
+    integer(long),intent(in)::X,Y
+    real(double)::krondelta_int
+    
+    krondelta_int=0._double
+    if(x.EQ.y)krondelta_int=1.0_double
+  end function krondelta_int
+!---------------------------
   !> \brief identity matrix
   !! \param[in] N size of matrix
   !!<
@@ -29,7 +72,7 @@ contains
        iden(i,i)=1._double
     end do
   end function iden
-
+!---------------------------
   !> \brief trace of a complex matrix
   !! \param[in] A matrix
   !!<
@@ -96,5 +139,5 @@ contains
     end if
   end function Fnorm
 
-end module math_class
+end module math
 !===========================================================
