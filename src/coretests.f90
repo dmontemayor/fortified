@@ -1,6 +1,8 @@
 subroutine coretests
   use type_kinds
   use testing_class
+  use omp_lib
+
   implicit none
 
   integer(short)::ierr
@@ -128,6 +130,24 @@ subroutine coretests
      stop
   end if
 
+
+  !--------- OPEN MP ----------
+  write(*,*)'checking omp is available.....'
+  call assert(omp_get_num_procs().GT.0,msg=&
+       'number of available processors is not greater than 0')
+  call assert(omp_get_max_threads().GT.0,msg=&
+       'number of available threads is not greater than 0')
+  call assert(omp_get_max_threads().GE.omp_get_num_procs(),msg=&
+       'number of threads is less than number of processors available'&
+       ,iostat=ierr)
+  if(ierr.NE.0)then
+     write(*,*)'try setting the environment variable with'
+     write(*,*)'export OMP_NUM_THREADS=',omp_get_num_procs()
+  end if
+
+
+
+  
 !!$  !-----SINGLE REAL ASSERT TESTS-----
 !!$  write(*,*)'checking single real assert can be called with only two single reals.....'
 !!$  call assert(1_single,1_single)

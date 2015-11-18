@@ -1,5 +1,5 @@
      write(*,*)
   case('all')
      write(*,*)'WARNING: BUG-tests break when run consecutively. Run tests individually.'
-     call coretests
-     call template_test
+     !call coretests
+     !call template_test

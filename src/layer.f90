@@ -478,6 +478,18 @@ contains
     call assert(all(this%dnode.EQ.1.0_double),msg='update layer has not changed dnode with true derivative flag.')
     call kill(this)
 
+    !test layer update for all activation types
+    !linear
+    !softplus
+    !logistic
+    !tanh
+    !gaussian
+    !bernoulli
+    !oscillator
+    !poisson
+    !softmax
+    
+    
   end subroutine layer_test
   !-----------------------------------------
 

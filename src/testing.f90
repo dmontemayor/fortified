@@ -9,9 +9,9 @@ module testing_class
      module procedure assert_logical
      module procedure assert_shortinteq
      module procedure assert_longinteq
+     module procedure assert_doublerealeq
      !module procedure assert_singlerealeq
      !module procedure assert_singlerealeqtol
-     module procedure assert_doublerealeq
      !module procedure assert_quadrealeq
      !module procedure assert_streq
   end interface
@@ -27,7 +27,7 @@ contains
        return
     else
        if(present(iostat))iostat=1
-       write(*,*)msg
+       if(present(msg))write(*,*)msg
        if(.not.present(iostat))stop
        return   
     end if
@@ -50,7 +50,7 @@ contains
        return
     else
        if(present(iostat).and.inputOK)iostat=1
-       write(*,*)msg
+       if(present(msg))write(*,*)msg
        if(.not.present(iostat))stop
        return   
     end if
@@ -71,7 +71,7 @@ contains
        if(present(iostat))iostat=0
        return
     else
-       write(*,*)msg
+       if(present(msg))write(*,*)msg
        if(present(iostat).and.inputOK)iostat=1
        if(present(iostat))return
     end if
@@ -106,7 +106,7 @@ contains
        if(present(iostat))iostat=0
        return
     else
-       write(*,*)msg
+       if(present(msg))write(*,*)msg
        if(present(iostat).and.inputOK)iostat=1
        if(present(iostat))return
     end if

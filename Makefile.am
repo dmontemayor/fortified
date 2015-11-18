@@ -13,8 +13,8 @@ testfiles = src/coretests.f90
 
 bin_PROGRAMS = App test
 
-App_FCFLAGS = -J src/
-test_FCFLAGS = -fbounds-check -fbacktrace -J src/
+App_FCFLAGS =  -fopenmp -J src/
+test_FCFLAGS = -g -ffpe-trap=zero,overflow,underflow,denormal -fbounds-check -fbacktrace -fopenmp -J src/
 
 App_SOURCES = $(corefiles) $(auxfiles) $(classfiles) src/driver.f90
 test_SOURCES = $(corefiles) $(testfiles) $(auxfiles) $(classfiles) src/test_driver.f90
