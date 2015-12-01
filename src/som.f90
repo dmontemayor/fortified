@@ -614,7 +614,7 @@ contains
     call make (sourcelayer,N=2)
     call make(this,N=2)
     call link(this%ffn,sourcelayer)
-    open(111,file='data/doublewelldataset.dat')
+    open(111,file='data/doublewell.dat')
     open(222,file='doublewelltraining.dat')
     this%sigmadecay=0.01
     this%learningdecay=0.001
@@ -648,7 +648,7 @@ contains
     call make (sourcelayer,N=2)
     call make(this,N=10)
     call link(this%ffn,sourcelayer)
-    open(111,file='data/zpotdataset.dat')
+    open(111,file='data/zpot.dat')
     this%sigmadecay=0.01
     this%learningdecay=0.001
     do epoch=0,500
