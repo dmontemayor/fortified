@@ -1,22 +1,27 @@
 ACLOCAL_AMFLAGS = -I m4 --install
 EXTRA_DIST = m4 data
 
-#EXTRA_DIST = m4/NOTES data/NOTES data/gendoublewelldataset.f90 data/doublewell.dat data/genzpotdataset.f90 data/zpot.dat data/zpot.plt data/gencubicdataset.f90 data/cubic.dat data/cubic.plt data/genxordataset.f90 data/xor.dat data/xor.plt data/genxorsequentialdataset.f90 data/xor.seqdat data/xorseq.plt data/protstruct.dat data/protstruct_test.dat
-
-corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/functions.f90 src/progressbar.f90
-
-auxfiles = src/MDutils.f90
-
-classfiles = src/TEMPLATE.f90 src/layer.f90 src/bpg.f90 src/ffn.f90 src/som.f90 src/device.f90
+corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/functions.f90 src/progressbar.f90 src/filemanager.f90 src/TEMPLATE.f90
 
 testfiles = src/coretests.f90
 
-bin_PROGRAMS = App test
+auxfiles = src/MDutils.f90
 
-App_FCFLAGS =  -fopenmp -J src/
-#test_FCFLAGS = -g -ffpe-trap=zero,overflow,underflow,denormal -fbounds-check -fbacktrace -fopenmp -J src/
+# All fortified executable modules
+bin_PROGRAMS = nonadmd cann test
+
+###### CANN chemistry artificial neural networks ###### 	
+cann_FCFLAGS =  -fopenmp -J src/
+cannfiles = src/layer.f90 src/bpg.f90 src/ffn.f90 src/som.f90 src/device.f90
+cann_SOURCES = $(corefiles) $(auxfiles) $(cannfiles) src/cann_driver.f90
+
+###### NONADMD Non-Adiabatic Molecular Dynamics ###### 	
+nonadmd_FCFLAGS =  -fopenmp -J src/
+nonadmdfiles = src/hs.f90
+nonadmd_SOURCES = $(corefiles) $(auxfiles) $(nonadmdfiles) src/nonadmd_driver.f90
+
+###### TEST module ###### 	
 test_FCFLAGS = -g -fbounds-check -fbacktrace -fopenmp -J src/
+test_SOURCES = $(corefiles) $(testfiles) $(auxfiles) $(cannfiles) $(nonadmdfiles) src/test_driver.f90
 
-App_SOURCES = $(corefiles) $(auxfiles) $(classfiles) src/driver.f90
-test_SOURCES = $(corefiles) $(testfiles) $(auxfiles) $(classfiles) src/test_driver.f90
 

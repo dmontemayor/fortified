@@ -1,31 +1,31 @@
 !>\brief
-!! template class
+!! hs class
 !!\details
-!! Use this template to help you start building a new object and methods.
+!! Use this hs to help you start building a new object and methods.
 !! Do not remove the \a make, \a kill, \a display, \a store, \a update, \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
 !! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
 !! Follow the examples commented in the source code to define the various attributes of your class.
 !! DO NOT OVERWRITE THIS FILE. Make a copy and title it \a myclass.f90 where 'myclass' is your choice
 !! one-word title for your new class.
-!! Finally, Replace instances of the string 'template' in this template with the same
+!! Finally, Replace instances of the string 'hs' in this hs with the same
 !! one-word title 'myclass' you chose.
 !<------------------------------------------------------------------------
-module template_class
+module hs_class
   use type_kinds
   implicit none
   private
 
-  public::template, template_test
+  public::hs, hs_test
   public::make, kill, display, store, update, reset, check
 
-  type template
+  type hs
      logical::initialized=.false.
 !!$     type(primitive)::primitive
      !**********     Enter your derived type's attributes here     **********!
 
 
-left off here was going to chance store to save????
+
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
@@ -37,53 +37,53 @@ left off here was going to chance store to save????
      ! real(double),dimension(:,:),pointer::matrix     !a real matrix        !
      ! complex(double),dimension(:,:),pointer::Zmatrix !a complex matrix     !
      !***********************************************************************!
-  end type template
+  end type hs
 
-  !> Creates the template object.
+  !> Creates the hs object.
   interface make
-     module procedure template_init
+     module procedure hs_init
   end interface
 
-  !> Destroys the template object.
+  !> Destroys the hs object.
   interface kill
-     module procedure template_kill
+     module procedure hs_kill
   end interface
 
-  !> Displays the current state of the template object.
+  !> Displays the current state of the hs object.
   interface display
-     module procedure template_display
+     module procedure hs_display
   end interface
 
-  !> Stores the current state of the template object.
+  !> Stores the current state of the hs object.
   interface store
-     module procedure template_store
+     module procedure hs_store
   end interface
 
-  !> Recaluclates the template object.
+  !> Recaluclates the hs object.
   interface update
-     module procedure template_update
+     module procedure hs_update
   end interface
 
-  !> Reinitializes the template object.
+  !> Reinitializes the hs object.
   interface reset
-     module procedure template_reset
+     module procedure hs_reset
   end interface
 
-  !> Checks that the template object.
+  !> Checks that the hs object.
   interface check
-     module procedure template_check
+     module procedure hs_check
   end interface
 
 contains
 
   !======================================================================
-  !> \brief Creates and initializes the template object.
-  !> \param this is the template object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored template file.
+  !> \brief Creates and initializes the hs object.
+  !> \param this is the hs object to be initialized.
+  !> \param[in] file is an optional string containing the name of a previously stored hs file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine template_init(this,file)
-    type(template),intent(inout)::this
+  subroutine hs_init(this,file)
+    type(hs),intent(inout)::this
     character*(*),intent(in),optional::file
 !!$    character(len=title)::filetype
 !!$    character(len=path)::infile
@@ -99,13 +99,13 @@ contains
 
 
 
-!!$    call Note('Begin template_init.')
+!!$    call Note('Begin hs_init.')
 !!$
 !!$    !check if input file is present and valid
 !!$    if(present(file))then
 !!$
 !!$       !check if file is there
-!!$       if(check(file).EQ.1)call stop('template_init: cannot find input file '//file)
+!!$       if(check(file).EQ.1)call stop('hs_init: cannot find input file '//file)
 !!$
 !!$       !assign a unique unit label
 !!$       unit=newunit()
@@ -118,8 +118,8 @@ contains
 !!$       filetype=adjustl(filetype)
 !!$
 !!$       !check if input file is the right kind of file
-!!$       if(trim(filetype).NE.'template')& 
-!!$            call Stop('template_init: input file is not valid.')
+!!$       if(trim(filetype).NE.'hs')& 
+!!$            call Stop('hs_init: input file is not valid.')
 !!$
 !!$    end if
 !!$    
@@ -186,18 +186,18 @@ contains
 !!$    end if
 !!$
 !!$    !do a final check before we exit
-!!$    if(check(file).EQ.1)call stop('template_init: failed final check!')
+!!$    if(check(file).EQ.1)call stop('hs_init: failed final check!')
 
-  end subroutine template_init
+  end subroutine hs_init
 
   !======================================================================
-  !> \brief Destroys the template object.
-  !> \param this is the template object to be destroyed.
+  !> \brief Destroys the hs object.
+  !> \param this is the hs object to be destroyed.
   !====================================================================
-  subroutine template_kill(this)
-    type(template),intent(inout)::this
+  subroutine hs_kill(this)
+    type(hs),intent(inout)::this
  
-!!$    call note('Begin template_kill.')
+!!$    call note('Begin hs_kill.')
 !!$
 !!$    !kill the primitive
 !!$    call kill(this%primitive)
@@ -218,19 +218,19 @@ contains
 !!$    !************************************************************************!
 !!$
 !!$
-    !un-initialized template object
+    !un-initialized hs object
     this%initialized=.false.
 
-  end subroutine template_kill
+  end subroutine hs_kill
 
   !======================================================================
-  !> \brief Computes the current state of template object.
-  !> \param this is the template  object to be updated.
+  !> \brief Computes the current state of hs object.
+  !> \param this is the hs  object to be updated.
   !======================================================================
-  subroutine template_update(this)
-    type(template),intent(inout)::this
+  subroutine hs_update(this)
+    type(hs),intent(inout)::this
 
-!!$    call Note('Begin template_update.')
+!!$    call Note('Begin hs_update.')
 !!$    
 !!$    !Primitives usually dont get updated
 !!$    !    call update(this%primitive)    
@@ -255,19 +255,19 @@ contains
 !!$    !************************************************************************!
 !!$
 !!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('template_update: failed final check!')
+!!$    !if(check(this).EQ.1)call stop('hs_update: failed final check!')
 
-  end subroutine template_update
+  end subroutine hs_update
 
   !======================================================================
-  !> \brief Re-initiallizes the template object.
-  !> \param this is the template  object to be re-initialized.
+  !> \brief Re-initiallizes the hs object.
+  !> \param this is the hs  object to be re-initialized.
   !======================================================================
-  subroutine template_reset(this)
-    type(template),intent(inout)::this
+  subroutine hs_reset(this)
+    type(hs),intent(inout)::this
 !!$    integer(long)::istate,jstate
 !!$
-!!$    call Note('Begin template_reset.')
+!!$    call Note('Begin hs_reset.')
 !!$
 !!$    !reset the primitive
 !!$    call reset(this%primitive)
@@ -289,28 +289,28 @@ contains
 !!$
 !!$    !update now that we have changed some values and do a final check
 !!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('template_reset: failed final check!')
+!!$    if(check(this).EQ.1)call stop('hs_reset: failed final check!')
 
-  end subroutine template_reset
+  end subroutine hs_reset
 
   !======================================================================
-  !> \brief Stores the current state of the template object to file.
-  !> \param[in] this is the template  object to be updated.
+  !> \brief Stores the current state of the hs object to file.
+  !> \param[in] this is the hs  object to be updated.
   !> \param[in] file is a string containing the location of the store file.
   !======================================================================
-  subroutine template_store(this,file)
+  subroutine hs_store(this,file)
     use filemanager
 
-    type(template),intent(in)::this
+    type(hs),intent(in)::this
     character*(*),intent(in)::file
     integer(short)::unit
 
 !!$    logical::usedunit      
 !!$
-!!$    call note('Begin template_store.')
+!!$    call note('Begin hs_store.')
 !!$    call Note('input file= '//file)
 !!$    if(check(this).NE.0)then
-!!$       call warn('template_store: failed check.','not saving object.')
+!!$       call warn('hs_store: failed check.','not saving object.')
 !!$    else
 !!$
        !assign a unique unit label
@@ -320,7 +320,7 @@ contains
        open(unit,file=file)
 
        !always write the data type on the first line
-       write(unit,*)'template'
+       write(unit,*)'hs'
 !!$
 !!$       !store the primitive
 !!$       call store(this%primitive,file//'.primitive')
@@ -349,27 +349,27 @@ contains
 !!$       !finished saving all attributes - now close store file
        close(unit)
 !!$    end if
-  end subroutine template_store
+  end subroutine hs_store
 
 
   !======================================================================
-  !> \brief Displays the template object.
-  !> \param[in] this is the template object.
+  !> \brief Displays the hs object.
+  !> \param[in] this is the hs object.
   !> \param[in] msg is an optional string message to preface the displayed object.
   !======================================================================
-  subroutine template_display(this,msg)
-    type(template),intent(in)::this
+  subroutine hs_display(this,msg)
+    type(hs),intent(in)::this
     character*(*),intent(in),optional::msg
 
-!!$    call Note('Begin template_display.')
+!!$    call Note('Begin hs_display.')
 !!$
 !!$    if(check(this).NE.0)then
-!!$       call warn('template_display: failed check','displaying nothing.')
+!!$       call warn('hs_display: failed check','displaying nothing.')
 !!$       return
 !!$    end if
 !!$
 !!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   template   -------------------'
+!!$    write(Dunit,*)'-------------------   hs   -------------------'
 !!$    if(present(msg))write(Dunit,*)msg
 !!$    write(Dunit,*)'____________________________________________________'
 !!$    
@@ -396,31 +396,31 @@ contains
 !!$    ! end do                                                              !
 !!$    !*********************************************************************!
 !!$
-!!$    call display(this%primitive,msg='template primitive')
+!!$    call display(this%primitive,msg='hs primitive')
 !!$    write(Dunit,*)'===================================================='
 
-  end subroutine template_display
+  end subroutine hs_display
 
   !======================================================================
-  !> \brief Checks the template object.
-  !> \param[in] this is the template object to be checked.
+  !> \brief Checks the hs object.
+  !> \param[in] this is the hs object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function template_check(this)
+  integer(short)function hs_check(this)
     use testing_class
-    type(template),intent(in)::this
+    type(hs),intent(in)::this
 
     !initiate with no problems found 
-    template_check=0
-    !call Note('Checking template.')
+    hs_check=0
+    !call Note('Checking hs.')
 
     !check that object is initialized
-    call assert(this%initialized,msg='template_check: template object not initialized.',iostat=template_check)
-    if(template_check.NE.0)return
+    call assert(this%initialized,msg='hs_check: hs object not initialized.',iostat=hs_check)
+    if(hs_check.NE.0)return
 
 !!$    !check the primitive
-!!$    if(check(this%primitive))call stop('template_check: failed primitive check!')
+!!$    if(check(this%primitive))call stop('hs_check: failed primitive check!')
 !!$
 !!$
 !!$    !********    Check all attributes are within acceptable values    *******!
@@ -435,22 +435,22 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
 !!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('template_check: ndim not a number.')                                   !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: ndim not a number.')                                   !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'ndim' is too big to fit in its memory                                     !
 !!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('template_check: ndim is too big.')                                     !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: ndim is too big.')                                     !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'ndim' can only be positive                               !
 !!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('template_check: ndim not a positive integer.')                         !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: ndim not a positive integer.')                         !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -460,23 +460,23 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is not a number                                                      !
 !!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('template_check: var is not a number.')                                 !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: var is not a number.')                                 !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if 'var' is too big to fit in its memory                                      !
 !!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('template_check: var is too big.')                                      !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: var is too big.')                                      !
+!!$    !    hs_check=1                                                                  !
 !!$    !   return                                                                             !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !add a constrain that says 'var' can not be zero:                                    !
 !!$    ! !      'var' can not be smaller than the smallest computable value                   !
 !!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('template_check: var is too small.')                                    !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: var is too small.')                                    !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
@@ -486,100 +486,92 @@ contains
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' points to something                                             !
 !!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('template_check: matrix memory not associated.')                        !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: matrix memory not associated.')                        !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check that 'matrix' has the right dimensions                                        !
 !!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('template_check: number of matrix elements not = N*M.')                 !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: number of matrix elements not = N*M.')                 !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check for NAN values in the matrix                                                  !
 !!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('template_check: matirx has NAN values.')                               !
-!!$    !    template_check=1                                                                  !
+!!$    !    call Warn('hs_check: matirx has NAN values.')                               !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    ! !check if any matrix element values are too big for thier memory                     !
 !!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('template_check: matrix has huge values.')                              !
+!!$    !    call Warn('hs_check: matrix has huge values.')                              !
 !!$    !    mappingH_check=1                                                                  !
-!!$    !    template_check=1                                                                  !
+!!$    !    hs_check=1                                                                  !
 !!$    !    return                                                                            !
 !!$    ! end if                                                                               !
 !!$    !                                                                                      !
 !!$    !**************************************************************************************!
 
-  end function template_check
+  end function hs_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the template methods.
-  !> \param[in] this is the template object whose methods will be excercised.
+  !> \brief Tests the hs methods.
+  !> \param[in] this is the hs object whose methods will be excercised.
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine template_test
+  subroutine hs_test
     use testing_class
-    type(template)::this
+    type(hs)::this
     character(len=label)::string
     
-    write(*,*)'test template can be checked prior to being made.'
-    call assert(check(this).EQ.1,msg='check template object does not return 1 prior to make.')
+    write(*,*)'test hs can be checked prior to being made.'
+    call assert(check(this).EQ.1,msg='check hs object does not return 1 prior to make.')
 
-    write(*,*)'test template can be created.'
+    write(*,*)'test hs can be created.'
     call make(this)
-    call assert(check(this).EQ.0,msg='template object was not created properly.')
-    write(*,*)'test template kill method sets initiallization flag to false.'
+    call assert(check(this).EQ.0,msg='hs object was not created properly.')
+    write(*,*)'test hs kill method sets initiallization flag to false.'
     call kill(this)
-    call assert(.not.this%initialized,msg='template object remains initialized after killed.')
+    call assert(.not.this%initialized,msg='hs object remains initialized after killed.')
 
-    write(*,*)'test template can be stored'
+    write(*,*)'test hs can be stored'
     call make(this)
-    call system('rm -f testtemplate.tmpfile')
-    call store(this,file='testtemplate.tmpfile')
-    call assert('testtemplate.tmpfile',msg='template store file was not created.')
-    call system('rm -f testtemplate.tmpfile')
+    call system('rm -f tesths.tmpfile')
+    call store(this,file='tesths.tmpfile')
+    call assert('tesths.tmpfile',msg='hs store file was not created.')
+    call system('rm -f tesths.tmpfile')
     call kill(this)
 
-    write(*,*)'test template can be created with store file'
+    write(*,*)'test savefile begins with hs object name in first line'
     call make(this)
-    call store(this,file='testtemplate.tmpfile')
-    call kill(this)
-    call make(this,file='testtemplate.tmpfile')
-    call assert(check(this).EQ.0,msg='template object was not created properly from storefile.')
-    call system('rm -f testtemplate.tmpfile')
-    
-    write(*,*)'test savefile begins with template object name in first line'
-    call make(this)
-    call system('rm -f testtemplate.tmpfile')
-    call store(this,file='testtemplate.tmpfile')
-    open(123,file='testtemplate.tmpfile')
+    call system('rm -f tesths.tmpfile')
+    call store(this,file='tesths.tmpfile')
+    open(123,file='tesths.tmpfile')
     read(123,*)string
-    call assert(trim(string).EQ.'template',msg='save file does not have template label on first line.')
-    call system('rm -f testtemplate.tmpfile')
+    call assert(trim(string).EQ.'hs',msg='save file does not have hs label on first line.')
+    call system('rm -f tesths.tmpfile')
     call kill(this)
     
-    write(*,*)'test template can be updated'
+    write(*,*)'test hs can be updated'
     call make(this)
     call update(this)
-    call assert(check(this).EQ.0,msg='template object was not updated properly.')
+    call assert(check(this).EQ.0,msg='hs object was not updated properly.')
     call kill(this)
     
-    write(*,*)'test template can be resetted'
+    write(*,*)'test hs can be resetted'
     call make(this)
     call reset(this)
-    call assert(check(this).EQ.0,msg='template object was not resetted properly.')
+    call assert(check(this).EQ.0,msg='hs object was not resetted properly.')
     call kill(this)
     
 
-    write(*,*)'ALL template TESTS PASSED!'
-  end subroutine template_test
+    write(*,*)'ALL hs TESTS PASSED!'
+  end subroutine hs_test
   !-----------------------------------------
 
-end module template_class
+end module hs_class
 

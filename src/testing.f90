@@ -14,7 +14,8 @@ module testing_class
      !module procedure assert_singlerealeqtol
      !module procedure assert_quadrealeq
      !module procedure assert_streq
-  end interface
+     module procedure assert_filepresent
+  end interface assert
 
 contains
   subroutine assert_logical(cond,msg,iostat)
@@ -127,6 +128,26 @@ contains
 !!$    stop
 !!$  end subroutine assert_streq
 !!$!-------------------------
+  subroutine assert_filepresent(file,msg,iostat)
+    character(len=*),intent(in)::file
+    character(len=*),optional,intent(in)::msg
+    integer(short),optional,intent(out)::iostat
+    logical::there
+    
+    if(present(iostat))iostat=-1
+    inquire(file=file,exist=there)
+    if(there)then
+       if(present(iostat))iostat=0
+       return
+    else
+       if(present(iostat))iostat=1
+       if(present(msg))write(*,*)msg
+       if(.not.present(iostat))stop
+       return   
+    end if
+    stop
+
+  end subroutine assert_filepresent
 
 
 end module testing_class

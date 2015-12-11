@@ -2,7 +2,8 @@ subroutine coretests
   use type_kinds
   use testing_class
   use omp_lib
-
+  use filemanager
+  
   implicit none
 
   integer(short)::ierr
@@ -130,6 +131,19 @@ subroutine coretests
      stop
   end if
 
+  write(*,*)'checking file assert returns 1 for missing file.....'
+  call system('rm -f coretest.tmpfile')
+  call assert('coretest.tmpfile',iostat=ierr)
+  if(ierr.NE.1)then
+     write(*,*)'file assert: iostat option does not return 1 for missing file'
+     stop
+  end if
+
+  write(*,*)'checking file assert returns 0 for present file.....'
+  call system('touch coretest.tmpfile')
+  call assert('coretest.tmpfile',msg='file check did not return 0 for present file')
+  call system('rm -f coretest.tmpfile')
+
 
   !--------- OPEN MP ----------
   write(*,*)'checking omp is available.....'
@@ -146,7 +160,20 @@ subroutine coretests
   end if
 
 
+  !--- filemanager ------
+  write(*,*)'checking filemanager assigns new units starting at 1000.....'
+  call assert(newunit().GE.1000,msg='newunit returns unit below 1000')
 
+  write(*,*)'checking filemanager can check for missing file.....'
+  call system('rm -f coretest.tmpfile')
+  call assert(check('coretest.tmpfile').EQ.1,msg='file check did not return 1 for missing file')
+
+  write(*,*)'checking filemanager can check for present file.....'
+  call system('touch coretest.tmpfile')
+  call assert(check('coretest.tmpfile').EQ.0,msg='file check did not return 0 for present file')
+  call system('rm -f coretest.tmpfile')
+
+  
   
 !!$  !-----SINGLE REAL ASSERT TESTS-----
 !!$  write(*,*)'checking single real assert can be called with only two single reals.....'
