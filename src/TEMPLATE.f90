@@ -25,7 +25,6 @@ module template_class
      !**********     Enter your derived type's attributes here     **********!
 
 
-left off here was going to chance store to save????
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!

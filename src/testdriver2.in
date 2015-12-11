@@ -11,11 +11,15 @@
 
   select case(trim(cmd))
   case ('help')
-     write(*,*)'Summary: Unit testing for class methods.'
-     write(*,*)'Usage: test classname'
-     write(*,*)'available classname:'
+     write(*,*)'Summary: Fortified unit testing for modules and associated class methods.'
+     write(*,*)'Usage: ./test <classname>'
+     write(*,*)'available classname options:'
      write(*,*)
-     write(*,*)'help'
-     !write(*,*)'all'
-     write(*,*)'core'
-     write(*,*)'template'
+     write(*,*)'help       display this message'
+     write(*,*)'all        run all class tests'
+     write(*,*)'core       test FORTIFIED core methods'
+     write(*,*)'template   test class template'
+     write(*,*)'cann       test all CANN classes'
+     write(*,*)'nonadmd    test all NONADMD classes'
+     write(*,*)
+     write(*,*)'individual classname options:'
