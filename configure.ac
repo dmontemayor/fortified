@@ -79,7 +79,8 @@ AC_CONFIG_COMMANDS([create_cann_driver],[cp $ac_top_srcdir/src/cann_driver.f90 s
 
 ###### N O N A D M D   m o d u l e ######
 # nonadmd classes
-AC_CONFIG_SRCDIR([src/hs.f90])
+AC_CONFIG_SRCDIR([src/quasiparticle.f90])
+AC_CONFIG_SRCDIR([src/ham.f90])
  
 # nonadmd data files
 #AC_CONFIG_SRCDIR([data/XXXX.f90])

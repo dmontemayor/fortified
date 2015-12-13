@@ -173,6 +173,18 @@ subroutine coretests
   call assert(check('coretest.tmpfile').EQ.0,msg='file check did not return 0 for present file')
   call system('rm -f coretest.tmpfile')
 
+  write(*,*)'checking filemanager can check for present file of known type.....'
+  call system('touch coretest.tmpfile')
+  call system("echo 'knowntype' >>coretest.tmpfile")
+  call assert(check('coretest.tmpfile','knowntype').EQ.0,msg='file check did not return 0 for present file of known type')
+  call system('rm -f coretest.tmpfile')
+
+  write(*,*)'checking filemanager returns -1 for present file of wrong type.....'
+  call system('touch coretest.tmpfile')
+  call system("echo 'knowntype' >>coretest.tmpfile")
+  call assert(check('coretest.tmpfile','unknowntype').EQ.-1,msg='file check did not return -1 for present file of wrong type')
+  call system('rm -f coretest.tmpfile')
+
   
   
 !!$  !-----SINGLE REAL ASSERT TESTS-----

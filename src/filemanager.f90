@@ -28,13 +28,24 @@ contains
     return
   end function newunit
   !-----------------------------
-  integer(short) function checkfile(file)
+  integer(short) function checkfile(file,type)
     character*(*),intent(in)::file
+    character*(*),optional,intent(in)::type
+    character(len=label)::header
+    integer(long)::unit
     logical::there
     
-    checkfile=0
     inquire(file=file,exist=there)
-    if(.not.there)then
+    if(there)then
+       checkfile=0
+       if(present(type))then
+          unit=newunit()
+          open(unit,file=file)
+          read(unit,*)header
+          close(unit)
+          if(trim(header).NE.type)checkfile=-1
+       end if
+    else
        checkfile=1
     end if
     return
