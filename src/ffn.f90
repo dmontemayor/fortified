@@ -11,10 +11,11 @@ module FFN_class
   private
 
   public::FFN, FFN_test
-  public::make, kill, display, store, update, reset, check, link
+  public::make, kill, display, backup, update, reset, check, link
 
   type FFN
      logical::initialized=.false.
+     character(len=label)::name='ffn'
      type(layer)::layer
 
      integer(long)::nsource,nmark
@@ -42,9 +43,9 @@ module FFN_class
      module procedure FFN_display
   end interface
 
-  !> Stores the current state of the FFN object.
-  interface store
-     module procedure FFN_store
+  !> Backups the current state of the FFN object.
+  interface backup
+     module procedure FFN_backup
   end interface
 
   !> Recaluclates the FFN object.
@@ -124,7 +125,7 @@ contains
     if(allocated(tmpW))deallocate(tmpW)
     allocate(tmpW(L,0:N-1))
 
-    !temp store weight matrix
+    !temp backup weight matrix
     tmpW=this%W
 
     !resize weight matrix
@@ -183,7 +184,7 @@ contains
     !create temp markweight matrix
     if(associated(tmpWT))nullify(tmpWT)
 
-    !temp store markweight matrix targets if any
+    !temp backup markweight matrix targets if any
     if(N.GT.0)then
        allocate(tmpWT(N,L))
        do i=1,N
@@ -265,7 +266,7 @@ contains
     if(allocated(tmpW))deallocate(tmpW)
     allocate(tmpW(L,0:N-1))
 
-    !temp store weight matrix
+    !temp backup weight matrix
     tmpW=this%W
 
     !resize weight matrix
@@ -289,21 +290,26 @@ contains
   !======================================================================
   !> \brief Creates and initializes the FFN object.
   !> \param this is the FFN object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored FFN file.
+  !> \param[in] file is an optional string containing the name of a previously backupd FFN file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine FFN_init(this,N,activation)
+  subroutine FFN_init(this,N,activation,file)
     use rand_class
     type(FFN),intent(inout)::this
-    integer(long),intent(in)::N
+    integer(long),optional,intent(in)::N
     character(len=*),optional,intent(in)::activation
+    character*(*),intent(in),optional::file
 
-    integer::i
+    integer::i,M
 
+    !declare layer size
+    M=1
+    if(present(N))M=N
+    
     if(present(activation))then
-       call make(this%layer,N=N,activation=activation)
+       call make(this%layer,N=M,activation=activation)
     else
-       call make(this%layer,N=N)
+       call make(this%layer,N=M)
     end if
 
     !create zeroth source target
@@ -436,39 +442,39 @@ contains
   end subroutine FFN_reset
 
   !======================================================================
-  !> \brief Stores the current state of the FFN object to file.
+  !> \brief Backups the current state of the FFN object to file.
   !> \param[in] this is the FFN  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine FFN_store(this,file)
+  subroutine FFN_backup(this,file)
     type(FFN),intent(in)::this
     character*(*),intent(in)::file
 
 !!$    integer(short)::unit
 !!$    logical::usedunit      
 !!$
-!!$    call note('Begin FFN_store.')
+!!$    call note('Begin FFN_backup.')
 !!$    call Note('input file= '//file)
 !!$    if(check(this).NE.0)then
-!!$       call warn('FFN_store: failed check.','not saving object.')
+!!$       call warn('FFN_backup: failed check.','not saving object.')
 !!$    else
 !!$
 !!$       !assign a unique unit label
 !!$       unit=newunit()
 !!$
-!!$       !open store file
+!!$       !open backup file
 !!$       open(unit,file=file)
 !!$
 !!$       !always write the data type on the first line
 !!$       write(unit,*)'FFN'
 !!$
-!!$       !store the layer
-!!$       call store(this%layer,file//'.layer')
+!!$       !backup the layer
+!!$       call backup(this%layer,file//'.layer')
 !!$
 !!$       !write the location of the layer
 !!$       write(unit,*)quote(file//'.layer')
 !!$
-!!$       !******      Store below all the derived type's attributes       ******!
+!!$       !******      Backup below all the derived type's attributes       ******!
 !!$       !******         in the order the MAKE command reads them         ******!
 !!$
 !!$
@@ -477,19 +483,19 @@ contains
 !!$
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !******      Example - Store an attribute called 'var  '    ***********!
+!!$       !******      Example - Backup an attribute called 'var  '    ***********!
 !!$       ! write(unit,*)this%var                                               !
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !***  Example - Store an NxM matrix attribute called 'matrix'  ********!
+!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
 !!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
 !!$       !*********************************************************************!
 !!$
 !!$
-!!$       !finished saving all attributes - now close store file
+!!$       !finished saving all attributes - now close backup file
 !!$       close(unit)
 !!$    end if
-  end subroutine FFN_store
+  end subroutine FFN_backup
 
 
   !======================================================================
@@ -658,6 +664,10 @@ contains
     type(layer)::sourcelayer,sourcelayer2
 
     integer i,j
+    character(len=label)::string
+
+    !verify ffn is compatible with current version
+    include 'verification'
 
     write(*,*)'test ffn can be created with 4 nodes.'
     call make(this,N=4)

@@ -1,0 +1,54 @@
+!current version verification process to be included in every object.
+!This process should ensure object compatiblity. 
+!---------------------------------------------------------------------
+write(*,*)'Begin Verification Process.'
+    write(*,*)'test object can be checked prior to being made.'
+    call assert(check(this).EQ.1,msg='check object does not return 1 prior to make.')
+
+    write(*,*)'test object can be created.'
+    call make(this)
+    call assert(check(this).EQ.0,msg='object was not created properly.')
+    write(*,*)'test object kill method sets initiallization flag to false.'
+    call kill(this)
+    call assert(.not.this%initialized,msg='object remains initialized after killed.')
+
+    write(*,*)'test object can be backuped'
+    call make(this)
+    call system('rm -f testobject.tmpfile')
+    call backup(this,file='testobject.tmpfile')
+    call assert('testobject.tmpfile',msg='object backup file was not created.')
+    call system('rm -f testobject.tmpfile')
+    call kill(this)
+
+    write(*,*)'test object can be created with backup file'
+    call make(this)
+    call backup(this,file='testobject.tmpfile')
+    call kill(this)
+    call make(this,file='testobject.tmpfile')
+    call assert(check(this).EQ.0,msg='object was not created properly from backupfile.')
+    call system('rm -f testobject.tmpfile')
+    
+    write(*,*)'test savefile begins with object name in first line'
+    call make(this)
+    call system('rm -f testobject.tmpfile')
+    call backup(this,file='testobject.tmpfile')
+    open(123,file='testobject.tmpfile')
+    read(123,*)string
+    call assert(trim(string).EQ.trim(this%name),msg='save file does not have object name on first line.')
+    call system('rm -f testobject.tmpfile')
+    call kill(this)
+    
+    write(*,*)'test object can be updated'
+    call make(this)
+    call update(this)
+    call assert(check(this).EQ.0,msg='object was not updated properly.')
+    call kill(this)
+
+    write(*,*)'test object can be reset'
+    call make(this)
+    call reset(this)
+    call assert(check(this).EQ.0,msg='object was not reset properly.')
+    call kill(this)
+
+!---------------------------------------------------------------------
+write(*,*)'Verification Passed!'

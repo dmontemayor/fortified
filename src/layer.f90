@@ -14,10 +14,11 @@ module layer_class
   private
 
   public::layer, layer_test
-  public::make, kill, display, store, update, reset, check
+  public::make, kill, display, backup, update, reset, check
 
   type layer
      logical::initialized=.false.
+     character(len=label)::name='layer'
      integer(long)::N=huge(1_long)
      character(len=label)::activation
      real(double),dimension(:),pointer::node,dnode
@@ -42,9 +43,9 @@ module layer_class
      module procedure layer_display
   end interface
 
-  !> Stores the current state of the layer object.
-  interface store
-     module procedure layer_store
+  !> Backups the current state of the layer object.
+  interface backup
+     module procedure layer_backup
   end interface
 
   !> Recaluclates the layer object.
@@ -71,16 +72,22 @@ contains
   !> \param[in] activation is an optional string determining layer activation function.
   !> \remark If no activation is provided linear activity is assumed.
   !=====================================================================
-  subroutine layer_init(this,N,activation)
+  subroutine layer_init(this,N,activation,file)
     type(layer),intent(inout)::this
-    integer(long),intent(in)::N
+    integer(long),optional,intent(in)::N
     character(len=*),optional,intent(in)::activation
+    character*(*),intent(in),optional::file
 
     !declare initialization in progress
     this%initialized=.false.
 
-    this%N=N !assign number of nodes from input
-    if(N.LE.0)return
+    !declare layer size
+    if(present(N))then
+       if(N.LE.0)return
+       this%N=N !assign number of nodes from input
+    else
+       this%N=1 !assign default number of nodes
+    end if
 
     if(associated(this%node))nullify(this%node) !cleanup up memory
     allocate(this%node(this%N))               !allocate nodes
@@ -178,39 +185,39 @@ contains
   end subroutine layer_reset
 
   !======================================================================
-  !> \brief Stores the current state of the layer object to file.
+  !> \brief Backups the current state of the layer object to file.
   !> \param[in] this is the layer  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine layer_store(this,file)
+  subroutine layer_backup(this,file)
     type(layer),intent(in)::this
     character*(*),intent(in)::file
 
 !!$    integer(short)::unit
 !!$    logical::usedunit      
 !!$
-!!$    call note('Begin layer_store.')
+!!$    call note('Begin layer_backup.')
 !!$    call Note('input file= '//file)
 !!$    if(check(this).NE.0)then
-!!$       call warn('layer_store: failed check.','not saving object.')
+!!$       call warn('layer_backup: failed check.','not saving object.')
 !!$    else
 !!$
 !!$       !assign a unique unit label
 !!$       unit=newunit()
 !!$
-!!$       !open store file
+!!$       !open backup file
 !!$       open(unit,file=file)
 !!$
 !!$       !always write the data type on the first line
 !!$       write(unit,*)'layer'
 !!$
-!!$       !store the primitive
-!!$       call store(this%primitive,file//'.primitive')
+!!$       !backup the primitive
+!!$       call backup(this%primitive,file//'.primitive')
 !!$
 !!$       !write the location of the primitive
 !!$       write(unit,*)quote(file//'.primitive')
 !!$
-!!$       !******      Store below all the derived type's attributes       ******!
+!!$       !******      Backup below all the derived type's attributes       ******!
 !!$       !******         in the order the MAKE command reads them         ******!
 !!$
 !!$
@@ -219,19 +226,19 @@ contains
 !!$
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !******      Example - Store an attribute called 'var  '    ***********!
+!!$       !******      Example - Backup an attribute called 'var  '    ***********!
 !!$       ! write(unit,*)this%var                                               !
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !***  Example - Store an NxM matrix attribute called 'matrix'  ********!
+!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
 !!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
 !!$       !*********************************************************************!
 !!$
 !!$
-!!$       !finished saving all attributes - now close store file
+!!$       !finished saving all attributes - now close backup file
 !!$       close(unit)
 !!$    end if
-  end subroutine layer_store
+  end subroutine layer_backup
 
 
   !======================================================================
@@ -345,7 +352,24 @@ contains
     use testing_class
     type(layer)::this
     integer(short)::ierr
+    character(len=label)::string
 
+    !verify layer is compatible with current version
+    include 'verification'
+    
+    !additional make tests
+
+    !additional kill tests
+
+    !additional display tests
+
+    !additional backup tests
+
+    !additional update tests
+
+    !additional reset tests
+
+    
     write(*,*)'test layer can be created with 4 nodes.'
     call make(this,N=4)
     call assert(check(this).EQ.0,msg='layer object was not created properly.')
@@ -390,7 +414,7 @@ contains
     call make(this,N=5)
     this%node(5)=99.9
     call make(this,N=4)
-    call assert(this%node(4).NE.99.9,msg='second make did not prevent accesing previously stored node data.')
+    call assert(this%node(4).NE.99.9,msg='second make did not prevent accesing previously backuped node data.')
     call kill(this)
 
     write(*,*)'Test that default activation sets node states equal to input.'

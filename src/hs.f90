@@ -2,7 +2,7 @@
 !! hs class
 !!\details
 !! Use this hs to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a display, \a store, \a update, \a reset, \a check, and \a test methods.
+!! Do not remove the \a make, \a kill, \a display, \a backup, \a update, \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
 !! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
 !! Follow the examples commented in the source code to define the various attributes of your class.
@@ -17,10 +17,11 @@ module hs_class
   private
 
   public::hs, hs_test
-  public::make, kill, display, store, update, reset, check
+  public::make, kill, display, backup, update, reset, check
 
   type hs
      logical::initialized=.false.
+     character(len=label)::name='hs'
 !!$     type(primitive)::primitive
      !**********     Enter your derived type's attributes here     **********!
 
@@ -54,9 +55,9 @@ module hs_class
      module procedure hs_display
   end interface
 
-  !> Stores the current state of the hs object.
-  interface store
-     module procedure hs_store
+  !> Backups the current state of the hs object.
+  interface backup
+     module procedure hs_backup
   end interface
 
   !> Recaluclates the hs object.
@@ -79,7 +80,7 @@ contains
   !======================================================================
   !> \brief Creates and initializes the hs object.
   !> \param this is the hs object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored hs file.
+  !> \param[in] file is an optional string containing the name of a previously backupd hs file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
   subroutine hs_init(this,file)
@@ -294,11 +295,11 @@ contains
   end subroutine hs_reset
 
   !======================================================================
-  !> \brief Stores the current state of the hs object to file.
+  !> \brief Backups the current state of the hs object to file.
   !> \param[in] this is the hs  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine hs_store(this,file)
+  subroutine hs_backup(this,file)
     use filemanager
 
     type(hs),intent(in)::this
@@ -307,28 +308,28 @@ contains
 
 !!$    logical::usedunit      
 !!$
-!!$    call note('Begin hs_store.')
+!!$    call note('Begin hs_backup.')
 !!$    call Note('input file= '//file)
 !!$    if(check(this).NE.0)then
-!!$       call warn('hs_store: failed check.','not saving object.')
+!!$       call warn('hs_backup: failed check.','not saving object.')
 !!$    else
 !!$
        !assign a unique unit label
        unit=newunit()
 
-       !open store file
+       !open backup file
        open(unit,file=file)
 
        !always write the data type on the first line
        write(unit,*)'hs'
 !!$
-!!$       !store the primitive
-!!$       call store(this%primitive,file//'.primitive')
+!!$       !backup the primitive
+!!$       call backup(this%primitive,file//'.primitive')
 !!$
 !!$       !write the location of the primitive
 !!$       write(unit,*)quote(file//'.primitive')
 !!$
-!!$       !******      Store below all the derived type's attributes       ******!
+!!$       !******      Backup below all the derived type's attributes       ******!
 !!$       !******         in the order the MAKE command reads them         ******!
 !!$
 !!$
@@ -337,19 +338,19 @@ contains
 !!$
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !******      Example - Store an attribute called 'var  '    ***********!
+!!$       !******      Example - Backup an attribute called 'var  '    ***********!
 !!$       ! write(unit,*)this%var                                               !
 !!$       !*********************************************************************!
 !!$       !=====================================================================!
-!!$       !***  Example - Store an NxM matrix attribute called 'matrix'  ********!
+!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
 !!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
 !!$       !*********************************************************************!
 !!$
 !!$
-!!$       !finished saving all attributes - now close store file
+!!$       !finished saving all attributes - now close backup file
        close(unit)
 !!$    end if
-  end subroutine hs_store
+  end subroutine hs_backup
 
 
   !======================================================================
@@ -528,46 +529,20 @@ contains
     type(hs)::this
     character(len=label)::string
     
-    write(*,*)'test hs can be checked prior to being made.'
-    call assert(check(this).EQ.1,msg='check hs object does not return 1 prior to make.')
+    !verify hs is compatible with current version
+    include 'verification'
 
-    write(*,*)'test hs can be created.'
-    call make(this)
-    call assert(check(this).EQ.0,msg='hs object was not created properly.')
-    write(*,*)'test hs kill method sets initiallization flag to false.'
-    call kill(this)
-    call assert(.not.this%initialized,msg='hs object remains initialized after killed.')
+    !additional make tests
 
-    write(*,*)'test hs can be stored'
-    call make(this)
-    call system('rm -f tesths.tmpfile')
-    call store(this,file='tesths.tmpfile')
-    call assert('tesths.tmpfile',msg='hs store file was not created.')
-    call system('rm -f tesths.tmpfile')
-    call kill(this)
+    !additional kill tests
 
-    write(*,*)'test savefile begins with hs object name in first line'
-    call make(this)
-    call system('rm -f tesths.tmpfile')
-    call store(this,file='tesths.tmpfile')
-    open(123,file='tesths.tmpfile')
-    read(123,*)string
-    call assert(trim(string).EQ.'hs',msg='save file does not have hs label on first line.')
-    call system('rm -f tesths.tmpfile')
-    call kill(this)
-    
-    write(*,*)'test hs can be updated'
-    call make(this)
-    call update(this)
-    call assert(check(this).EQ.0,msg='hs object was not updated properly.')
-    call kill(this)
-    
-    write(*,*)'test hs can be resetted'
-    call make(this)
-    call reset(this)
-    call assert(check(this).EQ.0,msg='hs object was not resetted properly.')
-    call kill(this)
-    
+    !additional display tests
+
+    !additional backup tests
+
+    !additional update tests
+
+    !additional reset tests    
 
     write(*,*)'ALL hs TESTS PASSED!'
   end subroutine hs_test

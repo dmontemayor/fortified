@@ -12,10 +12,11 @@ module SOM_class
   private
 
   public::SOM, SOM_test
-  public::make, kill, display, store, update, reset, check, trainstep
+  public::make, kill, display, backup, update, reset, check, trainstep
 
   type SOM
      logical::initialized=.false.
+     character(len=label)::name='som'
      type(ffn)::ffn
      integer(long)::ND1,ND2,ND3
      real(double),dimension(:,:),pointer::nodeCoord
@@ -44,9 +45,9 @@ module SOM_class
      module procedure SOM_display
   end interface
 
-  !> Stores the current state of the SOM object.
-  interface store
-     module procedure SOM_store
+  !> Backups the current state of the SOM object.
+  interface backup
+     module procedure SOM_backup
   end interface
 
   !> Recaluclates the SOM object.
@@ -169,21 +170,25 @@ contains
   !======================================================================
   !> \brief Creates and initializes the SOM object.
   !> \param this is the SOM object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored SOM file.
+  !> \param[in] file is an optional string containing the name of a previously backupd SOM file.
   !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine SOM_init(this,N,ND1,ND2,ND3,hcp)
+  subroutine SOM_init(this,N,ND1,ND2,ND3,hcp,file)
     type(SOM),intent(inout)::this
-    integer(long),intent(in)::N
+    integer(long),intent(in),optional::N
     integer(long),intent(in),optional::ND1,ND2,ND3
-
     logical,intent(in),optional::hcp
-    real(double)::root3,third,twothirdsroot6
+    character*(*),intent(in),optional::file
 
+    real(double)::root3,third,twothirdsroot6
     integer(long)::i,j,k,M
 
+    !set default classifier size
+    M=1
+    if(present(N))M=N
+    
     !set number of nodes on dimension 1
-    this%ND1=N
+    this%ND1=M
     if(present(ND1))this%ND1=ND1
 
     !set number of nodes on dimension 2
@@ -277,15 +282,15 @@ contains
   end subroutine SOM_reset
 
   !======================================================================
-  !> \brief Stores the current state of the SOM object to file.
+  !> \brief Backups the current state of the SOM object to file.
   !> \param[in] this is the SOM  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine SOM_store(this,file)
+  subroutine SOM_backup(this,file)
     type(SOM),intent(in)::this
     character*(*),intent(in)::file
 
-  end subroutine SOM_store
+  end subroutine SOM_backup
 
 
   !======================================================================
@@ -375,8 +380,12 @@ contains
     real(double),allocatable::vector(:),mat(:,:)
     real(double)::x,y,z
     integer(long)::i,j,k,ierr,epoch,nres,count
-    character::residue,resname(20),label
+    character::residue,resname(20),classifier
     character(len=1000)::seq,labseq
+    character(len=label)::string
+
+    !verify som is compatible with current version
+    include 'verification'
 
     write(*,*)'test som can be created with 4 nodes.'
     call make(this,N=4)
@@ -610,7 +619,7 @@ contains
     call kill(sourcelayer)
 
 
-    write(*,*)'test training SOM with doublewell data set evolves 2 labels to points (1,2) and (-1,-2).'
+    write(*,*)'test training SOM with doublewell data set evolves 2 classifiers to points (1,2) and (-1,-2).'
     call make (sourcelayer,N=2)
     call make(this,N=2)
     call link(this%ffn,sourcelayer)
@@ -644,7 +653,7 @@ contains
     call kill(sourcelayer)
     
 
-    write(*,*)'test training SOM with zpotential data set evolves 10 labels on 1D map toward z potential.'
+    write(*,*)'test training SOM with zpotential data set evolves 10 classifiers on 1D map toward z potential.'
     call make (sourcelayer,N=2)
     call make(this,N=10)
     call link(this%ffn,sourcelayer)
@@ -681,7 +690,7 @@ contains
     call kill(sourcelayer)
 
 !!$stop
-!!$    write(*,*)'test training SOM with protstruct dataset to recover 3 labels&
+!!$    write(*,*)'test training SOM with protstruct dataset to recover 3 classifiers&
 !!$         & alphahelix, betasheet, and randomcoil with acceptable accuracy.'
 !!$    resname(1)='A'!Alanine ALA
 !!$    resname(2)='R'!Arginine ARG
@@ -779,7 +788,7 @@ contains
 !!$    open(111,file='data/protstructdataset.dat')
 !!$    ierr=0
 !!$    do while(ierr.EQ.0)
-!!$       read(111,*,iostat=ierr)residue,label
+!!$       read(111,*,iostat=ierr)residue,classifier
 !!$       if(ierr.EQ.0)then
 !!$          select case (residue)
 !!$          case('#')!comment
@@ -817,23 +826,23 @@ contains
 !!$                      k=k+1
 !!$                   end do
 !!$                end do
-!!$                !find nearest SOM label
+!!$                !find nearest SOM classifier
 !!$                do j=1,3
 !!$                   !get distance of input coord with SOM node j
 !!$                   x=sqrt(sum( (this%ffn%W(j,1:60)-sourcelayer%input(1:60))**2))
 !!$                   if(j.EQ.1)then
-!!$                      !autoamtic save mindistance z and label k if first label
+!!$                      !autoamtic save mindistance z and classifier k if first classifier
 !!$                      z=x
 !!$                      k=j
 !!$                   end if
 !!$                   if(x.LE.z)then
-!!$                      !save mindistance z and label k
+!!$                      !save mindistance z and classifier k
 !!$                      z=x
 !!$                      k=j
 !!$                   end if
 !!$                end do
 !!$                
-!!$                !correlate SOM label k with training label j
+!!$                !correlate SOM classifier k with training classifier j
 !!$                select case(labseq(i:i))
 !!$                case ('h')
 !!$                   j=1
@@ -845,7 +854,7 @@ contains
 !!$                   write(*,*)nres,i
 !!$                   write(*,*)trim(seq)
 !!$                   write(*,*)trim(labseq)
-!!$                   write(*,*)'unkown label program will stop. ***'//labseq(i:i)//'***'
+!!$                   write(*,*)'unkown classifier program will stop. ***'//labseq(i:i)//'***'
 !!$                   stop
 !!$                end select
 !!$                mat(k,j)=mat(k,j)+1_double
@@ -856,7 +865,7 @@ contains
 !!$                nres=nres+1
 !!$                !push to sequence
 !!$                seq=trim(seq)//residue
-!!$                labseq=trim(labseq)//label
+!!$                labseq=trim(labseq)//classifier
 !!$             end if
 !!$          end select
 !!$       end if

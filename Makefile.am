@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4 --install
 EXTRA_DIST = m4 data
 
-corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/functions.f90 src/progressbar.f90 src/filemanager.f90 src/TEMPLATE.f90
+corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/functions.f90 src/progressbar.f90 src/filemanager.f90 src/template.f90
 
 testfiles = src/coretests.f90
 

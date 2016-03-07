@@ -13,7 +13,7 @@ module DEVICE_class
   private
 
   public::DEVICE, DEVICE_test
-  public::make, kill, display, store, update, reset, check
+  public::make, kill, display, backup, update, reset, check
   public::link, forwardpass, backprop, measure
 
   type ffnptr
@@ -24,6 +24,7 @@ module DEVICE_class
 
   type DEVICE
      logical::initialized=.false.
+     character(len=label)::name='device'
      type(layer)::vislayer
      integer(long)::nlayer=huge(1)
      integer(long)::rank=huge(1)
@@ -66,9 +67,9 @@ module DEVICE_class
      module procedure DEVICE_display
   end interface
 
-  !> Stores the current state of the DEVICE object.
-  interface store
-     module procedure DEVICE_store
+  !> Backups the current state of the DEVICE object.
+  interface backup
+     module procedure DEVICE_backup
   end interface
 
   !> Recaluclates the DEVICE object.
@@ -330,7 +331,7 @@ contains
        !create temphiddenlayer
        if(associated(tmphiddenlayer))nullify(tmphiddenlayer)
        allocate(tmphiddenlayer(this%nlayer))
-       !copy hiddenlayer targets to temphiddenlayer and store maxrank
+       !copy hiddenlayer targets to temphiddenlayer and backup maxrank
        do i=1,this%nlayer
           tmphiddenlayer(i)%ffn => this%hiddenlayer(i)%ffn
           tmphiddenlayer(i)%rank = this%hiddenlayer(i)%rank
@@ -387,22 +388,28 @@ contains
   !======================================================================
   !> \brief Creates and initializes the DEVICE object.
   !> \param this is the DEVICE object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored DEVICE file.
+  !> \param[in] file is an optional string containing the name of a previously backupd DEVICE file.
   !=====================================================================
-  subroutine DEVICE_init(this,N,activation,loss)
+  subroutine DEVICE_init(this,file,N,activation,loss)
     type(DEVICE),intent(inout)::this
-    integer(long),intent(in)::N
-    character(len=*),optional,intent(in)::activation,loss
+    character*(*),intent(in),optional::file
+    integer(long),optional,intent(in)::N
+    character*(*),optional,intent(in)::activation,loss
 
-!softmax=
-!square =1/2N sum_i^N(y_i-yhat_i)
-!binarycrossentropy=-1/N sum_i^N(log(p_i)*yhat_i+log(1-p_i)*(1-yhat_i)
+    integer(long)::M
 
+    !softmax=
+    !square =1/2N sum_i^N(y_i-yhat_i)
+    !binarycrossentropy=-1/N sum_i^N(log(p_i)*yhat_i+log(1-p_i)*(1-yhat_i)
+
+    !set default node size
+    M=1
+    if(present(N))M=N
 
     if(present(activation))then
-       call make(this%vislayer,N=N,activation=activation)
+       call make(this%vislayer,N=M,activation=activation)
     else
-       call make(this%vislayer,N=N)
+       call make(this%vislayer,N=M)
     end if
 
     this%nlayer=0
@@ -446,15 +453,15 @@ contains
   end subroutine DEVICE_reset
 
   !======================================================================
-  !> \brief Stores the current state of the DEVICE object to file.
+  !> \brief Backups the current state of the DEVICE object to file.
   !> \param[in] this is the DEVICE  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine DEVICE_store(this,file)
+  subroutine DEVICE_backup(this,file)
     type(DEVICE),intent(in)::this
     character*(*),intent(in)::file
 
-  end subroutine DEVICE_store
+  end subroutine DEVICE_backup
 
 
   !======================================================================
@@ -479,7 +486,7 @@ contains
     type(DEVICE),intent(in)::this
 
     integer(long)::i
-
+  
     !initiate with no problems found 
     DEVICE_check=0
     !call Note('Checking DEVICE.')
@@ -582,6 +589,10 @@ contains
     character(len=1)::char1,char1out
     logical::bit1,bit2
     integer(long)::i,j,ncorrect
+    character(len=label)::string
+
+    !verify device is compatible with current version
+    include 'verification'
 
     write(*,*)'test DEVICE can be created with vislayer size specification.'
     call make(this,N=4)
