@@ -2,7 +2,7 @@
 !! quasiparticle class
 !!\details
 !! Use this quasiparticle to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a display, \a store, \a update, \a reset, \a check, and \a test methods.
+!! Do not remove the \a make, \a kill, \a display, \a backup, \a update, \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
 !! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
 !! Follow the examples commented in the source code to define the various attributes of your class.
@@ -17,10 +17,11 @@ module quasiparticle_class
   private
 
   public::quasiparticle, quasiparticle_test
-  public::make, kill, display, store, update, reset, check
+  public::make, kill, display, backup, update, reset, check
 
   type quasiparticle                  !quasi-particle with single degree of freedom
      logical::initialized=.false.
+     character(len=label)::name='quasiparticle'
      real(double)::mass               !quasi-particle total mass
      real(double)::charge             !quasi-particle total charge
      integer(long)::npt               !density is on a grid of npt points to accomodate delocalization
@@ -45,9 +46,9 @@ module quasiparticle_class
      module procedure quasiparticle_display
   end interface
 
-  !> Stores the current state of the quasiparticle object.
-  interface store
-     module procedure quasiparticle_store
+  !> Backups the current state of the quasiparticle object.
+  interface backup
+     module procedure quasiparticle_backup
   end interface
 
   !> Recaluclates the quasiparticle object.
@@ -70,7 +71,7 @@ contains
   !======================================================================
   !> \brief Creates and initializes the quasiparticle object.
   !> \param this is the quasiparticle object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored quasiparticle file.
+  !> \param[in] file is an optional string containing the name of a previously backupd quasiparticle file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
   subroutine quasiparticle_init(this,file,npt)
@@ -133,7 +134,7 @@ contains
        this%force=0._double
     end if
     
-    !finished reading all attributes - now close store file
+    !finished reading all attributes - now close backup file
     if(.not.fileisopen)close(unit)
 
     !declare initialization complete
@@ -230,12 +231,12 @@ contains
   end subroutine quasiparticle_reset
 
   !======================================================================
-  !> \brief Stores the current state of the quasiparticle object to file.
+  !> \brief Backups the current state of the quasiparticle object to file.
   !> \param[in] this is the quasiparticle  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !> \param[in] append is a boolean input determining if file is appended to or overwritten
   !======================================================================
-  subroutine quasiparticle_store(this,file)
+  subroutine quasiparticle_backup(this,file)
     use filemanager
 
     type(quasiparticle),intent(in)::this
@@ -252,21 +253,21 @@ contains
     !always write the data type on the first line
     write(unit,*)'quasiparticle'
 
-    !store scalar parameters
+    !backup scalar parameters
     write(unit,*)this%mass
     write(unit,*)this%charge
     write(unit,*)this%npt
 
-    !store dynamic arrays
+    !backup dynamic arrays
     write(unit,*)(this%den(i),i=0,this%npt-1)
     write(unit,*)(this%pos(i),i=0,this%npt-1)
     write(unit,*)(this%mom(i),i=0,this%npt-1)
     write(unit,*)(this%force(i),i=0,this%npt-1)
 
-    !finished saving all attributes - now close store file if previously closed
+    !finished saving all attributes - now close backup file if previously closed
     if(.not.fileisopen)close(unit)
 
-  end subroutine quasiparticle_store
+  end subroutine quasiparticle_backup
 
   !======================================================================
   !> \brief Retrun the quasiparticle object as a single line record entry.
@@ -419,7 +420,10 @@ contains
     character(len=label)::string
     character(len=line)::record
     integer(long)::i
-    
+      
+    !verify quasiparticle is compatible with current version
+    include 'verification'
+
     write(*,*)'test quasiparticle can be checked prior to being made.'
     call assert(check(this).EQ.1,msg='check quasiparticle object does not return 1 prior to make.')
 
@@ -460,33 +464,33 @@ contains
          ,msg='quasiparticle object does not display properly.')
     call kill(this)
 
-    write(*,*)'test quasiparticle can be stored'
+    write(*,*)'test quasiparticle can be backupd'
     call make(this)
     call system('rm -f testquasiparticle.tmpfile')
-    call store(this,file='testquasiparticle.tmpfile')
-    call assert('testquasiparticle.tmpfile',msg='quasiparticle store file was not created.')
+    call backup(this,file='testquasiparticle.tmpfile')
+    call assert('testquasiparticle.tmpfile',msg='quasiparticle backup file was not created.')
     call system('rm -f testquasiparticle.tmpfile')
     call kill(this)
 
-    write(*,*)'test quasiparticle can be created with store file'
+    write(*,*)'test quasiparticle can be created with backup file'
     call make(this)
-    call store(this,file='testquasiparticle.tmpfile')
+    call backup(this,file='testquasiparticle.tmpfile')
     call kill(this)
     call make(this,file='testquasiparticle.tmpfile')
-    call assert(check(this).EQ.0,msg='quasiparticle object was not created properly from storefile.')
+    call assert(check(this).EQ.0,msg='quasiparticle object was not created properly from backupfile.')
     call system('rm -f testquasiparticle.tmpfile')
     
     write(*,*)'test savefile begins with quasiparticle object name in first line'
     call make(this)
     call system('rm -f testquasiparticle.tmpfile')
-    call store(this,file='testquasiparticle.tmpfile')
+    call backup(this,file='testquasiparticle.tmpfile')
     open(123,file='testquasiparticle.tmpfile')
     read(123,*)string
     call assert(trim(string).EQ.'quasiparticle',msg='save file does not have quasiparticle label on first line.')
     call system('rm -f testquasiparticle.tmpfile')
     call kill(this)
 
-    write(*,*)'test quasiparticle attributes are properly stored in storefile'
+    write(*,*)'test quasiparticle attributes are properly backupd in backupfile'
     call make(this,npt=2)
     !set non default attribute values
     this%mass=2._double
@@ -496,7 +500,7 @@ contains
     this%mom=1._double
     this%force=1._double
     call system('rm -f testquasiparticle.tmpfile')
-    call store(this,file='testquasiparticle.tmpfile')
+    call backup(this,file='testquasiparticle.tmpfile')
     call kill(this)
     call make(this,file='testquasiparticle.tmpfile')
     !assert non defulat attribute values are conserved

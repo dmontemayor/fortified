@@ -11,7 +11,7 @@ module ham_class
   private
 
   public::ham, ham_test
-  public::make, kill, display, store, update, reset, check
+  public::make, kill, display, backup, update, reset, check
 
 
   type ham
@@ -44,9 +44,9 @@ module ham_class
      module procedure ham_display
   end interface
 
-  !> Stores the current state of the ham object.
-  interface store
-     module procedure ham_store
+  !> Backups the current state of the ham object.
+  interface backup
+     module procedure ham_backup
   end interface
 
   !> Recaluclates the ham object.
@@ -69,7 +69,7 @@ contains
   !======================================================================
   !> \brief Creates and initializes the ham object.
   !> \param this is the ham object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously stored ham file.
+  !> \param[in] file is an optional string containing the name of a previously backupd ham file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
   subroutine ham_init(this,file,ndim,nstate,npart)
@@ -138,7 +138,7 @@ contains
        end do
     end if
     
-    !finished reading all attributes - now close store file
+    !finished reading all attributes - now close backup file
     if(present(file))close(unit)
 
 
@@ -241,11 +241,11 @@ contains
   end subroutine ham_reset
 
   !======================================================================
-  !> \brief Stores the current state of the ham object to file.
+  !> \brief Backups the current state of the ham object to file.
   !> \param[in] this is the ham  object to be updated.
-  !> \param[in] file is a string containing the location of the store file.
+  !> \param[in] file is a string containing the location of the backup file.
   !======================================================================
-  subroutine ham_store(this,file)
+  subroutine ham_backup(this,file)
     use filemanager
     type(ham),intent(in)::this
     character*(*),intent(in)::file
@@ -261,25 +261,25 @@ contains
     !always write the data type on the first line
     write(unit,*)'ham'
 
-    !store scalar parameters
+    !backup scalar parameters
     write(unit,*)this%ndim
     write(unit,*)this%nstate
     write(unit,*)this%npart
 
-    !store dynamic arrays
+    !backup dynamic arrays
     write(unit,*)(this%Lcell(i),i=0,this%ndim-1)
     write(unit,*)(this%PBC(i),i=0,this%ndim-1)
 
     !quasiparticle list
     do i=0,this%npart-1
        do j=0,this%ndim-1
-          call store(this%Z(i,j),file=file)
+          call backup(this%Z(i,j),file=file)
        end do
     end do
-    !finished saving all attributes - now close store file
+    !finished saving all attributes - now close backup file
     close(unit)
 
-  end subroutine ham_store
+  end subroutine ham_backup
 
   !======================================================================
   !> \brief Retrun the ham object as a single line record entry.
@@ -448,33 +448,33 @@ contains
     call assert(trim(record).EQ.'ham',msg='ham object does not display properly.')
     call kill(this)
 
-    write(*,*)'test ham can be stored'
+    write(*,*)'test ham can be backupd'
     call make(this)
     call system('rm -f testham.tmpfile')
-    call store(this,file='testham.tmpfile')
-    call assert('testham.tmpfile',msg='ham store file was not created.')
+    call backup(this,file='testham.tmpfile')
+    call assert('testham.tmpfile',msg='ham backup file was not created.')
     call system('rm -f testham.tmpfile')
     call kill(this)
 
-    write(*,*)'test ham can be created with store file'
+    write(*,*)'test ham can be created with backup file'
     call make(this)
-    call store(this,file='testham.tmpfile')
+    call backup(this,file='testham.tmpfile')
     call kill(this)
     call make(this,file='testham.tmpfile')
-    call assert(check(this).EQ.0,msg='ham object was not created properly from storefile.')
+    call assert(check(this).EQ.0,msg='ham object was not created properly from backupfile.')
     call system('rm -f testham.tmpfile')
     
-    write(*,*)'test store file begins with ham object name in first line'
+    write(*,*)'test backup file begins with ham object name in first line'
     call make(this)
     call system('rm -f testham.tmpfile')
-    call store(this,file='testham.tmpfile')
+    call backup(this,file='testham.tmpfile')
     open(123,file='testham.tmpfile')
     read(123,*)string
     call assert(trim(string).EQ.'ham',msg='save file does not have ham label on first line.')
     call system('rm -f testham.tmpfile')
     call kill(this)
     
-    write(*,*)'test ham attributes are properly stored in storefile'
+    write(*,*)'test ham attributes are properly backupd in backupfile'
     call make(this,ndim=3,nstate=3,npart=2)
     !set non default attribute values
     this%Lcell=1._double
@@ -491,7 +491,7 @@ contains
        end do
     end do
     call system('rm -f testham.tmpfile')
-    call store(this,file='testham.tmpfile')
+    call backup(this,file='testham.tmpfile')
     call kill(this)
     call make(this,file='testham.tmpfile')
     !assert non defulat attribute values are conserved
