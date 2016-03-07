@@ -240,55 +240,20 @@ contains
 !!$    end if
   end subroutine layer_backup
 
-
   !======================================================================
-  !> \brief Displays the layer object.
+  !> \brief Retrun the layer object as a single line record entry.
   !> \param[in] this is the layer object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine layer_display(this,msg)
+  character(len=line) function layer_display(this,msg)
     type(layer),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=7)::FMT='(A10)'
 
-!!$    call Note('Begin layer_display.')
-!!$
-!!$    if(check(this).NE.0)then
-!!$       call warn('layer_display: failed check','displaying nothing.')
-!!$       return
-!!$    end if
-!!$
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   layer   -------------------'
-!!$    if(present(msg))write(Dunit,*)msg
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    
-!!$    
-!!$    !****    Display the derived type's attributes here if you want   ****!
-!!$    
-!!$    
-!!$    
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******        Example display scalar attribute 'var'      **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'VAR=',this%var                                       !
-!!$    !                                                                     !
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******    Example display NxM matrix attribute 'matrix'   **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX=',this%matrix   !a simple example             !
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX='               !a better example:            !
-!!$    ! do i=1,N                          !write each row on a new line     !
-!!$    !    write(Dunit,*)i,(this%matrix(i,j),j=1,M)                         !
-!!$    ! end do                                                              !
-!!$    !*********************************************************************!
-!!$
-!!$    call display(this%primitive,msg='layer primitive')
-!!$    write(Dunit,*)'===================================================='
+    write(layer_display,FMT)'helloworld'
 
-  end subroutine layer_display
+   
+  end function layer_display
 
   !======================================================================
   !> \brief Checks the layer object.

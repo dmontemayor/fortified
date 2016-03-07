@@ -83,111 +83,55 @@ contains
   !> \param[in] file is an optional string containing the name of a previously backupd template file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine template_init(this,file)
+  subroutine template_init(this,file)!,param)
+    use filemanager
+    use testing_class
     type(template),intent(inout)::this
     character*(*),intent(in),optional::file
-!!$    character(len=title)::filetype
-!!$    character(len=path)::infile
-!!$
-!!$    integer::unit
-!!$    logical::usedefault,usedunit
-!!$
+    integer(long)::unit
+    logical::fileisopen=.false.
+    character(len=label)::header
+    !integer(long),intent(in),optional::param
+    !integer(long)::i
 
+    !set scalar parameters
+    if(present(file))then 
+       
+       !check file status    
+       inquire(file=file,opened=fileisopen,number=unit)
+       if(unit.LT.0)unit=newunit()
+       if(.not.fileisopen)open(unit,file=file)
+    
+       !check if file is of type template
+       read(unit,*)header
+       call assert(trim(header).EQ.'template',msg='template_init: bad input file header in file'//file)
+       
+       !read scalar parameters
+       !read(unit,*)this%XXX
+    else
+       !set default scalar parameters
+       !this%XXX=YYY
+       !if(present(param))this%XXX=param
+    end if
+
+    !allocate dynamic arrays
+    !if(associated(this%XXX))nullify(this%XXX)
+    !allocate(this%XXX(0:thi%YYY-1))
+
+    !set dynamic arrays
+    if(present(file))then 
+       !read dynamic arrays
+       !read(unit,*)(this%XXX(i),i=0,this%YYY-1)
+    else
+       !set default array values
+       !this%XXX=YYY
+    end if
+    
+    !finished reading all attributes - now close store file
+    if(.not.fileisopen)close(unit)
 
     !declare initialization complete
     this%initialized=.true.
-
-
-
-
-!!$    call Note('Begin template_init.')
-!!$
-!!$    !check if input file is present and valid
-!!$    if(present(file))then
-!!$
-!!$       !check if file is there
-!!$       if(check(file).EQ.1)call stop('template_init: cannot find input file '//file)
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open the file
-!!$       open(unit,file=file)
-!!$
-!!$       !read the file type - should always be on the first line
-!!$       read(unit,*)filetype
-!!$       filetype=adjustl(filetype)
-!!$
-!!$       !check if input file is the right kind of file
-!!$       if(trim(filetype).NE.'template')& 
-!!$            call Stop('template_init: input file is not valid.')
-!!$
-!!$    end if
-!!$    
-!!$    ! prepare primative
-!!$    if(present(file))then
-!!$       read(unit,*)infile
-!!$       infile=adjustl(infile)
-!!$       call make(this%primitive,trim(infile))
-!!$    else
-!!$       call make(this%primitive)
-!!$    end if
-!!$
-!!$    !******     Initiate all your derived type's attributes below      ******!
-!!$    !************************************************************************!
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********           Example - Setup attribute 'var'            **********!
-!!$    !                                                                        !
-!!$    ! if(present(file))then                                                  !
-!!$    !    read(unit,*)this%var          !Read from input file if present      !
-!!$    ! else                                                                   !
-!!$    !    write(*,*)'Please enter VAR.' !manually enter information           !
-!!$    !    read(*,*)this%var                                                   !
-!!$    ! end if                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********   Example - Setup a matrix attribute called 'matrix'   ********!
-!!$    !                                                                        !
-!!$    ! if(associated(this%matrix))nullify(this%matrix) !cleanup memory        !
-!!$    ! allocate(this%matirx(N,M))                      !create an NxM matrix  !
-!!$    !                                                                        !
-!!$    ! !Now fill that matrix with data from the input file or manually        !
-!!$    ! if(present(file))then                                                  !
-!!$    !    read(unit,*)((this%matrix(i,j),j=1,M),i=1,N) !read M loop first     !
-!!$    ! else                                                                   !
-!!$    !    write(*,*)'Enter value of matrix element:'                          !
-!!$    !    do i=1,N                                                            !
-!!$    !       do j=1,M                                                         !
-!!$    !          write(*,*)'index=',i,j      !prompt user the matrix index     !
-!!$    !          read(*,*)this%matrix(i,j)   !read data manually from keyboard !
-!!$    !       end do                                                           !
-!!$    !    end do                                                              !
-!!$    ! end if                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$
-!!$    !finished reading data - now close input file
-!!$    if(present(file))close(unit)
-!!$
-!!$    !declare that initialization is complete
-!!$    this%initialized=.true.
-!!$
-!!$    !update (or reset if brand new) this derived type
-!!$    if(present(file))then
-!!$       call update(this)
-!!$    else
-!!$       call reset(this)
-!!$    end if
-!!$
-!!$    !do a final check before we exit
-!!$    if(check(file).EQ.1)call stop('template_init: failed final check!')
 
   end subroutine template_init
 
@@ -301,10 +245,16 @@ contains
   !======================================================================
   subroutine template_backup(this,file)
     use filemanager
-
     type(template),intent(in)::this
     character*(*),intent(in)::file
     integer(short)::unit
+    logical::fileisopen
+    integer(long)::i,j
+    
+    !check file status
+    inquire(file=file,opened=fileisopen,number=unit)
+    if(unit.LT.0)unit=newunit()
+    if(.not.fileisopen)open(unit,file=file)
 
 !!$    logical::usedunit      
 !!$
@@ -314,12 +264,12 @@ contains
 !!$       call warn('template_backup: failed check.','not saving object.')
 !!$    else
 !!$
-       !assign a unique unit label
-       unit=newunit()
-
-       !open backup file
-       open(unit,file=file)
-
+!!$       !assign a unique unit label
+!!$       unit=newunit()
+!!$
+!!$       !open backup file
+!!$       open(unit,file=file)
+!!$
        !always write the data type on the first line
        write(unit,*)'template'
 !!$
@@ -352,60 +302,25 @@ contains
 !!$    end if
   end subroutine template_backup
 
-
   !======================================================================
-  !> \brief Displays the template object.
+  !> \brief Retrun the template object as a single line record entry.
   !> \param[in] this is the template object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine template_display(this,msg)
+  character(len=line) function template_display(this,msg)
     type(template),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=5)::FMT='(A)'
 
-!!$    call Note('Begin template_display.')
-!!$
-!!$    if(check(this).NE.0)then
-!!$       call warn('template_display: failed check','displaying nothing.')
-!!$       return
-!!$    end if
-!!$
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   template   -------------------'
-!!$    if(present(msg))write(Dunit,*)msg
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    
-!!$    
-!!$    !****    Display the derived type's attributes here if you want   ****!
-!!$    
-!!$    
-!!$    
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******        Example display scalar attribute 'var'      **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'VAR=',this%var                                       !
-!!$    !                                                                     !
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******    Example display NxM matrix attribute 'matrix'   **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX=',this%matrix   !a simple example             !
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX='               !a better example:            !
-!!$    ! do i=1,N                          !write each row on a new line     !
-!!$    !    write(Dunit,*)i,(this%matrix(i,j),j=1,M)                         !
-!!$    ! end do                                                              !
-!!$    !*********************************************************************!
-!!$
-!!$    call display(this%primitive,msg='template primitive')
-!!$    write(Dunit,*)'===================================================='
+    write(template_display,FMT)'template'
 
-  end subroutine template_display
+   
+  end function template_display
 
-  !======================================================================
+ !======================================================================
   !> \brief Checks the template object.
   !> \param[in] this is the template object to be checked.
-  !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
+  !> \return 0 if all checks pass or exit at first failed check and returm non zero.
   !> \remark Will exit after first failed check.
   !======================================================================
   integer(short)function template_check(this)
@@ -414,7 +329,6 @@ contains
 
     !initiate with no problems found 
     template_check=0
-    !call Note('Checking template.')
 
     !check that object is initialized
     call assert(this%initialized,msg='template_check: template object not initialized.',iostat=template_check)
@@ -526,13 +440,88 @@ contains
   !======================================================================
   subroutine template_test
     use testing_class
-    type(template)::this
+    type(template)::this,that
     character(len=label)::string
 
     !verify template is compatible with current version
     include 'verification'
     
     !additional make tests
+!!$=======
+!!$    character(len=line)::record
+!!$    
+!!$    write(*,*)'test template can be checked prior to being made.'
+!!$    call assert(check(this).EQ.1,msg='check template object does not return 1 prior to make.')
+!!$
+!!$    write(*,*)'test template can be created.'
+!!$    call make(this)
+!!$    call assert(check(this).EQ.0,msg='template object was not created properly.')
+!!$    write(*,*)'test template kill method sets initiallization flag to false.'
+!!$    call kill(this)
+!!$    call assert(.not.this%initialized,msg='template object remains initialized after killed.')
+!!$    write(*,*)'test template kill method cleans up dynamic memory and pointers'
+!!$    !call assert(.not.associated(this%XXX),msg='template pointer XXX remains associated after killed.')
+!!$
+!!$    write(*,*)'test make template sets correct default values'
+!!$    call make(this)
+!!$    !call assert(this%XXX.EQ.YYY,msg='template default XXX is not YYY')
+!!$    call kill(this)
+!!$
+!!$    write(*,*)'test template can be displayed '
+!!$    call make(this)
+!!$    record=display(this)
+!!$    call assert(trim(record).EQ.'template',msg='template object does not display properly.')
+!!$    call kill(this)
+!!$
+!!$    write(*,*)'test template can be stored'
+!!$    call make(this)
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    call store(this,file='testtemplate.tmpfile')
+!!$    call assert('testtemplate.tmpfile',msg='template store file was not created.')
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    call kill(this)
+!!$
+!!$    write(*,*)'test template can be created with store file'
+!!$    call make(this)
+!!$    call store(this,file='testtemplate.tmpfile')
+!!$    call kill(this)
+!!$    call make(this,file='testtemplate.tmpfile')
+!!$    call assert(check(this).EQ.0,msg='template object was not created properly from storefile.')
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    
+!!$    write(*,*)'test store file begins with template object name in first line'
+!!$    call make(this)
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    call store(this,file='testtemplate.tmpfile')
+!!$    open(123,file='testtemplate.tmpfile')
+!!$    read(123,*)string
+!!$    call assert(trim(string).EQ.'template',msg='store file does not have template label on first line.')
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    call kill(this)
+!!$    
+!!$    write(*,*)'test template attributes are properly stored in storefile'
+!!$    call make(this)
+!!$    !set non defulat attribute values
+!!$    call system('rm -f testtemplate.tmpfile')
+!!$    call store(this,file='testtemplate.tmpfile')
+!!$    call kill(this)
+!!$    call make(this,file='testtemplate.tmpfile')
+!!$    !assert non default attribute values are conserved
+!!$    call kill(this)    
+!!$
+!!$    write(*,*)'test template can be updated'
+!!$    call make(this)
+!!$    call update(this)
+!!$    call assert(check(this).EQ.0,msg='template object was not updated properly.')
+!!$    call kill(this)
+!!$    
+!!$    write(*,*)'test template can be resetted'
+!!$    call make(this)
+!!$    call reset(this)
+!!$    call assert(check(this).EQ.0,msg='template object was not resetted properly.')
+!!$    call kill(this)
+!!$    
+!!$    
 
     !additional kill tests
 

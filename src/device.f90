@@ -463,17 +463,20 @@ contains
 
   end subroutine DEVICE_backup
 
-
   !======================================================================
-  !> \brief Displays the DEVICE object.
-  !> \param[in] this is the DEVICE object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \brief Retrun the device object as a single line record entry.
+  !> \param[in] this is the device object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine DEVICE_display(this,msg)
-    type(DEVICE),intent(in)::this
+  character(len=line) function device_display(this,msg)
+    type(device),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=7)::FMT='(A10)'
 
-  end subroutine DEVICE_display
+    write(device_display,FMT)'helloworld'
+
+   
+  end function device_display
 
   !======================================================================
   !> \brief Checks the DEVICE object.

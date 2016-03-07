@@ -496,55 +496,20 @@ contains
 !!$    end if
   end subroutine BPG_store
 
-
   !======================================================================
-  !> \brief Displays the BPG object.
-  !> \param[in] this is the BPG object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \brief Retrun the bpg object as a single line record entry.
+  !> \param[in] this is the bpg object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine BPG_display(this,msg)
-    type(BPG),intent(in)::this
+  character(len=line) function bpg_display(this,msg)
+    type(bpg),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=5)::FMT='(A)'
 
-!!$    call Note('Begin BPG_display.')
-!!$
-!!$    if(check(this).NE.0)then
-!!$       call warn('BPG_display: failed check','displaying nothing.')
-!!$       return
-!!$    end if
-!!$
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   BPG   -------------------'
-!!$    if(present(msg))write(Dunit,*)msg
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    
-!!$    
-!!$    !****    Display the derived type's attributes here if you want   ****!
-!!$    
-!!$    
-!!$    
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******        Example display scalar attribute 'var'      **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'VAR=',this%var                                       !
-!!$    !                                                                     !
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******    Example display NxM matrix attribute 'matrix'   **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX=',this%matrix   !a simple example             !
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX='               !a better example:            !
-!!$    ! do i=1,N                          !write each row on a new line     !
-!!$    !    write(Dunit,*)i,(this%matrix(i,j),j=1,M)                         !
-!!$    ! end do                                                              !
-!!$    !*********************************************************************!
-!!$
-!!$    call display(this%layer,msg='BPG layer')
-!!$    write(Dunit,*)'===================================================='
+    write(bpg_display,FMT)'bpg'
 
-  end subroutine BPG_display
+   
+  end function bpg_display
 
   !======================================================================
   !> \brief Checks the BPG object.

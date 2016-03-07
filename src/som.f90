@@ -292,17 +292,20 @@ contains
 
   end subroutine SOM_backup
 
-
   !======================================================================
-  !> \brief Displays the SOM object.
-  !> \param[in] this is the SOM object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \brief Retrun the som object as a single line record entry.
+  !> \param[in] this is the som object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine SOM_display(this,msg)
-    type(SOM),intent(in)::this
+  character(len=line) function som_display(this,msg)
+    type(som),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=7)::FMT='(A10)'
 
-  end subroutine SOM_display
+    write(som_display,FMT)'helloworld'
+
+   
+  end function som_display
 
   !======================================================================
   !> \brief Checks the SOM object.

@@ -42,18 +42,6 @@ AC_PROG_FC
 AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])
 AC_CONFIG_COMMANDS([create_user_datadir],[mkdir ./data/])
 
-# find all MOD tests and create a test driver
-AC_CONFIG_COMMANDS([create_test_driver],[cp $ac_top_srcdir/src/testdriver1.in $ac_top_srcdir/src/utest.in
-$ac_top_srcdir/libexec/sandwich '  use ' $ac_top_srcdir/MODS '_class' >> $ac_top_srcdir/src/utest.in
-cat $ac_top_srcdir/src/testdriver2.in >> $ac_top_srcdir/src/utest.in
-$ac_top_srcdir/libexec/sandwich "     write(*,*)'" $ac_top_srcdir/MODS "'" >> $ac_top_srcdir/src/utest.in
-cat $ac_top_srcdir/src/testdriver3.in >> $ac_top_srcdir/src/utest.in
-$ac_top_srcdir/libexec/sandwich '     call ' $ac_top_srcdir/MODS '_test' >> $ac_top_srcdir/src/utest.in
-cat $ac_top_srcdir/src/testdriver4.in >> $ac_top_srcdir/src/utest.in
-$ac_top_srcdir/libexec/sandwich2 "  case('" $ac_top_srcdir/MODS "'); call " '_test' >> $ac_top_srcdir/src/utest.in
-cat $ac_top_srcdir/src/testdrivercap.in >> $ac_top_srcdir/src/utest.in
-mv $ac_top_srcdir/src/utest.in ./src/test_driver.f90])
-
 ################### F O R T I F I E D   M O D U L E S ###################
 
 ###### C A N N   m o d u l e ######
@@ -92,7 +80,8 @@ AC_CONFIG_COMMANDS([create_cann_driver],[cp $ac_top_srcdir/src/cann_driver.f90 s
 
 ###### N O N A D M D   m o d u l e ######
 # nonadmd classes
-AC_CONFIG_SRCDIR([src/hs.f90])
+AC_CONFIG_SRCDIR([src/quasiparticle.f90])
+AC_CONFIG_SRCDIR([src/ham.f90])
  
 # nonadmd data files
 #AC_CONFIG_SRCDIR([data/XXXX.f90])
@@ -103,6 +92,36 @@ AC_CONFIG_SRCDIR([src/hs.f90])
 # create unique drivers in build directory
 AC_CONFIG_COMMANDS([create_nonadmd_driver],[cp $ac_top_srcdir/src/nonadmd_driver.f90 src/nonadmd_driver.f90])
 
+
+
+######  T E S T   D R I V E R   ######
+
+# create test driver
+AC_CONFIG_COMMANDS([create_test_driver],[cp $ac_top_srcdir/src/testdriver1.in $ac_top_srcdir/src/utest.in
+# include mods in test driver
+$ac_top_srcdir/libexec/sandwich '  use ' $ac_top_srcdir/cann.mods '_class' >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich '  use ' $ac_top_srcdir/nonadmd.mods '_class' >> $ac_top_srcdir/src/utest.in
+# add help argument dialogue for test driver
+cat $ac_top_srcdir/src/testdriver2.in >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich "     write(*,*)'" $ac_top_srcdir/cann.mods "'" >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich "     write(*,*)'" $ac_top_srcdir/nonadmd.mods "'" >> $ac_top_srcdir/src/utest.in
+# add all tests option to test driver
+cat $ac_top_srcdir/src/testdriver3.in >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich '     call ' $ac_top_srcdir/cann.mods '_test' >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich '     call ' $ac_top_srcdir/nonadmd.mods '_test' >> $ac_top_srcdir/src/utest.in
+# add cann module test option to test driver
+echo "  case('cann')" >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich '     call ' $ac_top_srcdir/cann.mods '_test' >> $ac_top_srcdir/src/utest.in
+# add nonadmd module test option to test driver
+echo "  case('nonadmd')" >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich '     call ' $ac_top_srcdir/nonadmd.mods '_test' >> $ac_top_srcdir/src/utest.in
+# add individual class test options to test driver
+cat $ac_top_srcdir/src/testdriver4.in >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich2 "  case('" $ac_top_srcdir/cann.mods "'); call " '_test' >> $ac_top_srcdir/src/utest.in
+$ac_top_srcdir/libexec/sandwich2 "  case('" $ac_top_srcdir/nonadmd.mods "'); call " '_test' >> $ac_top_srcdir/src/utest.in
+#complete test driver
+cat $ac_top_srcdir/src/testdrivercap.in >> $ac_top_srcdir/src/utest.in
+mv $ac_top_srcdir/src/utest.in ./src/test_driver.f90])
 
 
 AC_OUTPUT

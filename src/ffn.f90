@@ -497,55 +497,20 @@ contains
 !!$    end if
   end subroutine FFN_backup
 
-
   !======================================================================
-  !> \brief Displays the FFN object.
-  !> \param[in] this is the FFN object.
-  !> \param[in] msg is an optional string message to preface the displayed object.
+  !> \brief Retrun the ffn object as a single line record entry.
+  !> \param[in] this is the ffn object.
+  !> \param[in] msg is an optional string message to annotate the displayed object.
   !======================================================================
-  subroutine FFN_display(this,msg)
-    type(FFN),intent(in)::this
+  character(len=line) function ffn_display(this,msg)
+    type(ffn),intent(in)::this
     character*(*),intent(in),optional::msg
+    character(len=7)::FMT='(A10)'
 
-!!$    call Note('Begin FFN_display.')
-!!$
-!!$    if(check(this).NE.0)then
-!!$       call warn('FFN_display: failed check','displaying nothing.')
-!!$       return
-!!$    end if
-!!$
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    write(Dunit,*)'-------------------   FFN   -------------------'
-!!$    if(present(msg))write(Dunit,*)msg
-!!$    write(Dunit,*)'____________________________________________________'
-!!$    
-!!$    
-!!$    !****    Display the derived type's attributes here if you want   ****!
-!!$    
-!!$    
-!!$    
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******        Example display scalar attribute 'var'      **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'VAR=',this%var                                       !
-!!$    !                                                                     !
-!!$    !*********************************************************************!
-!!$    !=====================================================================!
-!!$    !*******    Example display NxM matrix attribute 'matrix'   **********!
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX=',this%matrix   !a simple example             !
-!!$    !                                                                     !
-!!$    ! write(Dunit,*)'MATRIX='               !a better example:            !
-!!$    ! do i=1,N                          !write each row on a new line     !
-!!$    !    write(Dunit,*)i,(this%matrix(i,j),j=1,M)                         !
-!!$    ! end do                                                              !
-!!$    !*********************************************************************!
-!!$
-!!$    call display(this%layer,msg='FFN layer')
-!!$    write(Dunit,*)'===================================================='
+    write(ffn_display,FMT)'helloworld'
 
-  end subroutine FFN_display
+   
+  end function ffn_display
 
   !======================================================================
   !> \brief Checks the FFN object.
