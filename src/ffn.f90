@@ -11,7 +11,7 @@ module FFN_class
   private
 
   public::FFN, FFN_test
-  public::make, kill, display, backup, update, reset, check, link
+  public::make, kill, status, backup, update, reset, check, describe, link
 
   type FFN
      logical::initialized=.false.
@@ -38,11 +38,16 @@ module FFN_class
      module procedure FFN_kill
   end interface
 
-  !> Displays the current state of the FFN object.
-  interface display
-     module procedure FFN_display
+  !> Returns the current state of the FFN object.
+  interface status
+     module procedure FFN_status
   end interface
 
+  !> Returns a plain text description of the ffn object.
+  interface describe
+     module procedure ffn_describe
+  end interface
+  
   !> Backups the current state of the FFN object.
   interface backup
      module procedure FFN_backup
@@ -70,6 +75,17 @@ module FFN_class
   end interface
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of ffn as a string.
+  !> \param[in] this is the ffn object.
+  !======================================================================
+  character(len=comment) function ffn_describe(this)
+    type(ffn),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(ffn_describe,FMT)'No description for ffn has been provided.'
+   
+  end function ffn_describe
 
   !======================================================================
   !> \brief Links the FFN object to a prior FFN.
@@ -500,17 +516,17 @@ contains
   !======================================================================
   !> \brief Retrun the ffn object as a single line record entry.
   !> \param[in] this is the ffn object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
+  !> \param[in] msg is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function ffn_display(this,msg)
+  character(len=line) function ffn_status(this,msg)
     type(ffn),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=7)::FMT='(A10)'
 
-    write(ffn_display,FMT)'helloworld'
+    write(ffn_status,FMT)'helloworld'
 
    
-  end function ffn_display
+  end function ffn_status
 
   !======================================================================
   !> \brief Checks the FFN object.
@@ -625,12 +641,14 @@ contains
   !======================================================================
   subroutine FFN_test
     use testing_class
+    use filemanager
     type(FFN)::this,sourceffn,sourceffn2,markffn,markffn2
     type(layer)::sourcelayer,sourcelayer2
 
     integer i,j
     character(len=label)::string
-
+    integer(long)::unit
+    
     !verify ffn is compatible with current version
     include 'verification'
 

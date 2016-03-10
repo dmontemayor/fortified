@@ -14,7 +14,7 @@ module layer_class
   private
 
   public::layer, layer_test
-  public::make, kill, display, backup, update, reset, check
+  public::make, kill, status, backup, update, reset, check, describe
 
   type layer
      logical::initialized=.false.
@@ -38,11 +38,16 @@ module layer_class
      module procedure layer_kill
   end interface
 
-  !> Displays the current state of the layer object.
-  interface display
-     module procedure layer_display
+  !> Returns the current state of the layer object.
+  interface status
+     module procedure layer_status
   end interface
 
+  !> Returns a plain text description of the layer object.
+  interface describe
+     module procedure layer_describe
+  end interface
+  
   !> Backups the current state of the layer object.
   interface backup
      module procedure layer_backup
@@ -65,6 +70,18 @@ module layer_class
 
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of layer as a string.
+  !> \param[in] this is the layer object.
+  !======================================================================
+  character(len=comment) function layer_describe(this)
+    type(layer),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(layer_describe,FMT)'No description for layer has been provided.'
+   
+  end function layer_describe
+
   !======================================================================
   !> \brief Creates and initializes the layer object.
   !> \param this is the layer object to be initialized.
@@ -243,17 +260,17 @@ contains
   !======================================================================
   !> \brief Retrun the layer object as a single line record entry.
   !> \param[in] this is the layer object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
+  !> \param[in] msg is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function layer_display(this,msg)
+  character(len=line) function layer_status(this,msg)
     type(layer),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=7)::FMT='(A10)'
 
-    write(layer_display,FMT)'helloworld'
+    write(layer_status,FMT)'helloworld'
 
    
-  end function layer_display
+  end function layer_status
 
   !======================================================================
   !> \brief Checks the layer object.
@@ -315,9 +332,11 @@ contains
   !======================================================================
   subroutine layer_test
     use testing_class
+    use filemanager
     type(layer)::this
     integer(short)::ierr
     character(len=label)::string
+    integer(long)::unit
 
     !verify layer is compatible with current version
     include 'verification'
@@ -326,7 +345,7 @@ contains
 
     !additional kill tests
 
-    !additional display tests
+    !additional status tests
 
     !additional backup tests
 

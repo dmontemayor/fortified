@@ -12,7 +12,7 @@ module SOM_class
   private
 
   public::SOM, SOM_test
-  public::make, kill, display, backup, update, reset, check, trainstep
+  public::make, kill, status, backup, update, reset, check, describe, trainstep
 
   type SOM
      logical::initialized=.false.
@@ -40,11 +40,16 @@ module SOM_class
      module procedure SOM_kill
   end interface
 
-  !> Displays the current state of the SOM object.
-  interface display
-     module procedure SOM_display
+  !> Returns the current state of the SOM object.
+  interface status
+     module procedure SOM_status
   end interface
 
+  !> Returns a plain text description of the som object.
+  interface describe
+     module procedure som_describe
+  end interface
+  
   !> Backups the current state of the SOM object.
   interface backup
      module procedure SOM_backup
@@ -66,6 +71,18 @@ module SOM_class
   end interface
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of som as a string.
+  !> \param[in] this is the som object.
+  !======================================================================
+  character(len=comment) function som_describe(this)
+    type(som),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(som_describe,FMT)'No description for som has been provided.'
+   
+  end function som_describe
+
   !======================================================================
   !> \brief Evolves the SOM object by one training step.
   !> \param this is the SOM object to be evolved.
@@ -295,17 +312,17 @@ contains
   !======================================================================
   !> \brief Retrun the som object as a single line record entry.
   !> \param[in] this is the som object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
+  !> \param[in] msg is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function som_display(this,msg)
+  character(len=line) function som_status(this,msg)
     type(som),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=7)::FMT='(A10)'
 
-    write(som_display,FMT)'helloworld'
+    write(som_status,FMT)'helloworld'
 
    
-  end function som_display
+  end function som_status
 
   !======================================================================
   !> \brief Checks the SOM object.
@@ -376,6 +393,7 @@ contains
   !======================================================================
   subroutine SOM_test
     use testing_class
+    use filemanager
     use layer_class
     type(SOM)::this
     type(layer)::sourcelayer
@@ -386,7 +404,8 @@ contains
     character::residue,resname(20),classifier
     character(len=1000)::seq,labseq
     character(len=label)::string
-
+    integer(long)::unit
+    
     !verify som is compatible with current version
     include 'verification'
 

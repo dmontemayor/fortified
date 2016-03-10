@@ -13,7 +13,7 @@ module DEVICE_class
   private
 
   public::DEVICE, DEVICE_test
-  public::make, kill, display, backup, update, reset, check
+  public::make, kill, status, backup, update, reset, check, describe
   public::link, forwardpass, backprop, measure
 
   type ffnptr
@@ -62,11 +62,16 @@ module DEVICE_class
      module procedure DEVICE_kill
   end interface
 
-  !> Displays the current state of the DEVICE object.
-  interface display
-     module procedure DEVICE_display
+  !> Returns the current state of the DEVICE object.
+  interface status
+     module procedure DEVICE_status
   end interface
 
+  !> Returns a plain text description of the device object.
+  interface describe
+     module procedure device_describe
+  end interface
+  
   !> Backups the current state of the DEVICE object.
   interface backup
      module procedure DEVICE_backup
@@ -88,6 +93,18 @@ module DEVICE_class
   end interface
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of device as a string.
+  !> \param[in] this is the device object.
+  !======================================================================
+  character(len=comment) function device_describe(this)
+    type(device),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(device_describe,FMT)'No description for device has been provided.'
+   
+  end function device_describe
+
   !======================================================================
   !> \brief calucate Device performance given given dataset
   !> \param this is the DEVICE object to be measured.
@@ -466,17 +483,17 @@ contains
   !======================================================================
   !> \brief Retrun the device object as a single line record entry.
   !> \param[in] this is the device object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
+  !> \param[in] msg is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function device_display(this,msg)
+  character(len=line) function device_status(this,msg)
     type(device),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=7)::FMT='(A10)'
 
-    write(device_display,FMT)'helloworld'
+    write(device_status,FMT)'helloworld'
 
    
-  end function device_display
+  end function device_status
 
   !======================================================================
   !> \brief Checks the DEVICE object.
@@ -578,6 +595,7 @@ contains
   !======================================================================
   subroutine DEVICE_test
     use testing_class
+    use filemanager
     use progressbar
     use MDutils
 
@@ -592,8 +610,9 @@ contains
     character(len=1)::char1,char1out
     logical::bit1,bit2
     integer(long)::i,j,ncorrect
-    character(len=label)::string
 
+    character(len=label)::string
+    integer(long)::unit
     !verify device is compatible with current version
     include 'verification'
 

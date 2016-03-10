@@ -2,7 +2,7 @@
 !! quasiparticle class
 !!\details
 !! Use this quasiparticle to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a display, \a backup, \a update, \a reset, \a check, and \a test methods.
+!! Do not remove the \a make, \a kill, \a status, \a backup, \a update, \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
 !! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
 !! Follow the examples commented in the source code to define the various attributes of your class.
@@ -17,7 +17,7 @@ module quasiparticle_class
   private
 
   public::quasiparticle, quasiparticle_test
-  public::make, kill, display, backup, update, reset, check
+  public::make, kill, status, backup, update, reset, check
 
   type quasiparticle                  !quasi-particle with single degree of freedom
      logical::initialized=.false.
@@ -41,9 +41,14 @@ module quasiparticle_class
      module procedure quasiparticle_kill
   end interface
 
-  !> Displays the current state of the quasiparticle object.
-  interface display
-     module procedure quasiparticle_display
+  !> Returns the current state of the quasiparticle object.
+  interface status
+     module procedure quasiparticle_status
+  end interface
+
+  !> Returns a description of the quasiparticle object.
+  interface describe
+     module procedure quasiparticle_describe
   end interface
 
   !> Backups the current state of the quasiparticle object.
@@ -67,6 +72,17 @@ module quasiparticle_class
   end interface
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of template as a string.
+  !> \param[in] this is the template object.
+  !======================================================================
+  character(len=comment) function quasiparticle_describe(this)
+    type(quasiparticle),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(quasiparticle_describe,FMT)'No description for quasiparticle has been provided.'
+   
+  end function quasiparticle_describe
 
   !======================================================================
   !> \brief Creates and initializes the quasiparticle object.
@@ -270,19 +286,19 @@ contains
   end subroutine quasiparticle_backup
 
   !======================================================================
-  !> \brief Retrun the quasiparticle object as a single line record entry.
+  !> \brief Retrun the quasiparticle object as a string.
   !> \param[in] this is the quasiparticle object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
-  !> \remark will only display mass charge and zeroth point position and momentum
+  !> \param[in] msg is an optional string message to annotate the status.
+  !> \remark will only return mass charge and zeroth point position and momentum
   !======================================================================
-  character(len=line) function quasiparticle_display(this,msg)
+  character(len=line) function quasiparticle_status(this,msg)
     type(quasiparticle),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=10)::FMT='(4(E15.8))'
 
-    write(quasiparticle_display,FMT)this%mass,this%charge,this%pos(0),this%mom(0)
+    write(quasiparticle_status,FMT)this%mass,this%charge,this%pos(0),this%mom(0)
    
-  end function quasiparticle_display
+  end function quasiparticle_status
 
   !======================================================================
   !> \brief Checks the quasiparticle object.
@@ -416,29 +432,15 @@ contains
   !======================================================================
   subroutine quasiparticle_test
     use testing_class
+    use filemanager
     type(quasiparticle)::this
     character(len=label)::string
-    character(len=line)::record
-    integer(long)::i
-      
+    integer(long)::unit
+    
     !verify quasiparticle is compatible with current version
     include 'verification'
 
-    write(*,*)'test quasiparticle can be checked prior to being made.'
-    call assert(check(this).EQ.1,msg='check quasiparticle object does not return 1 prior to make.')
-
-    write(*,*)'test quasiparticle can be created.'
-    call make(this)
-    call assert(check(this).EQ.0,msg='quasiparticle object was not created properly.')
-    write(*,*)'test quasiparticle kill method sets initiallization flag to false.'
-    call kill(this)
-    call assert(.not.this%initialized,msg='quasiparticle object remains initialized after killed.')
-    write(*,*)'test quasiparticle kill method cleans up dynamic memory and pointers'
-    call assert(.not.associated(this%den),msg='quasiparticle pointer den remains associated after killed.')
-    call assert(.not.associated(this%pos),msg='quasiparticle pointer pos remains associated after killed.')
-    call assert(.not.associated(this%mom),msg='quasiparticle pointer mom remains associated after killed.')
-    call assert(.not.associated(this%force),msg='quasiparticle pointer force remains associated after killed.')
-
+    !----- additional make tests -----
     write(*,*)'test quasiparticle make sets correct default values'
     call make(this)
     call assert(this%mass.EQ.1,msg='default mass is not 1')
@@ -457,39 +459,15 @@ contains
     call kill(this)
 
 
-    write(*,*)'test quasiparticle can be displayed '
-    call make(this)
-    record=display(this)
-    call assert(trim(record).EQ.' 0.10000000E+01 0.00000000E+00 0.00000000E+00 0.00000000E+00'&
-         ,msg='quasiparticle object does not display properly.')
-    call kill(this)
+    !----- additional kill tests -----
+    write(*,*)'test quasiparticle kill method cleans up dynamic memory and pointers'
+    call assert(.not.associated(this%den),msg='quasiparticle pointer den remains associated after killed.')
+    call assert(.not.associated(this%pos),msg='quasiparticle pointer pos remains associated after killed.')
+    call assert(.not.associated(this%mom),msg='quasiparticle pointer mom remains associated after killed.')
+    call assert(.not.associated(this%force),msg='quasiparticle pointer force remains associated after killed.')
 
-    write(*,*)'test quasiparticle can be backupd'
-    call make(this)
-    call system('rm -f testquasiparticle.tmpfile')
-    call backup(this,file='testquasiparticle.tmpfile')
-    call assert('testquasiparticle.tmpfile',msg='quasiparticle backup file was not created.')
-    call system('rm -f testquasiparticle.tmpfile')
-    call kill(this)
 
-    write(*,*)'test quasiparticle can be created with backup file'
-    call make(this)
-    call backup(this,file='testquasiparticle.tmpfile')
-    call kill(this)
-    call make(this,file='testquasiparticle.tmpfile')
-    call assert(check(this).EQ.0,msg='quasiparticle object was not created properly from backupfile.')
-    call system('rm -f testquasiparticle.tmpfile')
-    
-    write(*,*)'test savefile begins with quasiparticle object name in first line'
-    call make(this)
-    call system('rm -f testquasiparticle.tmpfile')
-    call backup(this,file='testquasiparticle.tmpfile')
-    open(123,file='testquasiparticle.tmpfile')
-    read(123,*)string
-    call assert(trim(string).EQ.'quasiparticle',msg='save file does not have quasiparticle label on first line.')
-    call system('rm -f testquasiparticle.tmpfile')
-    call kill(this)
-
+    !----- additional backup tests -----
     write(*,*)'test quasiparticle attributes are properly backupd in backupfile'
     call make(this,npt=2)
     !set non default attribute values
@@ -513,18 +491,19 @@ contains
     call assert(all(this%force.EQ.1),msg='quasiparticle force is not 1')
     call kill(this)    
 
-    write(*,*)'test quasiparticle can be updated'
-    call make(this)
-    call update(this)
-    call assert(check(this).EQ.0,msg='quasiparticle object was not updated properly.')
-    call kill(this)
     
-    write(*,*)'test quasiparticle can be resetted'
-    call make(this)
-    call reset(this)
-    call assert(check(this).EQ.0,msg='quasiparticle object was not resetted properly.')
-    call kill(this)
+    !----- additional update tests -----
+
     
+    !----- additional reset tests -----
+    
+    !----- additional status tests -----
+    write(*,*)'test quasiparticle status format'
+    call make(this)
+    call assert(trim(status(this)).EQ.' 0.10000000E+01 0.00000000E+00 0.00000000E+00 0.00000000E+00'&
+         ,msg='quasiparticle status not properly formatted.')
+    call kill(this)
+
     write(*,*)'ALL quasiparticle TESTS PASSED!'
   end subroutine quasiparticle_test
   !-----------------------------------------

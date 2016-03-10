@@ -2,7 +2,7 @@
 !! template class
 !!\details
 !! Use this template to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a display, \a backup, \a update, \a reset, \a check, and \a test methods.
+!! Do not remove the \a make, \a kill, \a status, \a backup, \a update, \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
 !! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
 !! Follow the examples commented in the source code to define the various attributes of your class.
@@ -17,7 +17,7 @@ module template_class
   private
 
   public::template, template_test
-  public::make, kill, display, backup, update, reset, check
+  public::check, make, kill, backup, update, reset, status, describe
 
   type template
      logical::initialized=.false.
@@ -50,11 +50,16 @@ module template_class
      module procedure template_kill
   end interface
 
-  !> Displays the current state of the template object.
-  interface display
-     module procedure template_display
+  !> Returns current state of the template object.
+  interface status
+     module procedure template_status
   end interface
 
+  !> Returns a plain text description of the template object.
+  interface describe
+     module procedure template_describe
+  end interface
+  
   !> Backups the current state of the template object.
   interface backup
      module procedure template_backup
@@ -76,6 +81,17 @@ module template_class
   end interface
 
 contains
+  !======================================================================
+  !> \brief Retruns a description of template as a string.
+  !> \param[in] this is the template object.
+  !======================================================================
+  character(len=comment) function template_describe(this)
+    type(template),intent(in)::this
+    character(len=5)::FMT='(A)'
+
+    write(template_describe,FMT)'No description for template has been provided.'
+   
+  end function template_describe
 
   !======================================================================
   !> \brief Creates and initializes the template object.
@@ -97,7 +113,7 @@ contains
     !set scalar parameters
     if(present(file))then 
        
-       !check file status    
+       !check input file    
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
@@ -251,7 +267,7 @@ contains
     logical::fileisopen
     integer(long)::i,j
     
-    !check file status
+    !check input file
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
@@ -303,19 +319,18 @@ contains
   end subroutine template_backup
 
   !======================================================================
-  !> \brief Retrun the template object as a single line record entry.
+  !> \brief Retrun the current state of template as a string.
   !> \param[in] this is the template object.
-  !> \param[in] msg is an optional string message to annotate the displayed object.
+  !> \param[in] msg is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function template_display(this,msg)
+  character(len=line) function template_status(this,msg)
     type(template),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
 
-    write(template_display,FMT)'template'
-
+    write(template_status,FMT)'template'
    
-  end function template_display
+  end function template_status
 
  !======================================================================
   !> \brief Checks the template object.
@@ -334,101 +349,101 @@ contains
     call assert(this%initialized,msg='template_check: template object not initialized.',iostat=template_check)
     if(template_check.NE.0)return
 
-!!$    !check the primitive
-!!$    if(check(this%primitive))call stop('template_check: failed primitive check!')
-!!$
-!!$
-!!$    !********    Check all attributes are within acceptable values    *******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********     Example - check an integer attribute 'ndim'    ************************!
-!!$    !                                                                                      !
-!!$    ! !check if integer 'ndim' is NAN (not a number)                                       !
-!!$    ! if(this%ndim.NE.this%ndim)then                                                       !
-!!$    !    call Warn('template_check: ndim not a number.')                                   !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'ndim' is too big to fit in its memory                                     !
-!!$    ! if(abs(this%ndim).GE.huge(this%ndim))then                                            !
-!!$    !    call Warn('template_check: ndim is too big.')                                     !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'ndim' can only be positive                               !
-!!$    ! if(this%ndim.LE.0)then                                                               !
-!!$    !    call Warn('template_check: ndim not a positive integer.')                         !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !**********    Example - check a real number attribute 'var'   ************************!
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is not a number                                                      !
-!!$    ! if(this%var.NE.this%var)then                                                         !
-!!$    !    call Warn('template_check: var is not a number.')                                 !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if 'var' is too big to fit in its memory                                      !
-!!$    ! if(abs(this%var).GE.huge(this%var))then                                              !
-!!$    !    call Warn('template_check: var is too big.')                                      !
-!!$    !    template_check=1                                                                  !
-!!$    !   return                                                                             !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !add a constrain that says 'var' can not be zero:                                    !
-!!$    ! !      'var' can not be smaller than the smallest computable value                   !
-!!$    ! if(abs(this%var).LE.epsilon(this%var))then                                           !
-!!$    !    call Warn('template_check: var is too small.')                                    !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
-!!$    !======================================================================================!
-!!$    !*********          Example - check an NxM matrix attribute 'matrix'        ***********!
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' points to something                                             !
-!!$    ! if(.not.associated(this%matrix))then                                                 !
-!!$    !    call Warn('template_check: matrix memory not associated.')                        !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check that 'matrix' has the right dimensions                                        !
-!!$    ! if(size(this%matrix).NE.N*M)then                                                     !
-!!$    !    call Warn('template_check: number of matrix elements not = N*M.')                 !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check for NAN values in the matrix                                                  !
-!!$    ! if(any(this%matrix.NE.this%matrix))then                                              !
-!!$    !    call Warn('template_check: matirx has NAN values.')                               !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    ! !check if any matrix element values are too big for thier memory                     !
-!!$    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                                   !
-!!$    !    call Warn('template_check: matrix has huge values.')                              !
-!!$    !    mappingH_check=1                                                                  !
-!!$    !    template_check=1                                                                  !
-!!$    !    return                                                                            !
-!!$    ! end if                                                                               !
-!!$    !                                                                                      !
-!!$    !**************************************************************************************!
+    !check the primitive
+    !if(check(this%primitive))call stop('template_check: failed primitive check!')
+
+
+    !********    Check all attributes are within acceptable values    *******!
+
+
+
+
+
+    !***********************************************************************!
+    !=======================================================================!
+    !**********     Example - check an integer attribute 'ndim'    *********!
+    !                                                                       !
+    ! !check if integer 'ndim' is NAN (not a number)                        !
+    ! if(this%ndim.NE.this%ndim)then                                        !
+    !    call Warn('template_check: ndim not a number.')                    !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !check if 'ndim' is too big to fit in its memory                      !
+    ! if(abs(this%ndim).GE.huge(this%ndim))then                             !
+    !    call Warn('template_check: ndim is too big.')                      !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !add a constrain that says 'ndim' can only be positive                !
+    ! if(this%ndim.LE.0)then                                                !
+    !    call Warn('template_check: ndim not a positive integer.')          !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    !***********************************************************************!
+    !=======================================================================!
+    !**********    Example - check a real number attribute 'var'   *********!
+    !                                                                       !
+    ! !check if 'var' is not a number                                       !
+    ! if(this%var.NE.this%var)then                                          !
+    !    call Warn('template_check: var is not a number.')                  !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !check if 'var' is too big to fit in its memory                       !
+    ! if(abs(this%var).GE.huge(this%var))then                               !
+    !    call Warn('template_check: var is too big.')                       !
+    !    template_check=1                                                   !
+    !   return                                                              !
+    ! end if                                                                !
+    !                                                                       !
+    ! !add a constrain that says 'var' can not be zero:                     !
+    ! !      'var' can not be smaller than the smallest computable value    !
+    ! if(abs(this%var).LE.epsilon(this%var))then                            !
+    !    call Warn('template_check: var is too small.')                     !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    !***********************************************************************!
+    !=======================================================================!
+    !********* Example - check an NxM matrix attribute 'matrix' ************!
+    !                                                                       !
+    ! !check that 'matrix' points to something                              !
+    ! if(.not.associated(this%matrix))then                                  !
+    !    call Warn('template_check: matrix memory not associated.')         !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !check that 'matrix' has the right dimensions                         !
+    ! if(size(this%matrix).NE.N*M)then                                      !
+    !    call Warn('template_check: number of matrix elements not = N*M.')  !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !check for NAN values in the matrix                                   !
+    ! if(any(this%matrix.NE.this%matrix))then                               !
+    !    call Warn('template_check: matirx has NAN values.')                !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    ! !check if any matrix element values are too big for thier memory      !
+    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                    !
+    !    call Warn('template_check: matrix has huge values.')               !
+    !    mappingH_check=1                                                   !
+    !    template_check=1                                                   !
+    !    return                                                             !
+    ! end if                                                                !
+    !                                                                       !
+    !***********************************************************************!
 
   end function template_check
   !-----------------------------------------
@@ -440,99 +455,47 @@ contains
   !======================================================================
   subroutine template_test
     use testing_class
-    type(template)::this,that
+    use filemanager
+    type(template)::this
     character(len=label)::string
-
+    integer(long)::unit
+    
     !verify template is compatible with current version
     include 'verification'
+
+    !----- additional make tests -----
+    write(*,*)'test make sets correct default values'
+    call make(this)
+    !call assert(this%XXX.EQ.YYY,msg='template default XXX is not YYY')
+    call kill(this)
+
     
-    !additional make tests
-!!$=======
-!!$    character(len=line)::record
-!!$    
-!!$    write(*,*)'test template can be checked prior to being made.'
-!!$    call assert(check(this).EQ.1,msg='check template object does not return 1 prior to make.')
-!!$
-!!$    write(*,*)'test template can be created.'
-!!$    call make(this)
-!!$    call assert(check(this).EQ.0,msg='template object was not created properly.')
-!!$    write(*,*)'test template kill method sets initiallization flag to false.'
-!!$    call kill(this)
-!!$    call assert(.not.this%initialized,msg='template object remains initialized after killed.')
-!!$    write(*,*)'test template kill method cleans up dynamic memory and pointers'
-!!$    !call assert(.not.associated(this%XXX),msg='template pointer XXX remains associated after killed.')
-!!$
-!!$    write(*,*)'test make template sets correct default values'
-!!$    call make(this)
-!!$    !call assert(this%XXX.EQ.YYY,msg='template default XXX is not YYY')
-!!$    call kill(this)
-!!$
-!!$    write(*,*)'test template can be displayed '
-!!$    call make(this)
-!!$    record=display(this)
-!!$    call assert(trim(record).EQ.'template',msg='template object does not display properly.')
-!!$    call kill(this)
-!!$
-!!$    write(*,*)'test template can be stored'
-!!$    call make(this)
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    call store(this,file='testtemplate.tmpfile')
-!!$    call assert('testtemplate.tmpfile',msg='template store file was not created.')
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    call kill(this)
-!!$
-!!$    write(*,*)'test template can be created with store file'
-!!$    call make(this)
-!!$    call store(this,file='testtemplate.tmpfile')
-!!$    call kill(this)
-!!$    call make(this,file='testtemplate.tmpfile')
-!!$    call assert(check(this).EQ.0,msg='template object was not created properly from storefile.')
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    
-!!$    write(*,*)'test store file begins with template object name in first line'
-!!$    call make(this)
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    call store(this,file='testtemplate.tmpfile')
-!!$    open(123,file='testtemplate.tmpfile')
-!!$    read(123,*)string
-!!$    call assert(trim(string).EQ.'template',msg='store file does not have template label on first line.')
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    call kill(this)
-!!$    
-!!$    write(*,*)'test template attributes are properly stored in storefile'
-!!$    call make(this)
-!!$    !set non defulat attribute values
-!!$    call system('rm -f testtemplate.tmpfile')
-!!$    call store(this,file='testtemplate.tmpfile')
-!!$    call kill(this)
-!!$    call make(this,file='testtemplate.tmpfile')
-!!$    !assert non default attribute values are conserved
-!!$    call kill(this)    
-!!$
-!!$    write(*,*)'test template can be updated'
-!!$    call make(this)
-!!$    call update(this)
-!!$    call assert(check(this).EQ.0,msg='template object was not updated properly.')
-!!$    call kill(this)
-!!$    
-!!$    write(*,*)'test template can be resetted'
-!!$    call make(this)
-!!$    call reset(this)
-!!$    call assert(check(this).EQ.0,msg='template object was not resetted properly.')
-!!$    call kill(this)
-!!$    
-!!$    
+    !----- additional kill tests -----
+    write(*,*)'test kill cleans up dynamic memory and pointers'
+    !call assert(.not.associated(this%PPP),msg='template pointer PPP remains associated after killed.')
 
-    !additional kill tests
 
-    !additional display tests
+    !----- additional status tests -----
 
-    !additional backup tests
 
-    !additional update tests
+    !----- additional backup tests -----
+    write(*,*)'test attributes are stored properly stored in backup file'
+    call make(this)
+    !manually set template attributes to non-default values
+    call system('rm -f template.tmpfile')
+    call backup(this,file='template.tmpfile')
+    call kill(this)
+    call make(this,file='template.tmpfile')
+    !assert non default attribute values are conserved
+    call kill(this)    
 
-    !additional reset tests
     
+    !----- additional update tests -----
+
+    
+    !----- additional reset tests -----
+    
+
     write(*,*)'ALL template TESTS PASSED!'
   end subroutine template_test
   !-----------------------------------------

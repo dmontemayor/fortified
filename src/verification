@@ -2,40 +2,58 @@
 !This process should ensure object compatiblity. 
 !---------------------------------------------------------------------
 write(*,*)'Begin Verification Process.'
-    write(*,*)'test object can be checked prior to being made.'
-    call assert(check(this).EQ.1,msg='check object does not return 1 prior to make.')
+    write(*,*)'test object can be checked.'
+    call assert(check(this).EQ.check(this),msg='object cannot be checked')
 
-    write(*,*)'test object can be created.'
+    write(*,*)'test check returns error prior to object being made.'
+    call assert(check(this).EQ.1,msg='check does not return 1 prior to make.')
+
+    write(*,*)'test made object passes check.'
     call make(this)
-    call assert(check(this).EQ.0,msg='object was not created properly.')
-    write(*,*)'test object kill method sets initiallization flag to false.'
+    call assert(check(this).EQ.0,msg='object was not made properly.')
+
+    write(*,*)'test killed object does not pass check.'
     call kill(this)
-    call assert(.not.this%initialized,msg='object remains initialized after killed.')
+    call assert(check(this).EQ.1,msg='object was not killed properly.')
 
-    write(*,*)'test object can be backuped'
+    write(*,*)'test make method sets initiallization flag to true.'
+    this%initialized=.false.
     call make(this)
-    call system('rm -f testobject.tmpfile')
-    call backup(this,file='testobject.tmpfile')
-    call assert('testobject.tmpfile',msg='object backup file was not created.')
-    call system('rm -f testobject.tmpfile')
+    call assert(this%initialized,msg='make does not initialize object.')
+    call kill(this)
+
+    write(*,*)'test kill method sets initiallization flag to false.'
+    call make(this)
+    this%initialized=.true.
+    call kill(this)
+    call assert(.not.this%initialized,msg='kill does not un-initialize object.')
+
+    write(*,*)'test backup method creates a backup file.'
+    call make(this)
+    call system('rm -f object.tmpfile')
+    call backup(this,file='object.tmpfile')
+    call assert('object.tmpfile',msg='backup file was not created.')
+    call system('rm -f object.tmpfile')
     call kill(this)
 
     write(*,*)'test object can be created with backup file'
     call make(this)
-    call backup(this,file='testobject.tmpfile')
+    call backup(this,file='object.tmpfile')
     call kill(this)
-    call make(this,file='testobject.tmpfile')
+    call make(this,file='object.tmpfile')
     call assert(check(this).EQ.0,msg='object was not created properly from backupfile.')
-    call system('rm -f testobject.tmpfile')
+    call system('rm -f object.tmpfile')
     
-    write(*,*)'test savefile begins with object name in first line'
+    write(*,*)'test backup file begins with object name in first line'
     call make(this)
-    call system('rm -f testobject.tmpfile')
-    call backup(this,file='testobject.tmpfile')
-    open(123,file='testobject.tmpfile')
-    read(123,*)string
+    call system('rm -f object.tmpfile')
+    call backup(this,file='object.tmpfile')
+    unit=newunit()
+    open(unit,file='object.tmpfile')
+    read(unit,*)string
+    close(unit)
     call assert(trim(string).EQ.trim(this%name),msg='save file does not have object name on first line.')
-    call system('rm -f testobject.tmpfile')
+    call system('rm -f object.tmpfile')
     call kill(this)
     
     write(*,*)'test object can be updated'
@@ -49,6 +67,17 @@ write(*,*)'Begin Verification Process.'
     call reset(this)
     call assert(check(this).EQ.0,msg='object was not reset properly.')
     call kill(this)
+
+    write(*,*)'test status returns a string.'
+    call make(this)
+    call assert(len(trim(status(this))).GE.0,msg='status does not return a string.')
+    call kill(this)
+
+    write(*,*)'test discribe returns a text message'
+    call make(this)
+    call assert(len(trim(describe(this))).GE.0,msg='describe does not return a string.')
+    call kill(this)
+
 
 !---------------------------------------------------------------------
 write(*,*)'Verification Passed!'
