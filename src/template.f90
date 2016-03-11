@@ -23,15 +23,14 @@ module template_class
      logical::initialized=.false.
      character(len=label)::name='template'
      
-!!$     type(primitive)::primitive
-     !**********     Enter your derived type's attributes here     **********!
+     !***************      Enter template attributes here     ***************!
 
 
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
-     ! type(primitive)::primitive2                     !an extra primitive   !
-     ! integer(short)::label                           !a short integer      !
+     ! type(primitive)::primitive                      !an other type        !
+     ! integer(short)::ierr                            !a short integer      !
      ! integer(long)::ndim                             !a long integer       !
      ! real(double)::var                               !a real variable      !
      ! complex(double)::zed                            !a complex variable   !
@@ -60,7 +59,7 @@ module template_class
      module procedure template_describe
   end interface
   
-  !> Backups the current state of the template object.
+  !> Returns the current state of the template object.
   interface backup
      module procedure template_backup
   end interface
@@ -83,7 +82,7 @@ module template_class
 contains
   !======================================================================
   !> \brief Retruns a description of template as a string.
-  !> \param[in] this is the template object.
+  !> \param[in] THIS is the template object.
   !======================================================================
   character(len=comment) function template_describe(this)
     type(template),intent(in)::this
@@ -94,12 +93,12 @@ contains
   end function template_describe
 
   !======================================================================
-  !> \brief Creates and initializes the template object.
-  !> \param this is the template object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously backupd template file.
-!!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
+  !> \brief Creates and initializes template.
+  !! \param THIS is the template object.
+  !! \param[in] FILE is an optional string containing the name of a
+  !! previously backuped template file.
   !=====================================================================
-  subroutine template_init(this,file)!,param)
+  subroutine template_init(this,file)
     use filemanager
     use testing_class
     type(template),intent(inout)::this
@@ -113,14 +112,14 @@ contains
     !set scalar parameters
     if(present(file))then 
        
-       !check input file    
+       !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
     
        !check if file is of type template
        read(unit,*)header
-       call assert(trim(header).EQ.'template',msg='template_init: bad input file header in file'//file)
+       call assert(trim(header).EQ.this%name,msg='template_init: bad input file header in file'//file)
        
        !read scalar parameters
        !read(unit,*)this%XXX
@@ -131,19 +130,19 @@ contains
     end if
 
     !allocate dynamic arrays
-    !if(associated(this%XXX))nullify(this%XXX)
-    !allocate(this%XXX(0:thi%YYY-1))
+    !if(associated(this%PPP))nullify(this%PPP)
+    !allocate(this%PPP(0:this%XXX-1))
 
     !set dynamic arrays
     if(present(file))then 
        !read dynamic arrays
-       !read(unit,*)(this%XXX(i),i=0,this%YYY-1)
+       !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
     else
        !set default array values
-       !this%XXX=YYY
+       !this%PPP=YYY
     end if
     
-    !finished reading all attributes - now close store file
+    !finished reading all attributes - now close backup file
     if(.not.fileisopen)close(unit)
 
     !declare initialization complete
@@ -153,32 +152,24 @@ contains
 
   !======================================================================
   !> \brief Destroys the template object.
-  !> \param this is the template object to be destroyed.
+  !> \param THIS is the template object to be destroyed.
   !====================================================================
   subroutine template_kill(this)
     type(template),intent(inout)::this
  
-!!$    call note('Begin template_kill.')
-!!$
-!!$    !kill the primitive
-!!$    call kill(this%primitive)
-!!$
-!!$
-!!$    !*******************       Nullify all pointers    **********************!
-!!$
-!!$ 
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !******        Example - cleanup matrix attribute 'matrix'       ********!
-!!$    !                                                                        !
-!!$    ! if(associated(this%matrix))nullify(this%matrix)                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$
+    !*******************       Nullify all pointers    **********************!
+
+ 
+
+
+    !************************************************************************!
+    !========================================================================!
+    !******        Example - cleanup matrix attribute 'matrix'       ********!
+    !                                                                        !
+    ! if(associated(this%matrix))nullify(this%matrix)                        !
+    !                                                                        !
+    !************************************************************************!
+
     !un-initialized template object
     this%initialized=.false.
 
@@ -186,78 +177,58 @@ contains
 
   !======================================================================
   !> \brief Computes the current state of template object.
-  !> \param this is the template  object to be updated.
+  !> \param THIS is the template  object to be updated.
   !======================================================================
   subroutine template_update(this)
     type(template),intent(inout)::this
 
-!!$    call Note('Begin template_update.')
-!!$    
-!!$    !Primitives usually dont get updated
-!!$    !    call update(this%primitive)    
-!!$
-!!$
-!!$    !******   Recompute any attribute values that might have evolved   ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !*****    Example - attribute 'var' is always equall to the trace   *****!
-!!$    !                   of the primitive's denisity                          !
-!!$    !                                                                        !
-!!$    ! this%var=0._double                                                     !
-!!$    ! do istate=1,this%primitive%nstate                                             !
-!!$    !    this%var=this%var+this%primitive%den(istate,istate)                        !
-!!$    ! end do                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('template_update: failed final check!')
+    !******   Recompute any attribute values that might have evolved   ******!
+
+
+
+
+
+    !************************************************************************!
+    !========================================================================!
+    !*****    Example - attribute 'var' is always equall to the trace   *****!
+    !                   of the primitive's denisity                          !
+    !                                                                        !
+    ! this%var=0._double                                                     !
+    ! do istate=1,this%primitive%nstate                                      !
+    !    this%var=this%var+this%primitive%den(istate,istate)                 !
+    ! end do                                                                 !
+    !                                                                        !
+    !************************************************************************!
 
   end subroutine template_update
 
   !======================================================================
   !> \brief Re-initiallizes the template object.
-  !> \param this is the template  object to be re-initialized.
+  !> \param THIS is the template  object to be re-initialized.
   !======================================================================
   subroutine template_reset(this)
     type(template),intent(inout)::this
-!!$    integer(long)::istate,jstate
-!!$
-!!$    call Note('Begin template_reset.')
-!!$
-!!$    !reset the primitive
-!!$    call reset(this%primitive)
-!!$
-!!$    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********    Example - attribute 'var' is always initially a     ********!
-!!$    !                      Gaussian random number                            !
-!!$    !                                                                        !
-!!$    ! this%var=gran()                                                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !update now that we have changed some values and do a final check
-!!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('template_reset: failed final check!')
+
+    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
+
+
+
+
+    !************************************************************************!
+    !========================================================================!
+    !********    Example - attribute 'var' is always initially a     ********!
+    !                      Gaussian random number                            !
+    !                                                                        !
+    ! this%var=gran()                                                        !
+    !                                                                        !
+    !************************************************************************!
 
   end subroutine template_reset
 
   !======================================================================
   !> \brief Backups the current state of the template object to file.
-  !> \param[in] this is the template  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \param[in] THIS is the template  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
   subroutine template_backup(this,file)
     use filemanager
@@ -272,56 +243,41 @@ contains
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
 
-!!$    logical::usedunit      
-!!$
-!!$    call note('Begin template_backup.')
-!!$    call Note('input file= '//file)
-!!$    if(check(this).NE.0)then
-!!$       call warn('template_backup: failed check.','not saving object.')
-!!$    else
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open backup file
-!!$       open(unit,file=file)
-!!$
        !always write the data type on the first line
        write(unit,*)'template'
-!!$
-!!$       !backup the primitive
-!!$       call backup(this%primitive,file//'.primitive')
-!!$
-!!$       !write the location of the primitive
-!!$       write(unit,*)quote(file//'.primitive')
-!!$
-!!$       !******      Backup below all the derived type's attributes       ******!
-!!$       !******         in the order the MAKE command reads them         ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !******      Example - Backup an attribute called 'var  '    ***********!
-!!$       ! write(unit,*)this%var                                               !
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
-!!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
-!!$       !*********************************************************************!
-!!$
-!!$
-!!$       !finished saving all attributes - now close backup file
+
+       !******      Backup below all the derived type's attributes       ******!
+       !******         in the order the MAKE command reads them          ******!
+
+
+
+
+
+       !*********************************************************************!
+       !=====================================================================!
+       !******              Example - Backup an object            ***********!
+       ! call backup(this%primitive,file//'.primitive')                      !
+       ! write(unit,*)quote(file//'.primitive')!write the object location    !
+       !*********************************************************************!
+       !=====================================================================!
+       !******        Example - Backup a sacalar attribute             ******!
+       ! write(unit,*)this%var                                               !
+       !*********************************************************************!
+       !=====================================================================!
+       !***       Example - Backup an NxM matrix attribute                ***!
+       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
+       !*********************************************************************!
+
+
+       !finished saving all attributes - now close backup file
        close(unit)
-!!$    end if
-  end subroutine template_backup
+
+     end subroutine template_backup
 
   !======================================================================
   !> \brief Retrun the current state of template as a string.
-  !> \param[in] this is the template object.
-  !> \param[in] msg is an optional string message to annotate the status.
+  !> \param[in] THIS is the template object.
+  !> \param[in] MSG is an optional string message to annotate the status.
   !======================================================================
   character(len=line) function template_status(this,msg)
     type(template),intent(in)::this
@@ -334,7 +290,7 @@ contains
 
  !======================================================================
   !> \brief Checks the template object.
-  !> \param[in] this is the template object to be checked.
+  !> \param[in] THIS is the template object to be checked.
   !> \return 0 if all checks pass or exit at first failed check and returm non zero.
   !> \remark Will exit after first failed check.
   !======================================================================
@@ -346,19 +302,21 @@ contains
     template_check=0
 
     !check that object is initialized
-    call assert(this%initialized,msg='template_check: template object not initialized.',iostat=template_check)
+    call assert(this%initialized,msg='template_check: template object not initialized.'&
+         ,iostat=template_check)
     if(template_check.NE.0)return
 
-    !check the primitive
-    !if(check(this%primitive))call stop('template_check: failed primitive check!')
+
+    !********   Check all attributes are within acceptable values    *******!
 
 
-    !********    Check all attributes are within acceptable values    *******!
+    !***********************************************************************!
 
 
-
-
-
+    !=======================================================================!
+    !**********   Example - check an object attribute 'primitive'  *********!
+    !call assert(check(this%primitive).EQ.0,msg='template_check: primitive& !
+    !& sub-object failed check',iostat=template_check)                      !
     !***********************************************************************!
     !=======================================================================!
     !**********     Example - check an integer attribute 'ndim'    *********!

@@ -8,9 +8,10 @@ subroutine coretests
 
   integer(short)::ierr
   logical::pass
-  real(single)::dum_sing
-  real(double)::dum_doub
 
+  real(double)::x
+  real(double),pointer::ptr(:) 
+  
   !-----LOGICAL ASSERT TESTS-----
 
   write(*,*)'checking logical assert can be called with only a condition.....'
@@ -186,66 +187,87 @@ subroutine coretests
   call system('rm -f coretest.tmpfile')
 
   
+  !-----SHORT INT CHECK TESTS-----
+  write(*,*)'test check short int returns 0 for the integer 1.....' 
+  if(check(1_short).NE.0)then
+     write(*,*)'check short int does not return 0 for the integer 1'
+     stop
+  end if
+  write(*,*)'test check short int returns -1 for huge numbers.....' 
+  if(check(Huge(1_short)).NE.-1)then
+     write(*,*)'check short int does not return -1 for huge numbers'
+     stop
+  end if
+  write(*,*)'test check short int returns -1 for negative huge numbers.....' 
+  if(check(-Huge(1_short)).NE.-1)then
+     write(*,*)'check short int does not return -1 for negative huge numbers'
+     stop
+  end if
+  !-----LONG INT CHECK TESTS-----
+  write(*,*)'test check long int returns 0 for the integer 1.....' 
+  if(check(1_long).NE.0)then
+     write(*,*)'check long int does not return 0 for the integer 1'
+     stop
+  end if
+  write(*,*)'test check long int returns -1 for huge numbers.....' 
+  if(check(Huge(1_long)).NE.-1)then
+     write(*,*)'check long int does not return -1 for huge numbers'
+     stop
+  end if
+  write(*,*)'test check long int returns -1 for negative huge numbers.....' 
+  if(check(-Huge(1_long)).NE.-1)then
+     write(*,*)'check long int does not return -1 for negative huge numbers'
+     stop
+  end if
+
+  !-----DOUBLE REAL CHECK TESTS-----
+  write(*,*)'test check double real returns 0 for the value 1.0.....' 
+  if(check(1.0_double).NE.0)then
+     write(*,*)'check double real does not return 0 for the value 1.0'
+     stop
+  end if
+  write(*,*)'test check double real returns -1 for huge numbers.....' 
+  if(check(Huge(1.0_double)).NE.-1)then
+     write(*,*)'check double real does not return -1 for huge numbers'
+     stop
+  end if
+  write(*,*)'test check double real returns -1 for negative huge numbers.....' 
+  if(check(-Huge(1.0_double)).NE.-1)then
+     write(*,*)'check double real does not return -1 for negative huge numbers'
+     stop
+  end if
+  write(*,*)'test check double real returns -1 for infinity.....' 
+  x=0._double
+  x=1/x
+  if(check(x).NE.-1)then
+     write(*,*)'check double real does not return -1 for infinity'
+     stop
+  end if
+ 
+  !-----DOUBLE REAL POINTER CHECK TESTS-----
+  write(*,*)'test check double real pointer returns 0 for associated pointer.....'
+  if(associated(ptr))nullify(ptr)
+  allocate(ptr(0:1))
+  if(check(ptr).NE.0)then
+     write(*,*)'check double real pointer does not return 0 for associated pointer'
+     stop
+  end if
+  write(*,*)'test check double real pointer returns -1 for unassociated pointer.....'
+  if(associated(ptr))nullify(ptr)
+  if(check(ptr).NE.-1)then
+     write(*,*)'check double real pointer does not return -1 for unassociated pointer'
+     stop
+  end if
+  write(*,*)'test check double real pointer returns -1 for poor behaved elements.....'
+  if(associated(ptr))nullify(ptr)
+  allocate(ptr(0:1))
+  ptr(:)=0._double
+  ptr(:)=1/ptr
+  if(check(ptr).NE.-1)then
+     write(*,*)'check double real pointer does not return -1 for poor behaved elements'
+     stop
+  end if
   
-!!$  !-----SINGLE REAL ASSERT TESTS-----
-!!$  write(*,*)'checking single real assert can be called with only two single reals.....'
-!!$  call assert(1_single,1_single)
-!!$
-!!$  write(*,*)'checking single real assert exits gracefully for not equal condition.....'
-!!$  call assert(1_single,2_single,iostat=ierr)
-!!$
-!!$  write(*,*)'checking single real assert writes msg for not equal condition.....'
-!!$  write(*,*)'--------------------------------------------------------------'
-!!$  call assert(1_single,2_single,msg='single real assert is writting you a message.',iostat=ierr)
-!!$  write(*,*)'--------------------------------------------------------------'
-!!$  write(*,*)'Do you see a message in between the lines above? Answer true or false.'
-!!$  read(*,*)pass
-!!$  if(.not.pass)then
-!!$     write(*,*)'User cannot see a message passed by single real assert.'
-!!$     stop
-!!$  end if
-!!$
-!!$  write(*,*)'checking single real assert does not write error message for equal condition.....'
-!!$  call assert(1_single,1_single,msg='Error: single real assert writes error message for equal condition.')
-!!$  
-!!$  write(*,*)'checking single real assert iostat returns 0 for equal condition.....' 
-!!$  call assert(1_single,1_single,iostat=ierr)
-!!$  if(ierr.NE.0)then
-!!$     write(*,*)'single real assert: iostat option does not return 0 for equal condition.'
-!!$     stop
-!!$  end if
-!!$
-!!$  write(*,*)'checking single real assert iostat returns 1 for not equal condition.....' 
-!!$  call assert(1_single,2_single,iostat=ierr)
-!!$  if(ierr.NE.1)then
-!!$     write(*,*)'single real assert: iostat option does not return 1 for not equal condition'
-!!$     stop
-!!$  end if
-!!$
-!!$  write(*,*)'checking single real assert returns -1 for huge numbers.....' 
-!!$  call assert(Huge(1_single),Huge(1_single),iostat=ierr)
-!!$  if(ierr.NE.-1)then
-!!$     write(*,*)'single real assert: iostat option does not return -1 for huge numbers'
-!!$     stop
-!!$  end if
-
-
-
-!!$  write(*,*)'checking single real assert returns 0 when two not equal numbers are within tolerance.....'
-!!$  call assert(1_single,2_single,1_single,iostat=ierr)
-!!$  if(ierr.NE.0)then
-!!$     write(*,*)'single real assert: does not return 0 when two not equal numbers are within tolerance'
-!!$     stop
-!!$  end if
-
-!!$  write(*,*)'checking single real assert returns 1 when two not equal numbers are not within tolerance.....'
-!!$  call assert(-1_single,1_single,1_single,iostat=ierr)
-!!$  if(ierr.NE.1)then
-!!$     write(*,*)'single real assert: does not return 1 when two not equal numbers are not within tolerance'
-!!$     stop
-!!$  end if
-
-
   write(*,*) 'ALL CORE TESTS PASSED!'
 end subroutine coretests
 !-----------------------
