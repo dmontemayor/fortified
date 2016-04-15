@@ -3,14 +3,22 @@ subroutine coretests
   use testing_class
   use omp_lib
   use filemanager
-  
+  use math
+
   implicit none
 
   integer(short)::ierr
   logical::pass
 
   real(double)::x
+  complex(double)::z
   real(double),pointer::ptr(:) 
+  complex(double),pointer::zptr(:) 
+
+  integer(long),parameter::npt=128
+  real(double)::dx=0.05,Eng
+  real(double),dimension(0:npt-1)::psi,grid,array1,array2,phi
+  integer(long)::i,nnode
   
   !-----LOGICAL ASSERT TESTS-----
 
@@ -261,13 +269,163 @@ subroutine coretests
   write(*,*)'test check double real pointer returns -1 for poor behaved elements.....'
   if(associated(ptr))nullify(ptr)
   allocate(ptr(0:1))
-  ptr(:)=0._double
-  ptr(:)=1/ptr
+  x=0._double
+  ptr(:)=1/x
   if(check(ptr).NE.-1)then
      write(*,*)'check double real pointer does not return -1 for poor behaved elements'
      stop
   end if
   
+  !-----DOUBLE COMPLEX POINTER CHECK TESTS-----
+  write(*,*)'test check double complex pointer returns 0 for associated pointer.....'
+  if(associated(zptr))nullify(zptr)
+  allocate(zptr(0:1))
+  if(check(zptr).NE.0)then
+     write(*,*)'check double complex pointer does not return 0 for associated pointer'
+     stop
+  end if
+  write(*,*)'test check double complex pointer returns -1 for unassociated pointer.....'
+  if(associated(zptr))nullify(zptr)
+  if(check(zptr).NE.-1)then
+     write(*,*)'check double complex pointer does not return -1 for unassociated pointer'
+     stop
+  end if
+  write(*,*)'test check double complex pointer returns -1 for poor behaved elements.....'
+  if(associated(zptr))nullify(zptr)
+  allocate(zptr(0:1))
+  z=(0._double,0._double)
+  zptr(:)=(0.,1.)/z
+  if(check(zptr).NE.-1)then
+     write(*,*)'check double complex pointer does not return -1 for poor behaved elements'
+     stop
+  end if
+  
+  !check numerov's method
+  !--------------------------------
+  !harmonic oscillator constants
+  !hbar=1
+  !omega=1
+  !mass=1
+  !En=hbar*omega(n+1/2)
+  !V(x)=1/2*mass*omega^2*x^2
+  !--------------------------------
+  write(*,*)'test numerov solution to ground state harmonic oscillator obeys proper boundary conditions.....'
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=1.0_double-grid*grid !energy diferrence =2*mass(E-V(x))/hbar=2E-2V
+  array2=0.0_double           !independent function =0
+  psi=numerov(dx,array1,array2)
+  if(abs(psi(0)).GT.epsilon(1.0_double))then
+     write(*,*)'numerov solution does not equal zero for first point'
+     stop
+  end if
+  !write(*,*)psi(npt-1),dx**4
+  if(abs(psi(npt-1)).GT.dx**4)then
+     write(*,*)'numerov solution final point error is greater than dx**4'
+     stop
+  end if
+
+  write(*,*)'test numerov solution to first excited state harmonic oscillator has one node.....'
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=3.0_double-grid*grid !energy diferrence =2*mass(E-V(x))/hbar=2E-2V
+  array2=0.0_double           !independent function =0
+  psi=numerov(dx,array1,array2)
+  !count number of nodes
+  nnode=0
+  do i=2,npt-1
+     if(psi(i)/psi(i-1).LT.0)nnode=nnode+1
+  end do
+  if(nnode.NE.1)then
+     write(*,*)'numerov solution does not have only one node'
+     stop
+  end if
+
+  !test solvestate
+  write(*,*)'test solvestate returns particle in a box ground state energy.....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=1 for grnd state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  call solvestate(N=0,E=Eng,V=array1,mass=1.0_double,dx=dx)
+  x=0.5_double*(pi/(npt*dx))**2
+  !write(*,*)Eng,x,abs((Eng-x)/x)
+  x=(Eng-x)/x !relative error
+  if(abs(x).GT.2E-2)then
+     write(*,*)'solvestate energy relative error is greater than .02 for grnd state particle in a box'
+     stop
+  end if
+
+  write(*,*)'test solvestate returns normalized particle in a box 1st excited state wave function.....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=1 for grnd state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  call solvestate(N=1,E=Eng,wf=psi,V=array1,mass=1.0_double,dx=dx)
+  call solvestate(N=1,E=Eng,wf=phi,V=array1,mass=1.0_double,dx=dx)
+  x=0.0_double
+  do i=0,npt-1
+     x=x+psi(i)*phi(i)
+  end do
+  x=x*dx
+  !write(*,*)x
+  if(abs(x-1.0_double).GT.2E-2)then
+     write(*,*)'solvestate normalization is greater than .02 for 1th excited state particle in a box'
+     stop
+  end if
+
+  write(*,*)'test solvestate returns orthogonal particle in a box 1st and 5th excited state wavefunctions.....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=1 for grnd state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  call solvestate(N=1,E=Eng,wf=psi,V=array1,mass=1.0_double,dx=dx)
+  call solvestate(N=5,E=Eng,wf=phi,V=array1,mass=1.0_double,dx=dx)
+  x=0.0_double
+  do i=0,npt-1
+     x=x+psi(i)*phi(i)
+  end do
+  x=x*dx
+  !write(*,*)x
+  if(abs(x).GT.2E-2)then
+     write(*,*)'solvestate orthogonalization for particle in a box 1st and 5th&
+          excited state wavefunctions is greater than 2%'
+     stop
+  end if
+
+  !test string module
+
   write(*,*) 'ALL CORE TESTS PASSED!'
 end subroutine coretests
 !-----------------------

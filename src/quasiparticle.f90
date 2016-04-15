@@ -73,8 +73,8 @@ module quasiparticle_class
 
 contains
   !======================================================================
-  !> \brief Retruns a description of template as a string.
-  !> \param[in] this is the template object.
+  !> \brief Retruns a description of quasiparticle as a string.
+  !> \param[in] this is the quasiparticle object.
   !======================================================================
   character(len=comment) function quasiparticle_describe(this)
     type(quasiparticle),intent(in)::this
@@ -183,66 +183,84 @@ contains
   subroutine quasiparticle_update(this)
     type(quasiparticle),intent(inout)::this
 
-!!$    call Note('Begin quasiparticle_update.')
-!!$    
-!!$    !Primitives usually dont get updated
-!!$    !    call update(this%primitive)    
-!!$
-!!$
-!!$    !******   Recompute any attribute values that might have evolved   ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !*****    Example - attribute 'var' is always equall to the trace   *****!
-!!$    !                   of the primitive's denisity                          !
-!!$    !                                                                        !
-!!$    ! this%var=0._double                                                     !
-!!$    ! do istate=1,this%primitive%nstate                                             !
-!!$    !    this%var=this%var+this%primitive%den(istate,istate)                        !
-!!$    ! end do                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('quasiparticle_update: failed final check!')
+    !call Note('Begin quasiparticle_update.')
+    
+    !Primitives usually dont get updated
+    !    call update(this%primitive)    
+
+
+    !******   Recompute any attribute values that might have evolved   ******!
+
+
+
+
+
+    !************************************************************************!
+    !========================================================================!
+    !*****    Example - attribute 'var' is always equall to the trace   *****!
+    !                   of the primitive's denisity                          !
+    !                                                                        !
+    ! this%var=0._double                                                     !
+    ! do istate=1,this%primitive%nstate                                             !
+    !    this%var=this%var+this%primitive%den(istate,istate)                        !
+    ! end do                                                                 !
+    !                                                                        !
+    !************************************************************************!
+
+    !Usually leave out final check before we exit
+    !if(check(this).EQ.1)call stop('quasiparticle_update: failed final check!')
 
   end subroutine quasiparticle_update
 
   !======================================================================
   !> \brief Re-initiallizes the quasiparticle object.
-  !> \param this is the quasiparticle  object to be re-initialized.
+  !> \param THIS is the quasiparticle  object to be re-initialized.
+  !> \param STATE is an optional integer when 0 will deallocate all dynamic
+  !>        memory and return the object in an un-initiallized state.
+  !> \remark When STATE is not present dynamic memory will be re-allocated
   !======================================================================
-  subroutine quasiparticle_reset(this)
+  subroutine quasiparticle_reset(this,state)
     type(quasiparticle),intent(inout)::this
-!!$    integer(long)::istate,jstate
-!!$
-!!$    call Note('Begin quasiparticle_reset.')
-!!$
-!!$    !reset the primitive
-!!$    call reset(this%primitive)
-!!$
-!!$    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********    Example - attribute 'var' is always initially a     ********!
-!!$    !                      Gaussian random number                            !
-!!$    !                                                                        !
-!!$    ! this%var=gran()                                                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !update now that we have changed some values and do a final check
-!!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('quasiparticle_reset: failed final check!')
+    integer(long),intent(in),optional::STATE
+    logical::nullstate
+
+    nullstate=.false.
+    if(present(state).and.state.EQ.0)nullstate=.true.
+
+
+    !memory management
+    if(nullstate)then
+       !nullify all pointers
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !******************************************************************
+       
+       !kill all objects
+       !**** example **********
+       !call kill(this%object)
+       !***********************
+       
+       !un-initialized quasiparticle object
+       this%initialized=.false.
+    else
+       !reallocate all dynamic memory
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !******                  then reallocate memory                ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !allocate(this%PPP(0:this%npt-1))
+       !******************************************************************
+       
+       !reset all objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+    end if
+
+    !Reset any attributes to satisfy re-initiation conditions
+    !**********  Example - attribute 'var' is always initially a     ********
+    !**********            Gaussian random number                    ******** 
+    ! this%var=gran()
+    !************************************************************************
 
   end subroutine quasiparticle_reset
 

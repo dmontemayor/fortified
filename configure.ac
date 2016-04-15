@@ -8,6 +8,7 @@ AC_PREREQ([2.63])
 AC_INIT([fortified], [0.0.0], [dmontemayor@qc.cuny.edu], [fortified-gnu])
 
 # Check for source files
+AC_CONFIG_SRCDIR([src/string.f90])
 AC_CONFIG_SRCDIR([src/verification])
 AC_CONFIG_SRCDIR([src/filemanager.f90])
 AC_CONFIG_SRCDIR([src/testing.f90])
@@ -23,8 +24,9 @@ AC_CONFIG_SRCDIR([src/testdriver3.in])
 AC_CONFIG_SRCDIR([src/testdriver4.in])
 AC_CONFIG_SRCDIR([src/testdrivercap.in])
 
-# auxilary modules
+# auxilary files
 AC_CONFIG_SRCDIR([src/MDutils.f90])
+AC_CONFIG_SRCDIR([src/atomicunits.f90])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -83,6 +85,7 @@ AC_CONFIG_COMMANDS([create_cann_driver],[cp $ac_top_srcdir/src/cann_driver.f90 s
 AC_CONFIG_SRCDIR([src/quasiparticle.f90])
 AC_CONFIG_SRCDIR([src/ham.f90])
 AC_CONFIG_SRCDIR([src/wavelet.f90])
+AC_CONFIG_SRCDIR([src/metiu.f90])
  
 # nonadmd data files
 #AC_CONFIG_SRCDIR([data/XXXX.f90])

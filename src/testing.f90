@@ -22,13 +22,94 @@ module testing_class
      module procedure check_longint
      module procedure check_doublereal
      module procedure check_doublerealpointer
+     module procedure check_doublecomplex
+     module procedure check_doublecomplexpointer
+     module procedure check_doublecomplexpointermatrix
+     module procedure check_doublerealpointermatrix
   end interface check
 
-
-  
 contains
+  integer(short) function check_doublerealpointermatrix(ptr)
+    real(double),pointer,intent(in)::ptr(:,:)
+    real(double)::targ(size(ptr,1),size(ptr,2))
+    integer(short)::ierr(size(ptr,1),size(ptr,2))
+    integer(long)::i,j
+    !initiate with no problems found
+    check_doublerealpointermatrix=0
+    !check if pointer points to something
+    if(.not.associated(ptr))then
+       check_doublerealpointermatrix=-1
+       return
+    end if
+    !check that elements are well behaved
+    targ=ptr
+    ierr=0
+    do i=1,size(ptr,1)
+       do j=1,size(ptr,2)
+          ierr(i,j)=check(targ(i,j))
+       end do
+    end do
+    if(any(ierr.NE.0))then
+       check_doublerealpointermatrix=-1
+    end if
+    return
+  end function check_doublerealpointermatrix
+!-------------------------
+  integer(short) function check_doublecomplexpointermatrix(ptr)
+    complex(double),pointer,intent(in)::ptr(:,:)
+    complex(double)::targ(size(ptr,1),size(ptr,2))
+    integer(short)::ierr(size(ptr,1),size(ptr,2))
+    integer(long)::i,j
+    !initiate with no problems found
+    check_doublecomplexpointermatrix=0
+    !check if pointer points to something
+    if(.not.associated(ptr))then
+       check_doublecomplexpointermatrix=-1
+       return
+    end if
+    !check that elements are well behaved
+    targ=ptr
+    ierr=0
+    do i=1,size(ptr,1)
+       do j=1,size(ptr,2)
+          ierr(i,j)=check(targ(i,j))
+       end do
+    end do
+    if(any(ierr.NE.0))then
+       check_doublecomplexpointermatrix=-1
+    end if
+    return
+  end function check_doublecomplexpointermatrix
+!-------------------------
+  integer(short) function check_doublecomplexpointer(ptr)
+    complex(double),pointer,intent(in)::ptr(:)
+    complex(double)::targ(size(ptr))
+    integer(short)::ierr(size(ptr))
+    integer(long)::i
+    !initiate with no problems found
+    check_doublecomplexpointer=0
+    !check if pointer points to something
+    if(.not.associated(ptr))then
+       check_doublecomplexpointer=-1
+       return
+    end if
+    !check that elements are well behaved
+    targ=ptr
+    ierr=0
+    do i=1,size(ptr)
+       ierr(i)=check(targ(i))
+    end do
+    if(any(ierr.NE.0))then
+       check_doublecomplexpointer=-1
+    end if
+    return
+  end function check_doublecomplexpointer
+!-------------------------
   integer(short) function check_doublerealpointer(ptr)
     real(double),pointer,intent(in)::ptr(:)
+    real(double)::targ(size(ptr))
+    integer(short)::ierr(size(ptr))
+    integer(long)::i
     !initiate with no problems found
     check_doublerealpointer=0
     !check if pointer points to something
@@ -36,22 +117,30 @@ contains
        check_doublerealpointer=-1
        return
     end if
-    !!check that elements are well behaved
-    !iptr(:)=check(ptr(:))
-    !forall (i=1:size(ptr)) iptr(i)=check(ptr(i))
-    !if(any(iptr))
-!!$    !check if real is huge
-!!$    if(abs(a).GE.huge(a))then
-!!$       check_doublerealpointer=-1
-!!$       return
-!!$    end if
-!!$    !check if real is NaN
-!!$    if(a.NE.a)then
-!!$       check_doublerealpointer=-1
-!!$       return
-!!$    end if
+    !check that elements are well behaved
+    targ=ptr
+    ierr=0
+    do i=1,size(ptr)
+       ierr(i)=check(targ(i))
+    end do
+    if(any(ierr.NE.0))then
+       check_doublerealpointer=-1
+    end if
     return
   end function check_doublerealpointer
+!-------------------------
+  integer(short) function check_doublecomplex(a)
+    complex(double),intent(in)::a
+    !initiate with no problems found
+    check_doublecomplex=0
+    !check real component
+    check_doublecomplex=check(real(a))
+    if(check_doublecomplex.NE.0)return
+    !check imaginary component
+    check_doublecomplex=check(aimag(a))
+    if(check_doublecomplex.NE.0)return
+    return
+  end function check_doublecomplex
 !-------------------------
   integer(short) function check_doublereal(a)
     real(double),intent(in)::a

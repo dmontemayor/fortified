@@ -1,15 +1,37 @@
 !>\brief
 !! template class
 !!\details
-!! Use this template to help you start building a new object and methods.
-!! Do not remove the \a make, \a kill, \a status, \a backup, \a update, \a reset, \a check, and \a test methods.
+!! DO NOT OVERWRITE THIS FILE. 
+!! Make a copy and title it \a myclass.f90
+!! where 'myclass' is your choice one-word title for your new class.
+!! Then replace instances of the string 'template' with the same
+!! one-word title 'myclass' you chose before you begin building your class.
+!!
+!! Use this template to help you start building a new object.
+!! Do not remove the \a make, \a kill, \a status, \a backup, \a update,
+!! \a reset, \a check, and \a test methods.
 !! These methods must be present for the class to integrate properly.
-!! You can leave these methods blank if you do not want those particular funcitionalities, although, this is not advised.
-!! Follow the examples commented in the source code to define the various attributes of your class.
-!! DO NOT OVERWRITE THIS FILE. Make a copy and title it \a myclass.f90 where 'myclass' is your choice
-!! one-word title for your new class.
-!! Finally, Replace instances of the string 'template' in this template with the same
-!! one-word title 'myclass' you chose.
+!! Augment these methods to ensure the new object behaves properly.
+!! These methods will operate on the object attributes which need to be
+!! defined in the template type.
+!! Commented examples are provided to help build the object class.
+!!
+!! A good start is to compose a description of the class and enter it
+!! in the description method. Throuought development ensure this
+!! description acurately represents the object as it will be the primary
+!! resource used by others to understand the object and how to use it.
+!!
+!! Development should be test driven. Motivated by the object description,
+!! create unit tests in the test method that challenge the other object
+!! methods to behave properly. Write the tests first, ensure they fail, 
+!! then modify the class to correct test failure. Don't modify or remove
+!! previous tests.
+!! 
+!! The check method does not challenge the object to behave properly,
+!! rather it mearly checks that all of the objects attributes are within
+!! acceptable parameters. A unit test may ensure the check function returns
+!! an error after purposely assigning a bad attribute value but the check
+!! fucntion itself is not a unit test. Write checks after the unit test. 
 !<------------------------------------------------------------------------
 module template_class
   use type_kinds
@@ -17,7 +39,7 @@ module template_class
   private
 
   public::template, template_test
-  public::check, make, kill, backup, update, reset, status, describe
+  public::describe, check, make, kill, backup, update, reset, status
 
   type template
      logical::initialized=.false.
@@ -29,7 +51,7 @@ module template_class
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
-     ! type(primitive)::primitive                      !an other type        !
+     ! type(object)::that                              !an other type        !
      ! integer(short)::ierr                            !a short integer      !
      ! integer(long)::ndim                             !a long integer       !
      ! real(double)::var                               !a real variable      !
@@ -106,72 +128,72 @@ contains
     integer(long)::unit
     logical::fileisopen=.false.
     character(len=label)::header
-    !integer(long),intent(in),optional::param
-    !integer(long)::i
+    character(len=path)::infile
 
-    !set scalar parameters
+    !initialize all sub-objects
+    !***      example     ***
+    !call make(this%object)
+    !************************
+
+    !check input file
     if(present(file))then 
        
        !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-    
+       
        !check if file is of type template
        read(unit,*)header
        call assert(trim(header).EQ.this%name,msg='template_init: bad input file header in file'//file)
        
-       !read scalar parameters
+       !read static parameters
+       !***             example            ***
+       !***read scalar parameters from file***
        !read(unit,*)this%XXX
-    else
-       !set default scalar parameters
-       !this%XXX=YYY
-       !if(present(param))this%XXX=param
-    end if
-
-    !allocate dynamic arrays
-    !if(associated(this%PPP))nullify(this%PPP)
-    !allocate(this%PPP(0:this%XXX-1))
-
-    !set dynamic arrays
-    if(present(file))then 
-       !read dynamic arrays
+       !**************************************
+       
+       !use reset to manage dynamic memory, reset sub-objects, and set random parameters
+       call reset(this,state=1)
+       
+       !READ dynamic array values
+       !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
+       !************************
+       
+       !READ sub-objects
+       !***      example     ***
+       !read(unit,*)infile
+       !call make(this%object,file=trim(infile))
+       !************************
+       
+       !finished reading all attributes - now close backup file
+       if(.not.fileisopen)close(unit)
+       
+       !declare initialization complete
+       this%initialized=.true.
     else
-       !set default array values
-       !this%PPP=YYY
+       !Set static parameters to default settings
+       !***       example      ***
+       !***set scalar parameter***
+       !this%XXX=123
+       !**************************
+       
+       !Use reset to make a default object
+       call reset(this,state=1)
     end if
-    
-    !finished reading all attributes - now close backup file
-    if(.not.fileisopen)close(unit)
-
-    !declare initialization complete
-    this%initialized=.true.
 
   end subroutine template_init
 
   !======================================================================
   !> \brief Destroys the template object.
   !> \param THIS is the template object to be destroyed.
+  !> \remarks kill is simply the reset method passed with a null flag 
   !====================================================================
   subroutine template_kill(this)
     type(template),intent(inout)::this
  
-    !*******************       Nullify all pointers    **********************!
-
- 
-
-
-    !************************************************************************!
-    !========================================================================!
-    !******        Example - cleanup matrix attribute 'matrix'       ********!
-    !                                                                        !
-    ! if(associated(this%matrix))nullify(this%matrix)                        !
-    !                                                                        !
-    !************************************************************************!
-
-    !un-initialized template object
-    this%initialized=.false.
+    call reset(this,0)
 
   end subroutine template_kill
 
@@ -182,46 +204,108 @@ contains
   subroutine template_update(this)
     type(template),intent(inout)::this
 
-    !******   Recompute any attribute values that might have evolved   ******!
+    !Recompute any attribute values that might have evolved
 
-
-
-
-
-    !************************************************************************!
-    !========================================================================!
-    !*****    Example - attribute 'var' is always equall to the trace   *****!
-    !                   of the primitive's denisity                          !
-    !                                                                        !
-    ! this%var=0._double                                                     !
-    ! do istate=1,this%primitive%nstate                                      !
-    !    this%var=this%var+this%primitive%den(istate,istate)                 !
-    ! end do                                                                 !
-    !                                                                        !
-    !************************************************************************!
+    !****************************      Example     ******************************
+    !*** attribute 'var' is always equall to the trace of the denisity matrix *** 
+    ! this%var=0._double
+    ! do istate=1,this%object%nstate
+    !    this%var=this%var+this%den(istate,istate)
+    ! end do
+    !****************************************************************************
 
   end subroutine template_update
 
   !======================================================================
   !> \brief Re-initiallizes the template object.
   !> \param THIS is the template  object to be re-initialized.
+  !> \param STATE is an optional integer:
+  !>        when 0, will create a null state by deallocating all dynamic
+  !>        memory and returning the object to an un-initiallized state;
+  !>        when not 0, will return the object to the default settings;
+  !>        when not present, object will reset based on current scalar
+  !>        parameters.
   !======================================================================
-  subroutine template_reset(this)
+  subroutine template_reset(this,state)
     type(template),intent(inout)::this
+    integer(long),intent(in),optional::STATE
+    
+    if(present(state))then
+       if(state.EQ.0)then
+          !nullify all pointers
+          !******        Example - cleanup pointer attribute 'PPP'       ****
+          !if(associated(this%PPP))nullify(this%PPP)
+          !******************************************************************
+          
+          !kill all sub-objects
+          !**** example **********
+          !call kill(this%object)
+          !***********************
+          
+          !un-initialized metiu object
+          this%initialized=.false.
+       else
+          !allocate dynamic memory
+          !***  Example - cleanup pointer attribute 'PPP'     ***
+          !***            then reallocate memory              ***
+          !if(associated(this%PPP))nullify(this%PPP)
+          !allocate(this%PPP(0:this%npt-1))
+          !******************************************************
+          
+          !Set default dynamic memory values
+          !***  Example - set values in pointer 'PPP' to zero ***
+          !this%PPP(:)=0.0_double
+          !******************************************************
+                    
+          !overwrite sub-object default static parameters
+          !***       example      ***
+          !***set object static parameter***
+          !this%object%XXX=123
+          !**************************
 
-    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
+          !reset all sub objects to correct any memory issues
+          !***      example     ***
+          !call reset(this%object,state=1)
+          !************************
 
+          !overwrite sub-object default dynamic parameters
+          !***       example      ***
+          !***set object pointer array values***
+          !this%object%PPP(:)=XXX
+          !**************************
 
+          !declare initialization complete
+          this%initialized=.true.
+          
+       end if
+    end if
+    
+    !reset object based on current static parameters
+    if(this%initialized)then
 
+       !Sample Random parameters
+       !***  Example - attribute 'var' samples a Gaussian random number
+       ! this%var=gran()
+       
+!!$       !Reallocate all dynamic memory
+!!$       !***  Example - cleanup pointer attribute 'PPP'     ***
+!!$       !***            then reallocate memory              ***
+!!$       !if(associated(this%PPP))nullify(this%PPP)
+!!$       !allocate(this%PPP(0:this%npt-1))
+!!$       !******************************************************
+!!$       
+!!$       !Reset dynamic memory values
+!!$       !***  Example - set values in pointer 'PPP' to zero ***
+!!$       !this%PPP(:)=0.0_double
+!!$       !******************************************************
 
-    !************************************************************************!
-    !========================================================================!
-    !********    Example - attribute 'var' is always initially a     ********!
-    !                      Gaussian random number                            !
-    !                                                                        !
-    ! this%var=gran()                                                        !
-    !                                                                        !
-    !************************************************************************!
+       !Resample sub-objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+
+    end if
+    
 
   end subroutine template_reset
 
@@ -232,6 +316,8 @@ contains
   !======================================================================
   subroutine template_backup(this,file)
     use filemanager
+    use string
+    use testing_class
     type(template),intent(in)::this
     character*(*),intent(in)::file
     integer(short)::unit
@@ -242,38 +328,40 @@ contains
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
+    
+    !check template object
+    call assert(check(this).EQ.0,msg='template object does not pass check.')
 
-       !always write the data type on the first line
-       write(unit,*)'template'
+    !always write the data type on the first line
+    write(unit,*)'template'
 
-       !******      Backup below all the derived type's attributes       ******!
-       !******         in the order the MAKE command reads them          ******!
-
-
-
-
-
-       !*********************************************************************!
-       !=====================================================================!
-       !******              Example - Backup an object            ***********!
-       ! call backup(this%primitive,file//'.primitive')                      !
-       ! write(unit,*)quote(file//'.primitive')!write the object location    !
-       !*********************************************************************!
-       !=====================================================================!
-       !******        Example - Backup a sacalar attribute             ******!
-       ! write(unit,*)this%var                                               !
-       !*********************************************************************!
-       !=====================================================================!
-       !***       Example - Backup an NxM matrix attribute                ***!
-       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
-       !*********************************************************************!
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
 
 
-       !finished saving all attributes - now close backup file
-       close(unit)
+    !First, Scalar attributes
+    !******          Example - Backup a scalar attribute            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
 
-     end subroutine template_backup
 
+    !Second, Dynamic attributes
+    !***       Example - Backup an NxM matrix attribute                ***
+    ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
+    !*********************************************************************
+
+
+    !Last,objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%object,file//'.object')
+    ! write(unit,*)quote(file//'.object')!write the object location
+    !*********************************************************************
+    
+
+    !finished writing all attributes - now close backup file
+    close(unit)  
+  end subroutine template_backup
+  
   !======================================================================
   !> \brief Retrun the current state of template as a string.
   !> \param[in] THIS is the template object.
@@ -283,9 +371,10 @@ contains
     type(template),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-
-    write(template_status,FMT)'template'
-   
+    
+    !Edit the status prompt to suit your needs
+    write(template_status,FMT)'template status is currently not available'
+    
   end function template_status
 
  !======================================================================
@@ -302,106 +391,64 @@ contains
     template_check=0
 
     !check that object is initialized
-    call assert(this%initialized,msg='template_check: template object not initialized.'&
+    call assert(this%initialized&
+         ,msg='template_check: template object not initialized.'&
          ,iostat=template_check)
     if(template_check.NE.0)return
 
+    !check that object has correct name
+    call assert(this%name.EQ.'template'&
+         ,msg='template_check: template name is not set.'&
+         ,iostat=template_check)
+    if(template_check.NE.0)return
 
-    !********   Check all attributes are within acceptable values    *******!
+    !Check all attributes are within acceptable values
 
 
-    !***********************************************************************!
+    !**********   Example - check an object attribute 'that'  *********
+    !call assert(check(this%that).EQ.0&
+    !     ,msg='template_check: that sub-object failed check'&
+    !     ,iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
+    
+    !***   Example - check an integer attribute 'ndim' is well behaved   ***
+    !call assert(check(this%ndim).EQ.0&
+    !     ,msg='template_check: ndim failed check',iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
+ 
+    !*** Example - add a constrain that says 'ndim' can only be positive ***
+    !call assert(this%ndim.GT.0&
+    !     ,msg='template_check: ndim is not positive',iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
 
+    !***  Example - check a real valued attribute 'var' is well behaved  ***
+    !call assert(check(this%var).EQ.0&
+    !     ,msg='template_check: var failed check',iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
 
-    !=======================================================================!
-    !**********   Example - check an object attribute 'primitive'  *********!
-    !call assert(check(this%primitive).EQ.0,msg='template_check: primitive& !
-    !& sub-object failed check',iostat=template_check)                      !
-    !***********************************************************************!
-    !=======================================================================!
-    !**********     Example - check an integer attribute 'ndim'    *********!
-    !                                                                       !
-    ! !check if integer 'ndim' is NAN (not a number)                        !
-    ! if(this%ndim.NE.this%ndim)then                                        !
-    !    call Warn('template_check: ndim not a number.')                    !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if 'ndim' is too big to fit in its memory                      !
-    ! if(abs(this%ndim).GE.huge(this%ndim))then                             !
-    !    call Warn('template_check: ndim is too big.')                      !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !add a constrain that says 'ndim' can only be positive                !
-    ! if(this%ndim.LE.0)then                                                !
-    !    call Warn('template_check: ndim not a positive integer.')          !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
-    !=======================================================================!
-    !**********    Example - check a real number attribute 'var'   *********!
-    !                                                                       !
-    ! !check if 'var' is not a number                                       !
-    ! if(this%var.NE.this%var)then                                          !
-    !    call Warn('template_check: var is not a number.')                  !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if 'var' is too big to fit in its memory                       !
-    ! if(abs(this%var).GE.huge(this%var))then                               !
-    !    call Warn('template_check: var is too big.')                       !
-    !    template_check=1                                                   !
-    !   return                                                              !
-    ! end if                                                                !
-    !                                                                       !
-    ! !add a constrain that says 'var' can not be zero:                     !
-    ! !      'var' can not be smaller than the smallest computable value    !
-    ! if(abs(this%var).LE.epsilon(this%var))then                            !
-    !    call Warn('template_check: var is too small.')                     !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
-    !=======================================================================!
-    !********* Example - check an NxM matrix attribute 'matrix' ************!
-    !                                                                       !
-    ! !check that 'matrix' points to something                              !
-    ! if(.not.associated(this%matrix))then                                  !
-    !    call Warn('template_check: matrix memory not associated.')         !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check that 'matrix' has the right dimensions                         !
-    ! if(size(this%matrix).NE.N*M)then                                      !
-    !    call Warn('template_check: number of matrix elements not = N*M.')  !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check for NAN values in the matrix                                   !
-    ! if(any(this%matrix.NE.this%matrix))then                               !
-    !    call Warn('template_check: matirx has NAN values.')                !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if any matrix element values are too big for thier memory      !
-    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                    !
-    !    call Warn('template_check: matrix has huge values.')               !
-    !    mappingH_check=1                                                   !
-    !    template_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
+    !***  Example - add a constrain that says 'var' can not be zero     ***
+    !call assert(abs(this%var).GT.epsilon(this%var)&
+    !     ,msg='template_check: var is tiny',iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
+
+    !***  Example - check a real valued pointer attribute 'matrix'       ***
+    !***            is well behaved                                      ***
+    !call assert(check(this%matrix).EQ.0&
+    !     ,msg='template_check: matrix failed check',iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
+
+    !********* Example - check an NxM matrix has right dimensions **********
+    !call assert(size(this%matrix).EQ.N*M&
+    !     ,msg='template_check: number of matrix elements not = N*M.'&
+    !     ,iostat=template_check)
+    !if(template_check.NE.0)return
+    !***********************************************************************
 
   end function template_check
   !-----------------------------------------
@@ -421,38 +468,48 @@ contains
     !verify template is compatible with current version
     include 'verification'
 
-    !----- additional make tests -----
-    write(*,*)'test make sets correct default values'
-    call make(this)
+    !================== consider the following tests ========================
+    !-----  make tests -----
+    !***          example          ****
+    !write(*,*)'test make sets correct default values'
+    !call make(this)
     !call assert(this%XXX.EQ.YYY,msg='template default XXX is not YYY')
-    call kill(this)
+    !call kill(this)
+    !**********************************
 
-    
-    !----- additional kill tests -----
-    write(*,*)'test kill cleans up dynamic memory and pointers'
+    !----- kill tests -----
+    !***          example          ****
+    !write(*,*)'test kill cleans up dynamic memory and pointers'
+    !call make(this)
+    !call kill(this)
     !call assert(.not.associated(this%PPP),msg='template pointer PPP remains associated after killed.')
+    !**********************************
 
+    !----- backup tests -----
+    !***          example          ****
+    !write(*,*)'test attributes are stored properly in backup file'
+    !call make(this)
+    !this%var=XXX!First, manually set template attributes to non-default values
+    !call system('rm -f template.tmpfile')
+    !call backup(this,file='template.tmpfile')
+    !call kill(this)
+    !call make(this,file='template.tmpfile')
+    !call system('rm -f template.tmpfile')
+    !call assert(this%var.EQ.XXX)!Then, assert non default attribute values are conserved
+    !call kill(this)    
+    !**********************************
 
-    !----- additional status tests -----
+    !----- status tests -----
 
+    !----- update tests -----
 
-    !----- additional backup tests -----
-    write(*,*)'test attributes are stored properly stored in backup file'
-    call make(this)
-    !manually set template attributes to non-default values
-    call system('rm -f template.tmpfile')
-    call backup(this,file='template.tmpfile')
-    call kill(this)
-    call make(this,file='template.tmpfile')
-    !assert non default attribute values are conserved
-    call kill(this)    
-
+    !----- reset tests -----
     
-    !----- additional update tests -----
+    !----- fail cases -----
 
-    
-    !----- additional reset tests -----
-    
+    !========================================================================
+
+
 
     write(*,*)'ALL template TESTS PASSED!'
   end subroutine template_test

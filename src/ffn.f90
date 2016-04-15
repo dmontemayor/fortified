@@ -424,38 +424,56 @@ contains
   end subroutine FFN_update
 
   !======================================================================
-  !> \brief Re-initiallizes the FFN object.
-  !> \param this is the FFN  object to be re-initialized.
+  !> \brief Re-initiallizes the ffn object.
+  !> \param THIS is the ffn  object to be re-initialized.
+  !> \param STATE is an optional integer when 0 will deallocate all dynamic
+  !>        memory and return the object in an un-initiallized state.
+  !> \remark When STATE is not present dynamic memory will be re-allocated
   !======================================================================
-  subroutine FFN_reset(this)
-    type(FFN),intent(inout)::this
-!!$    integer(long)::istate,jstate
-!!$
-!!$    call Note('Begin FFN_reset.')
-!!$
-!!$    !reset the layer
-!!$    call reset(this%layer)
-!!$
-!!$    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********    Example - attribute 'var' is always initially a     ********!
-!!$    !                      Gaussian random number                            !
-!!$    !                                                                        !
-!!$    ! this%var=gran()                                                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !update now that we have changed some values and do a final check
-!!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('FFN_reset: failed final check!')
+  subroutine ffn_reset(this,state)
+    type(ffn),intent(inout)::this
+    integer(long),intent(in),optional::STATE
+    logical::nullstate
 
-  end subroutine FFN_reset
+    nullstate=.false.
+    if(present(state).and.state.EQ.0)nullstate=.true.
+
+
+    !memory management
+    if(nullstate)then
+       !nullify all pointers
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !******************************************************************
+       
+       !kill all objects
+       !**** example **********
+       !call kill(this%object)
+       !***********************
+       
+       !un-initialized ffn object
+       this%initialized=.false.
+    else
+       !reallocate all dynamic memory
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !******                  then reallocate memory                ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !allocate(this%PPP(0:this%npt-1))
+       !******************************************************************
+       
+       !reset all objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+    end if
+
+    !Reset any attributes to satisfy re-initiation conditions
+    !**********  Example - attribute 'var' is always initially a     ********
+    !**********            Gaussian random number                    ******** 
+    ! this%var=gran()
+    !************************************************************************
+
+  end subroutine ffn_reset
 
   !======================================================================
   !> \brief Backups the current state of the FFN object to file.

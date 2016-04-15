@@ -8,7 +8,7 @@ write(*,*)'Begin Verification Process.'
     write(*,*)'test check returns error prior to object being made.'
     call assert(check(this).EQ.1,msg='check does not return 1 prior to make.')
 
-    write(*,*)'test made object passes check.'
+    write(*,*)'test make object passes check.'
     call make(this)
     call assert(check(this).EQ.0,msg='object was not made properly.')
 
@@ -73,11 +73,22 @@ write(*,*)'Begin Verification Process.'
     call assert(len(trim(status(this))).GE.0,msg='status does not return a string.')
     call kill(this)
 
-    write(*,*)'test discribe returns a text message'
+    write(*,*)'test describe returns a text message'
     call make(this)
     call assert(len(trim(describe(this))).GE.0,msg='describe does not return a string.')
     call kill(this)
 
+    write(*,*)'test remake can be called with nullstate flag.....'
+    call make(this)
+    call reset(this,state=0)
+    call assert(check(this).NE.0,msg='object should not pass check after remake with state=0')
+    call kill(this)
+
+    write(*,*)'test remake can be called with newstate flag.....'
+    call make(this)
+    call reset(this,state=1)
+    call assert(check(this).EQ.0,msg='object should pass check after remake with state=1')
+    call kill(this)
 
 !---------------------------------------------------------------------
 write(*,*)'Verification Passed!'

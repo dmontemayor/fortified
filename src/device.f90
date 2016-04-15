@@ -462,12 +462,56 @@ contains
   end subroutine DEVICE_update
 
   !======================================================================
-  !> \brief Re-initiallizes the DEVICE object.
-  !> \param this is the DEVICE  object to be re-initialized.
+  !> \brief Re-initiallizes the device object.
+  !> \param THIS is the device  object to be re-initialized.
+  !> \param STATE is an optional integer when 0 will deallocate all dynamic
+  !>        memory and return the object in an un-initiallized state.
+  !> \remark When STATE is not present dynamic memory will be re-allocated
   !======================================================================
-  subroutine DEVICE_reset(this)
-    type(DEVICE),intent(inout)::this
-  end subroutine DEVICE_reset
+  subroutine device_reset(this,state)
+    type(device),intent(inout)::this
+    integer(long),intent(in),optional::STATE
+    logical::nullstate
+
+    nullstate=.false.
+    if(present(state).and.state.EQ.0)nullstate=.true.
+
+
+    !memory management
+    if(nullstate)then
+       !nullify all pointers
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !******************************************************************
+       
+       !kill all objects
+       !**** example **********
+       !call kill(this%object)
+       !***********************
+       
+       !un-initialized device object
+       this%initialized=.false.
+    else
+       !reallocate all dynamic memory
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !******                  then reallocate memory                ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !allocate(this%PPP(0:this%npt-1))
+       !******************************************************************
+       
+       !reset all objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+    end if
+
+    !Reset any attributes to satisfy re-initiation conditions
+    !**********  Example - attribute 'var' is always initially a     ********
+    !**********            Gaussian random number                    ******** 
+    ! this%var=gran()
+    !************************************************************************
+
+  end subroutine device_reset
 
   !======================================================================
   !> \brief Backups the current state of the DEVICE object to file.

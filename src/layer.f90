@@ -194,10 +194,53 @@ contains
 
   !======================================================================
   !> \brief Re-initiallizes the layer object.
-  !> \param this is the layer  object to be re-initialized.
+  !> \param THIS is the layer  object to be re-initialized.
+  !> \param STATE is an optional integer when 0 will deallocate all dynamic
+  !>        memory and return the object in an un-initiallized state.
+  !> \remark When STATE is not present dynamic memory will be re-allocated
   !======================================================================
-  subroutine layer_reset(this)
+  subroutine layer_reset(this,state)
     type(layer),intent(inout)::this
+    integer(long),intent(in),optional::STATE
+    logical::nullstate
+
+    nullstate=.false.
+    if(present(state).and.state.EQ.0)nullstate=.true.
+
+
+    !memory management
+    if(nullstate)then
+       !nullify all pointers
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !******************************************************************
+       
+       !kill all objects
+       !**** example **********
+       !call kill(this%object)
+       !***********************
+       
+       !un-initialized layer object
+       this%initialized=.false.
+    else
+       !reallocate all dynamic memory
+       !******        Example - cleanup pointer attribute 'PPP'       ****
+       !******                  then reallocate memory                ****
+       !if(associated(this%PPP))nullify(this%PPP)
+       !allocate(this%PPP(0:this%npt-1))
+       !******************************************************************
+       
+       !reset all objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+    end if
+
+    !Reset any attributes to satisfy re-initiation conditions
+    !**********  Example - attribute 'var' is always initially a     ********
+    !**********            Gaussian random number                    ******** 
+    ! this%var=gran()
+    !************************************************************************
 
   end subroutine layer_reset
 

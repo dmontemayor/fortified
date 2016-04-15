@@ -3,27 +3,29 @@
 !!\details
 !<------------------------------------------------------------------------
 module wavelet_class
-  use type_kinds
+ use type_kinds
   implicit none
   private
 
   public::wavelet, wavelet_test
-  public::check, make, kill, backup, update, reset, status, describe
+  public::describe, check, make, kill, backup, update, reset, status
 
   type wavelet
      logical::initialized=.false.
      character(len=label)::name='wavelet'
      
-!!$     type(primitive)::primitive
-     !**********     Enter your derived type's attributes here     **********!
-
+     !***************      Enter wavelet attributes here     ***************!
+     integer(long)::ndof !space dimension
+     integer(long)::npt  !space discritization
+     complex(double),dimension(:),pointer::wf !wavefunction in delta function rep
+     real(double),dimension(:,:),pointer::grid !delta function coordinates
 
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
-     ! type(primitive)::primitive2                     !an extra primitive   !
-     ! integer(short)::label                           !a short integer      !
-     ! integer(long)::ndim                             !a long integer       !
+     ! type(primitive)::primitive                      !an other type        !
+     ! integer(short)::ierr                            !a short integer      !
+     ! integer(long)::ndof                             !a long integer       !
      ! real(double)::var                               !a real variable      !
      ! complex(double)::zed                            !a complex variable   !
      ! real(double),dimension(:,:),pointer::matrix     !a real matrix        !
@@ -51,7 +53,7 @@ module wavelet_class
      module procedure wavelet_describe
   end interface
   
-  !> Backups the current state of the wavelet object.
+  !> Returns the current state of the wavelet object.
   interface backup
      module procedure wavelet_backup
   end interface
@@ -74,25 +76,25 @@ module wavelet_class
 contains
   !======================================================================
   !> \brief Retruns a description of wavelet as a string.
-  !> \param[in] this is the wavelet object.
+  !> \param[in] THIS is the wavelet object.
   !======================================================================
   character(len=comment) function wavelet_describe(this)
     type(wavelet),intent(in)::this
     character(len=5)::FMT='(A)'
 
     write(wavelet_describe,FMT)'The wavelet is the basis of any quantum&
-         & mechanical object. It has attributes of mass and charge that&
-         & are delocalized on a grid in N dimensional space.'
-   
+         & mechanical object. It exists in NDOF spatial dimensions&
+         & distributed over NPT points in space. The wavefunction itself&
+         & WF is complex valued.'
   end function wavelet_describe
 
   !======================================================================
-  !> \brief Creates and initializes the wavelet object.
-  !> \param this is the wavelet object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously backuped wavelet file.
-!!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
+  !> \brief Creates and initializes wavelet.
+  !! \param THIS is the wavelet object.
+  !! \param[in] FILE is an optional string containing the name of a
+  !! previously backuped wavelet file.
   !=====================================================================
-  subroutine wavelet_init(this,file)!,param)
+  subroutine wavelet_init(this,file)
     use filemanager
     use testing_class
     type(wavelet),intent(inout)::this
@@ -100,160 +102,203 @@ contains
     integer(long)::unit
     logical::fileisopen=.false.
     character(len=label)::header
-    !integer(long),intent(in),optional::param
-    !integer(long)::i
+    integer(long)::i,j
+    
+    !initialize all sub-objects
+    !***      example     ***
+    !call make(this%object)
+    !************************
 
-    !set scalar parameters
+    !check input file
     if(present(file))then 
        
-       !check input file    
+       !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-    
+       
        !check if file is of type wavelet
        read(unit,*)header
-       call assert(trim(header).EQ.'wavelet',msg='wavelet_init: bad input file header in file'//file)
+       call assert(trim(header).EQ.this%name,msg='wavelet_init: bad input file header in file'//file)
        
-       !read scalar parameters
+       !read static parameters
+       !***             example            ***
+       !***read scalar parameters from file***
        !read(unit,*)this%XXX
+       !**************************************
+       read(unit,*)this%ndof
+       read(unit,*)this%npt
+       
+       !use reset to manage dynamic memory, reset sub-objects, and set random parameters
+       call reset(this,state=1)
+       
+       !READ dynamic array values
+       !***      example     ***
+       !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
+       !************************
+       read(unit,*)(this%wf(i),i=0,this%npt-1)
+       read(unit,*)((this%grid(i,j),j=0,this%ndof-1),i=0,this%npt-1)
+       
+       !READ sub-objects
+       !***      example     ***
+       !read(unit,*)infile
+       !call make(this%object,file=trim(infile))
+       !************************
+       
+       !finished reading all attributes - now close backup file
+       if(.not.fileisopen)close(unit)
+       
+       !declare initialization complete
+       this%initialized=.true.
     else
-       !set default scalar parameters
-       !this%XXX=YYY
-       !if(present(param))this%XXX=param
+       !Set static parameters to default settings
+       !***       example      ***
+       !***set scalar parameter***
+       !this%XXX=123
+       !**************************
+       this%ndof=1
+       this%npt=1
+       
+       !Use reset to make a default object
+       call reset(this,state=1)
     end if
-
-    !allocate dynamic arrays
-    !if(associated(this%XXX))nullify(this%XXX)
-    !allocate(this%XXX(0:thi%YYY-1))
-
-    !set dynamic arrays
-    if(present(file))then 
-       !read dynamic arrays
-       !read(unit,*)(this%XXX(i),i=0,this%YYY-1)
-    else
-       !set default array values
-       !this%XXX=YYY
-    end if
-    
-    !finished reading all attributes - now close store file
-    if(.not.fileisopen)close(unit)
-
-    !declare initialization complete
-    this%initialized=.true.
 
   end subroutine wavelet_init
 
   !======================================================================
   !> \brief Destroys the wavelet object.
-  !> \param this is the wavelet object to be destroyed.
+  !> \param THIS is the wavelet object to be destroyed.
   !====================================================================
   subroutine wavelet_kill(this)
     type(wavelet),intent(inout)::this
  
-!!$    call note('Begin wavelet_kill.')
-!!$
-!!$    !kill the primitive
-!!$    call kill(this%primitive)
-!!$
-!!$
-!!$    !*******************       Nullify all pointers    **********************!
-!!$
-!!$ 
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !******        Example - cleanup matrix attribute 'matrix'       ********!
-!!$    !                                                                        !
-!!$    ! if(associated(this%matrix))nullify(this%matrix)                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$
-    !un-initialized wavelet object
-    this%initialized=.false.
+    call reset(this,state=0)
 
   end subroutine wavelet_kill
 
   !======================================================================
   !> \brief Computes the current state of wavelet object.
-  !> \param this is the wavelet  object to be updated.
+  !> \param THIS is the wavelet  object to be updated.
   !======================================================================
   subroutine wavelet_update(this)
     type(wavelet),intent(inout)::this
 
-!!$    call Note('Begin wavelet_update.')
-!!$    
-!!$    !Primitives usually dont get updated
-!!$    !    call update(this%primitive)    
-!!$
-!!$
-!!$    !******   Recompute any attribute values that might have evolved   ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !*****    Example - attribute 'var' is always equall to the trace   *****!
-!!$    !                   of the primitive's denisity                          !
-!!$    !                                                                        !
-!!$    ! this%var=0._double                                                     !
-!!$    ! do istate=1,this%primitive%nstate                                             !
-!!$    !    this%var=this%var+this%primitive%den(istate,istate)                        !
-!!$    ! end do                                                                 !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !Usually leave out final check before we exit
-!!$    !if(check(this).EQ.1)call stop('wavelet_update: failed final check!')
+    !Recompute any attribute values that might have evolved
+
+    !****************************      Example     ******************************
+    !*** attribute 'var' is always equall to the trace of the denisity matrix *** 
+    ! this%var=0._double
+    ! do istate=1,this%primitive%nstate
+    !    this%var=this%var+this%den(istate,istate)
+    ! end do
+    !****************************************************************************
 
   end subroutine wavelet_update
 
+
   !======================================================================
   !> \brief Re-initiallizes the wavelet object.
-  !> \param this is the wavelet  object to be re-initialized.
+  !> \param THIS is the wavelet  object to be re-initialized.
+  !> \param STATE is an optional integer:
+  !>        when 0, will create a null state by deallocating all dynamic
+  !>        memory and killing all sub-objects thus returning the object
+  !>        to an un-initiallized state;
+  !>        when not 0, will force reallocate dynamic memory and remake
+  !>        all sub-objects based on current scalar parameters
+  !>        (will create new objects thus break pointers);
+  !>        when not present, object will reset based on current scalar
+  !>        parameters (preserves pointers).
   !======================================================================
-  subroutine wavelet_reset(this)
+  subroutine wavelet_reset(this,state)
     type(wavelet),intent(inout)::this
-!!$    integer(long)::istate,jstate
-!!$
-!!$    call Note('Begin wavelet_reset.')
-!!$
-!!$    !reset the primitive
-!!$    call reset(this%primitive)
-!!$
-!!$    !****  Reset any attributes to satisfy re-initiation conditions   ****! 
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$    !************************************************************************!
-!!$    !========================================================================!
-!!$    !********    Example - attribute 'var' is always initially a     ********!
-!!$    !                      Gaussian random number                            !
-!!$    !                                                                        !
-!!$    ! this%var=gran()                                                        !
-!!$    !                                                                        !
-!!$    !************************************************************************!
-!!$
-!!$    !update now that we have changed some values and do a final check
-!!$    call update(this)
-!!$    if(check(this).EQ.1)call stop('wavelet_reset: failed final check!')
+    integer(long),intent(in),optional::STATE
+    
+    if(present(state))then
+       if(state.EQ.0)then
+          !nullify all pointers
+          !******        Example - cleanup pointer attribute 'PPP'       ****
+          !if(associated(this%PPP))nullify(this%PPP)
+          !******************************************************************
+          if(associated(this%wf))nullify(this%wf)
+          if(associated(this%grid))nullify(this%grid)
+          
+          !kill all objects
+          !**** example **********
+          !call kill(this%object)
+          !***********************
+          
+          !un-initialized metiu object
+          this%initialized=.false.
+       else
+
+          !allocate dynamic memory
+          !***  Example - cleanup pointer attribute 'PPP'     ***
+          !***            then reallocate memory              ***
+          !if(associated(this%PPP))nullify(this%PPP)
+          !allocate(this%PPP(0:this%npt-1))
+          !******************************************************
+          if(associated(this%wf))nullify(this%wf)
+          allocate(this%wf(0:this%npt-1))
+
+          if(associated(this%grid))nullify(this%grid)
+          allocate(this%grid(0:this%npt-1,0:this%ndof-1))
+          
+          !Set default dynamic memory values
+          !***  Example - set values in pointer 'PPP' to zero ***
+          !this%PPP(:)=0.0_double
+          !******************************************************
+          this%wf=(1.0_double,0.0_double)
+          this%grid=0.0_double
+                    
+          !overwrite sub-object default static parameters
+          !***       example      ***
+          !***set object static parameter***
+          !this%object%XXX=123
+          !**************************
+
+          !reset all sub objects to correct any memory issues
+          !***      example     ***
+          !call reset(this%object,state=1)
+          !************************
+
+          !overwrite sub-object default dynamic parameters
+          !***       example      ***
+          !***set object pointer array values***
+          !this%object%PPP(:)=XXX
+          !**************************
+
+          !declare initialization complete
+          this%initialized=.true.
+          
+       end if
+    end if
+    
+    !reset object based on current static parameters
+    if(this%initialized)then
+
+       !Sample Random parameters
+       !***  Example - attribute 'var' samples a Gaussian random number
+       ! this%var=gran()
+       
+       !Reset sub-objects
+       !**** example **********
+       !call reset(this%object)
+       !***********************
+       
+    end if
+    
 
   end subroutine wavelet_reset
 
   !======================================================================
   !> \brief Backups the current state of the wavelet object to file.
-  !> \param[in] this is the wavelet  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \param[in] THIS is the wavelet  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
   subroutine wavelet_backup(this,file)
     use filemanager
+    use testing_class
+    use string
     type(wavelet),intent(in)::this
     character*(*),intent(in)::file
     integer(short)::unit
@@ -264,70 +309,62 @@ contains
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
+    
+    !check wavelet object
+    call assert(check(this).EQ.0,msg='wavelet object does not pass check.')
 
-!!$    logical::usedunit      
-!!$
-!!$    call note('Begin wavelet_backup.')
-!!$    call Note('input file= '//file)
-!!$    if(check(this).NE.0)then
-!!$       call warn('wavelet_backup: failed check.','not saving object.')
-!!$    else
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open backup file
-!!$       open(unit,file=file)
-!!$
-       !always write the data type on the first line
-       write(unit,*)'wavelet'
-!!$
-!!$       !backup the primitive
-!!$       call backup(this%primitive,file//'.primitive')
-!!$
-!!$       !write the location of the primitive
-!!$       write(unit,*)quote(file//'.primitive')
-!!$
-!!$       !******      Backup below all the derived type's attributes       ******!
-!!$       !******         in the order the MAKE command reads them         ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !******      Example - Backup an attribute called 'var  '    ***********!
-!!$       ! write(unit,*)this%var                                               !
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
-!!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
-!!$       !*********************************************************************!
-!!$
-!!$
-!!$       !finished saving all attributes - now close backup file
-       close(unit)
-!!$    end if
+    !always write the data type on the first line
+    write(unit,*)'wavelet'
+
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
+
+    !scalars     
+    !******          Example - Backup a scalar attribute            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
+    write(unit,*)this%ndof
+    write(unit,*)this%npt
+
+
+    !dynamics arrays
+    !***       Example - Backup an NxM matrix attribute                ***
+    ! write(unit,*)((this%matrix(i,j),j=0,size(this%matrix,2)-1),i=0,size(this%matrix,1)-1)
+    !*********************************************************************
+    write(unit,*)(this%wf(i),i=0,size(this%wf)-1)
+    write(unit,*)((this%grid(i,j),j=0,size(this%grid,2)-1),i=0,size(this%grid,1)-1)
+
+
+    !objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%primitive,file//'.primitive')
+    ! write(unit,*)quote(file//'.primitive')!write the object location
+    !*********************************************************************
+
+
+    
+    !finished writing all attributes - now close backup file
+    close(unit)  
   end subroutine wavelet_backup
-
+  
   !======================================================================
   !> \brief Retrun the current state of wavelet as a string.
-  !> \param[in] this is the wavelet object.
-  !> \param[in] msg is an optional string message to annotate the status.
+  !> \param[in] THIS is the wavelet object.
+  !> \param[in] MSG is an optional string message to annotate the status.
   !======================================================================
   character(len=line) function wavelet_status(this,msg)
     type(wavelet),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-
-    write(wavelet_status,FMT)'wavelet'
-   
+    
+    !Edit the status prompt to suit your needs
+    write(wavelet_status,FMT)'wavelet status is currently not available'
+    
   end function wavelet_status
 
  !======================================================================
   !> \brief Checks the wavelet object.
-  !> \param[in] this is the wavelet object to be checked.
+  !> \param[in] THIS is the wavelet object to be checked.
   !> \return 0 if all checks pass or exit at first failed check and returm non zero.
   !> \remark Will exit after first failed check.
   !======================================================================
@@ -339,104 +376,128 @@ contains
     wavelet_check=0
 
     !check that object is initialized
-    call assert(this%initialized,msg='wavelet_check: wavelet object not initialized.',iostat=wavelet_check)
+    call assert(this%initialized&
+         ,msg='wavelet_check: wavelet object not initialized.'&
+         ,iostat=wavelet_check)
     if(wavelet_check.NE.0)return
 
-    !check the primitive
-    !if(check(this%primitive))call stop('wavelet_check: failed primitive check!')
+    !check that object has correct name
+    call assert(this%name.EQ.'wavelet'&
+         ,msg='wavelet_check: wavelet name is not set.'&
+         ,iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+    
+    !Check all attributes are within acceptable values
+
+    !----------  ndof
+    call assert(check(this%ndof).EQ.0&
+         ,msg='wavelet_check: ndof failed check',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+    call assert(this%ndof.GT.0&
+         ,msg='wavelet_check: ndof is not positive.',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
 
 
-    !********    Check all attributes are within acceptable values    *******!
+    !----------  npt
+    call assert(check(this%npt).EQ.0&
+         ,msg='wavelet_check: npt failed check',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+    call assert(this%npt.GT.0&
+         ,msg='wavelet_check: npt is not positive.',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+
+    !----------- wf
+    ! Description:
+    ! wf is a quantum mechanical wavefunction. 
+    ! wf should be integrable, complex, and in the delta representation.
+    ! wf is a set of NPT complex weighted delta functions.
+    ! delta function corrdianates are specified with the GRID attribute. 
+    !------------
+
+    ! complex elements of wf should all be well behaved.
+    call assert(check(this%wf).EQ.0&
+         ,msg='wavelet_check: wf failed check',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+    ! wf should form positive definate density
+    call assert(real(sum(this%wf*conjg(this%wf)),double).GT.epsilon(1.0_double)&
+         ,msg='wavelet_check: wf does not have positive density',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+    
+    ! wf should be represented by NPT delta functions
+    call assert(size(this%wf).EQ.this%npt&
+         ,msg='wavelet_check: wf is not the same size as npt',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+
+    !----------- grid
+    ! Description:
+    ! grid specifies the corrdinates of the NPT delta functions representing WF 
+    ! grid should be real and NPT x NDOF.
+    !------------
+
+    ! real elements of grid should all be well behaved.
+    call assert(check(this%grid).EQ.0&
+         ,msg='wavelet_check: grid failed check',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
+    ! grid should specify NPT x NDOF delta function coordinates
+    call assert(size(this%grid,1).EQ.this%npt&
+         ,msg='wavelet_check: grid dimension 1 is not the same size as npt',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+    call assert(size(this%grid,2).EQ.this%ndof&
+         ,msg='wavelet_check: grid dimension 2 is not the same size as ndof',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
 
 
 
+    !**********   Example - check an object attribute 'primitive'  *********
+    !call assert(check(this%primitive).EQ.0&
+    !     ,msg='wavelet_check: primitive sub-object failed check'&
+    !     ,iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
+    
+    !***   Example - check an integer attribute 'ndof' is well behaved   ***
+    !call assert(check(this%ndof).EQ.0&
+    !     ,msg='wavelet_check: ndof failed check',iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
+ 
+    !*** Example - add a constrain that says 'ndof' can only be positive ***
+    !call assert(this%ndof.GT.0&
+    !     ,msg='wavelet_check: ndof is not positive',iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
 
+    !***  Example - check a real valued attribute 'var' is well behaved  ***
+    !call assert(check(this%var).EQ.0&
+    !     ,msg='wavelet_check: var failed check',iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
 
-    !***********************************************************************!
-    !=======================================================================!
-    !**********     Example - check an integer attribute 'ndim'    *********!
-    !                                                                       !
-    ! !check if integer 'ndim' is NAN (not a number)                        !
-    ! if(this%ndim.NE.this%ndim)then                                        !
-    !    call Warn('wavelet_check: ndim not a number.')                    !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if 'ndim' is too big to fit in its memory                      !
-    ! if(abs(this%ndim).GE.huge(this%ndim))then                             !
-    !    call Warn('wavelet_check: ndim is too big.')                      !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !add a constrain that says 'ndim' can only be positive                !
-    ! if(this%ndim.LE.0)then                                                !
-    !    call Warn('wavelet_check: ndim not a positive integer.')          !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
-    !=======================================================================!
-    !**********    Example - check a real number attribute 'var'   *********!
-    !                                                                       !
-    ! !check if 'var' is not a number                                       !
-    ! if(this%var.NE.this%var)then                                          !
-    !    call Warn('wavelet_check: var is not a number.')                  !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if 'var' is too big to fit in its memory                       !
-    ! if(abs(this%var).GE.huge(this%var))then                               !
-    !    call Warn('wavelet_check: var is too big.')                       !
-    !    wavelet_check=1                                                   !
-    !   return                                                              !
-    ! end if                                                                !
-    !                                                                       !
-    ! !add a constrain that says 'var' can not be zero:                     !
-    ! !      'var' can not be smaller than the smallest computable value    !
-    ! if(abs(this%var).LE.epsilon(this%var))then                            !
-    !    call Warn('wavelet_check: var is too small.')                     !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
-    !=======================================================================!
-    !********* Example - check an NxM matrix attribute 'matrix' ************!
-    !                                                                       !
-    ! !check that 'matrix' points to something                              !
-    ! if(.not.associated(this%matrix))then                                  !
-    !    call Warn('wavelet_check: matrix memory not associated.')         !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check that 'matrix' has the right dimensions                         !
-    ! if(size(this%matrix).NE.N*M)then                                      !
-    !    call Warn('wavelet_check: number of matrix elements not = N*M.')  !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check for NAN values in the matrix                                   !
-    ! if(any(this%matrix.NE.this%matrix))then                               !
-    !    call Warn('wavelet_check: matirx has NAN values.')                !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    ! !check if any matrix element values are too big for thier memory      !
-    ! if(any(abs(this%matirx).GT.huge(this%matirx)))then                    !
-    !    call Warn('wavelet_check: matrix has huge values.')               !
-    !    mappingH_check=1                                                   !
-    !    wavelet_check=1                                                   !
-    !    return                                                             !
-    ! end if                                                                !
-    !                                                                       !
-    !***********************************************************************!
+    !***  Example - add a constrain that says 'var' can not be zero     ***
+    !call assert(abs(this%var).GT.epsilon(this%var)&
+    !     ,msg='wavelet_check: var is tiny',iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
+
+    !***  Example - check a real valued pointer attribute 'matrix'       ***
+    !***            is well behaved                                      ***
+    !call assert(check(this%matrix).EQ.0&
+    !     ,msg='wavelet_check: matrix failed check',iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
+
+    !********* Example - check an NxM matrix has right dimensions **********
+    !call assert(size(this%matrix).EQ.N*M&
+    !     ,msg='wavelet_check: number of matrix elements not = N*M.'&
+    !     ,iostat=wavelet_check)
+    !if(wavelet_check.NE.0)return
+    !***********************************************************************
 
   end function wavelet_check
   !-----------------------------------------
@@ -456,39 +517,150 @@ contains
     !verify wavelet is compatible with current version
     include 'verification'
 
-    !----- additional make tests -----
-    write(*,*)'test make sets correct default values'
+    write(*,*)'test wavelet breaks with non-positive number of degrees of freedom.'
     call make(this)
-    !call assert(this%XXX.EQ.YYY,msg='wavelet default XXX is not YYY')
+    this%ndof=0
+    call reset(this,state=1)
+    call assert(check(this).NE.0,msg='wavelet does not break with non-positive NDOF.')
     call kill(this)
 
-    
-    !----- additional kill tests -----
-    write(*,*)'test kill cleans up dynamic memory and pointers'
-    !call assert(.not.associated(this%PPP),msg='wavelet pointer PPP remains associated after killed.')
-
-
-    !----- additional status tests -----
-
-
-    !----- additional backup tests -----
-    write(*,*)'test attributes are stored properly stored in backup file'
+    write(*,*)'test defaut degrees of freedom is 1'
     call make(this)
-    !manually set wavelet attributes to non-default values
+    call assert(this%ndof.EQ.1,msg='wavelet default NDOF is not 1.')
+    call kill(this)
+
+    write(*,*)'test wavelet breaks with non-positive basis set size.'
+    call make(this)
+    this%npt=0
+    call reset(this,state=1)
+    call assert(check(this).NE.0,msg='wavelet does not break with non-positive basis set size.')
+    call kill(this)
+
+    write(*,*)'test default basis set size is 1.'
+    call make(this)
+    call assert(this%npt.EQ.1,msg='wavelet default basis set size is not 1.')
+    call kill(this)
+
+    write(*,*)'test wavelet breaks if density is not positive definite'
+    call make(this)
+    this%wf=0._double
+    call assert(check(this).NE.0,msg='wavelet does not break with non-positive definite density.')
+    call kill(this)
+
+    write(*,*)'test kill cleans up wf pointer'
+    call make(this)
+    call kill(this)
+    call assert(.not.associated(this%wf),msg='wavelet pointer WF remains associated after killed.')
+
+    write(*,*)'test kill cleans up grid pointer'
+    call make(this)
+    call kill(this)
+    call assert(.not.associated(this%grid),msg='wavelet pointer GRID remains associated after killed.')
+
+    write(*,*)'test NDOF attribute is stored properly in backup file'
+    call make(this)
+    this%ndof=2!First, manually set wavelet attributes to non-default values
+    call reset(this,state=1)
     call system('rm -f wavelet.tmpfile')
     call backup(this,file='wavelet.tmpfile')
     call kill(this)
     call make(this,file='wavelet.tmpfile')
-    !assert non default attribute values are conserved
+    call system('rm -f wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%ndof.EQ.2,msg='wavelet NDOF not stored properly')
     call kill(this)    
 
-    
-    !----- additional update tests -----
+    write(*,*)'test wavelet breaks if WF size is not basis set size NPT.'
+    call make(this)
+    this%npt=size(this%wf)+1
+    call assert(check(this).NE.0,msg='wavelet does not break when NPT is not the same size as WF')
+    call kill(this)
 
-    
-    !----- additional reset tests -----
-    
+    write(*,*)'test wavelet breaks if GRID size is not NPT x NDOF.'
+    call make(this)
+    this%npt=size(this%grid,1)+1
+    this%ndof=size(this%grid,2)+1
+    call assert(check(this).NE.0,msg='wavelet does not break when GRID is not the same size as NPT x NDOF')
+    call kill(this)
 
+    write(*,*)'test NPT attribute is stored properly in backup file'
+    call make(this)
+    this%npt=2!First, manually set wavelet attributes to non-default values
+    call reset(this,state=1)
+    call system('rm -f wavelet.tmpfile')
+    call backup(this,file='wavelet.tmpfile')
+    call kill(this)
+    call make(this,file='wavelet.tmpfile')
+    call system('rm -f wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%npt.EQ.2,msg='wavelet NPT not stored properly')
+    call kill(this)    
+
+    write(*,*)'test WF attribute is stored properly in backup file'
+    call make(this)
+    this%wf=0.5!First, manually set wavelet attributes to non-default values
+    call system('rm -f wavelet.tmpfile')
+    call backup(this,file='wavelet.tmpfile')
+    call kill(this)
+    call make(this,file='wavelet.tmpfile')
+    call system('rm -f wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(all(this%wf.EQ.0.5),msg='wavelet WF not stored properly')
+    call kill(this)    
+
+    write(*,*)'test GRID attribute is stored properly in backup file'
+    call make(this)
+    this%grid=1.5!First, manually set wavelet attributes to non-default values
+    call system('rm -f wavelet.tmpfile')
+    call backup(this,file='wavelet.tmpfile')
+    call kill(this)
+    call make(this,file='wavelet.tmpfile')
+    call system('rm -f wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(all(this%grid.EQ.1.5),msg='wavelet GRID not stored properly')
+    call kill(this)    
+
+    !================== consider the following tests ========================
+    !-----  make tests -----
+    !***          example          ****
+    !write(*,*)'test make sets correct default values'
+    !call make(this)
+    !call assert(this%XXX.EQ.YYY,msg='wavelet default XXX is not YYY')
+    !call kill(this)
+    !**********************************
+
+    !----- kill tests -----
+    !***          example          ****
+    !write(*,*)'test kill cleans up dynamic memory and pointers'
+    !call make(this)
+    !call kill(this)
+    !call assert(.not.associated(this%PPP),msg='wavelet pointer PPP remains associated after killed.')
+    !**********************************
+
+    !----- backup tests -----
+    !***          example          ****
+    !write(*,*)'test attributes are stored properly stored in backup file'
+    !call make(this)
+    !this%var=XXX!First, manually set wavelet attributes to non-default values
+    !call system('rm -f wavelet.tmpfile')
+    !call backup(this,file='wavelet.tmpfile')
+    !call kill(this)
+    !call make(this,file='wavelet.tmpfile')
+    !call system('rm -f wavelet.tmpfile')
+    !!Then, assert non default attribute values are conserved
+    !call assert(this%var.EQ.XXX)
+    !call kill(this)    
+    !**********************************
+
+    !----- status tests -----
+
+    !----- update tests -----
+
+    !----- reset tests -----
+    
+    !----- fail cases -----
+
+    !========================================================================
     write(*,*)'ALL wavelet TESTS PASSED!'
   end subroutine wavelet_test
   !-----------------------------------------
