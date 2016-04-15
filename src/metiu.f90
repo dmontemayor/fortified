@@ -27,11 +27,20 @@ module metiu_class
      character(len=label)::name='metiu'
      
      !***************      Enter metiu attributes here     ***************!
-     type(wavelet)::ionA,ionB,ionC,electron !all matter
-     integer(long)::npt !electron dof discretization
-     real(double)::V_b !barrier on ground adiabatic state
-     real(double)::R_c !ion-electron interaction potential cut-off distance
+     type(wavelet),private::ionA,ionB,ionC,electron !all matter
 
+     !model parameters
+     integer(long)::npt    !electron dof discretization
+     integer(long)::nstate !number of electronic states
+     real(double)::R       !ionC position                                      
+     real(double)::V_b     !barrier on ground adiabatic state                  
+     real(double)::R_c     !ion-electron interaction potential cut-off distance
+
+     !!adiabatic energies
+     !real(double)::Eigenvalues
+     left off here need to incorp eigenvalues
+
+     
 !!$    !scan potential
 !!$    integer(long),parameter::npt=256,nstate=2
 !!$    real(double),parameter::Rmin=-4.99*Angstrom,Rmax=4.99*Angstrom
@@ -156,7 +165,10 @@ contains
        !read(unit,*)this%XXX
        !**************************************
        read(unit,*)this%npt !electron dof discretization
+       read(unit,*)this%R   !ionC position
+       read(unit,*)this%R_c !ion-electron interaction potential cut-off distance
 
+       
        !use reset to manage dynamic memory, reset sub-objects, and set random parameters
        !based on current static parameters
        call reset(this,state=1)
@@ -193,6 +205,8 @@ contains
        !this%XXX=YYY
        !**************************
        this%npt=128
+       this%R=0.0_double
+       this%R_c=1.5_double*angstrom
        
        !Use reset to make a default object
        call reset(this,state=1)
@@ -316,7 +330,7 @@ contains
   subroutine metiu_reset(this,state)
     type(metiu),intent(inout)::this
     integer(long),intent(in),optional::STATE
-
+    
     if(present(state))then
        if(state.EQ.0)then
           !nullify all pointers
@@ -324,7 +338,7 @@ contains
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
           
-          !kill all sub-objects
+          !kill all objects
           !**** example **********
           !call kill(this%object)
           !***********************
@@ -343,19 +357,19 @@ contains
           !if(associated(this%PPP))nullify(this%PPP)
           !allocate(this%PPP(0:this%npt-1))
           !******************************************************
-          
+
           !Set default dynamic memory values
           !***  Example - set values in pointer 'PPP' to zero ***
           !this%PPP(:)=0.0_double
           !******************************************************
-          
+                    
           !overwrite sub-object default static parameters
           !***       example      ***
           !***set object static parameter***
           !this%object%XXX=123
           !**************************
-          this%electron%npt=this%npt !assign electron dof discretization
-
+          this%electron%npt=this%npt
+          
           !reset all sub objects to correct any memory issues
           !***      example     ***
           !call reset(this%object,state=1)
@@ -364,19 +378,19 @@ contains
           call reset(this%ionB,state=1)
           call reset(this%ionC,state=1)
           call reset(this%electron,state=1)
-
+          
           !overwrite sub-object default dynamic parameters
           !***       example      ***
-          !***set object pointer array***
+          !***set object pointer array values***
           !this%object%PPP(:)=XXX
           !**************************
-          this%ionA%wf=-5.0_double*angstrom
-          this%ionB%wf=5.0_double*angstrom
-          this%ionC%wf=0.0_double*angstrom
+          this%ionA%grid=-5.0_double*angstrom
+          this%ionB%grid=5.0_double*angstrom
+          this%ionC%grid=this%R
 
           !declare initialization complete
           this%initialized=.true.
-
+          
        end if
     end if
     
@@ -387,18 +401,6 @@ contains
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
        
-!!$       !Reallocate all dynamic memory
-!!$       !***  Example - cleanup pointer attribute 'PPP'     ***
-!!$       !***            then reallocate memory              ***
-!!$       !if(associated(this%PPP))nullify(this%PPP)
-!!$       !allocate(this%PPP(0:this%npt-1))
-!!$       !******************************************************
-!!$       
-!!$       !Reset dynamic memory values
-!!$       !***  Example - set values in pointer 'PPP' to zero ***
-!!$       !this%PPP(:)=0.0_double
-!!$       !******************************************************
-
        !Reset sub-objects
        !**** example **********
        !call reset(this%object)
@@ -407,10 +409,9 @@ contains
        call reset(this%ionB)
        call reset(this%ionC)
        call reset(this%electron)
-
+       
     end if
     
-
   end subroutine metiu_reset
 
   !======================================================================
@@ -443,7 +444,10 @@ contains
     ! write(unit,*)this%var
     !*********************************************************************
     write(unit,*)this%npt
+    write(unit,*)this%R   
+    write(unit,*)this%R_c 
 
+    
     !Second, Dynamic attributes
     !***       Example - Backup an NxM matrix attribute                ***
     ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
@@ -461,7 +465,8 @@ contains
     write(unit,*)quote(file//'.ionB')!write the object location
     call backup(this%ionC,file//'.ionC')
     write(unit,*)quote(file//'.ionC')!write the object location
-
+    call backup(this%electron,file//'.electron')
+    write(unit,*)quote(file//'.electron')!write the object location
 
      
     !finished writing all attributes - now close backup file
@@ -515,7 +520,26 @@ contains
          ,msg='metiu_check: npt failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
+    !***   check R is well behaved   ***
+    call assert(check(this%R).EQ.0&
+         ,msg='metiu_check: R failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
 
+    !***   check R is between -5 and 5 angstrom   ***
+    call assert(this%R.GT.-5*angstrom .and. this%R.LT.5*angstrom&
+         ,msg='metiu_check: R not in range (-5:5) angstrom',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check R_c is well behaved   ***
+    call assert(check(this%R_c).EQ.0&
+         ,msg='metiu_check: R_c failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check R_C is positive   ***
+    call assert(this%R_c.GT.epsilon(this%R_c)&
+         ,msg='metiu_check: R_c is not positive',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+    
     !**********   Example - check an object attribute 'primitive'  *********
     !call assert(check(this%primitive).EQ.0&
     !     ,msg='metiu_check: primitive sub-object failed check'&
@@ -633,9 +657,16 @@ contains
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default value for ionA '
+    write(*,*)'test make sets correct default position for ionA '
     call make(this)
-    call assert(real(this%ionA%wf(0)).EQ.-5*angstrom,msg='metiu default ionA position is not -5 angstrom')
+    call assert(this%ionA%grid(0,0),-5*angstrom&
+         ,msg='metiu default ionA position is not -5 angstrom')
+    call kill(this)
+
+    write(*,*)'test make sets correct default density for ionA '
+    call make(this)
+    call assert(real(this%ionA%wf(0)*conjg(this%ionA%wf(0))),1.0_double&
+         ,msg='metiu default ionA density is not 1')
     call kill(this)
 
     write(*,*)'test ionA attribute is stored properly in backup file'
@@ -651,9 +682,16 @@ contains
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default value for ionB '
+    write(*,*)'test make sets correct default position for ionB '
     call make(this)
-    call assert(this%ionB%wf(0).EQ.5*angstrom,msg='metiu default ionB position is not 5 angstrom')
+    call assert(this%ionB%grid(0,0),5*angstrom&
+         ,msg='metiu default ionB position is not 5 angstrom')
+    call kill(this)
+
+    write(*,*)'test make sets correct default density for ionB '
+    call make(this)
+    call assert(real(this%ionB%wf(0)*conjg(this%ionB%wf(0))),1.0_double&
+         ,msg='metiu default ionB density is not 1')
     call kill(this)
 
     write(*,*)'test ionB attribute is stored properly in backup file'
@@ -667,15 +705,24 @@ contains
     !Then, assert non default attribute values are conserved
     call assert(this%ionB%npt.EQ.2,msg='metiu ionB is not stored properly')
     call kill(this)    
+    call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default value for ionC '
+    write(*,*)'test make sets correct default position for ionC '
     call make(this)
-    call assert(this%ionC%wf(0).EQ.0.0_double,msg='metiu default ionC position is not 0 angstrom')
+    call assert(this%ionC%grid(0,0),0*angstrom&
+         ,msg='metiu default ionC position is not 0 angstrom')
+    call kill(this)
+
+    write(*,*)'test make sets correct default density for ionC '
+    call make(this)
+    call assert(real(this%ionC%wf(0)*conjg(this%ionC%wf(0))),1.0_double&
+         ,msg='metiu default ionC density is not 1')
     call kill(this)
 
     write(*,*)'test ionC attribute is stored properly in backup file'
     call make(this)
     this%ionC%npt=2!First, manually set metiu attributes to non-default values
+    call reset(this,state=1)
     call system('rm -f metiu.tmpfile')
     call backup(this,file='metiu.tmpfile')
     call kill(this)
@@ -683,17 +730,58 @@ contains
     !Then, assert non default attribute values are conserved
     call assert(this%ionC%npt.EQ.2,msg='metiu ionC is not stored properly')
     call kill(this)    
+    call system('rm -f metiu.tmpfile')
 
     write(*,*)'test electron attribute is stored properly in backup file'
     call make(this)
-    this%electron%npt=200!First, manually set metiu attributes to non-default values
+    this%npt=200!First, manually set metiu attributes to non-default values
+    call reset(this,state=1)
     call system('rm -f metiu.tmpfile')
     call backup(this,file='metiu.tmpfile')
     call kill(this)
     call make(this,file='metiu.tmpfile')
     !Then, assert non default attribute values are conserved
     call assert(this%electron%npt.EQ.200,msg='metiu electron is not stored properly')
+    call kill(this)
+    call system('rm -f metiu.tmpfile')
+
+    write(*,*)'test make sets correct default value for R '
+    call make(this)
+    call assert(this%R,0.0_double,msg='metiu default ionC poistion is not 0')
+    call kill(this)
+
+    write(*,*)'test R attribute is stored properly in backup file'
+    call make(this)
+    this%R=1.0!First, manually set metiu attributes to non-default values
+    call reset(this,state=1)
+    call system('rm -f metiu.tmpfile')
+    call backup(this,file='metiu.tmpfile')
+    call kill(this)
+    call make(this,file='metiu.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%R,1.0_double,msg='metiu R is not stored properly')
     call kill(this)    
+    call system('rm -f metiu.tmpfile')
+
+
+    write(*,*)'test make sets correct default value for R_c '
+    call make(this)
+    call assert(this%R_c,1.5*angstrom&
+         ,msg='metiu default cut-off distance is not 1.5 angstrom')
+    call kill(this)
+
+    write(*,*)'test R_c attribute is stored properly in backup file'
+    call make(this)
+    this%R_c=1.0_double!First, manually set metiu attributes to non-default values
+    call reset(this,state=1)
+    call system('rm -f metiu.tmpfile')
+    call backup(this,file='metiu.tmpfile')
+    call kill(this)
+    call make(this,file='metiu.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%R_c,1.0_double,msg='metiu R_c is not stored properly')
+    call kill(this)    
+    call system('rm -f metiu.tmpfile')
 
     !Reproduce V_b and Delta in figure 2 in JCP 102, 9285 (1995)
     write(*,*)'test V_b=0.87eV for R_c=1.50 Angstrom'
@@ -708,6 +796,8 @@ contains
 
 
 
+
+    
 
     !================== consider the following tests ========================
     !-----  make tests -----
