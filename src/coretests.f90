@@ -10,16 +10,32 @@ subroutine coretests
   integer(short)::ierr
   logical::pass
 
-  real(double)::x
+  real(double)::x,y,S
   complex(double)::z
   real(double),pointer::ptr(:) 
   complex(double),pointer::zptr(:) 
 
-  integer(long),parameter::npt=128
+  integer(long),parameter::npt=127
   real(double)::dx=0.05,Eng
-  real(double),dimension(0:npt-1)::psi,grid,array1,array2,phi
-  integer(long)::i,nnode
+  real(double),dimension(0:npt-1)::psi,grid,array1,array2,phi,chi
+  real(double),dimension(3,3)::ElCoupMat
+  integer(long)::i,nnode,j
   
+  !Cuckier model constants
+  real(double),parameter::hbar=1 !planck const
+  real(double),parameter::me=1   !electron rest mass
+  real(double),parameter::a0=1   !bhor radius
+  real(double),parameter::Eh=1   !hartree
+  real(double),parameter::invcm=4.5563E-6    !wavenumber in Eh
+  real(double),parameter::angstrom=1.8897*a0 !angstrom in bhor radii
+  !Cuckier model parameters
+  real(double),parameter::gamma=1.0!ion-electron interaction decay distance
+  real(double),parameter::mass=1836*me  !mobile ion mass (H+)
+  real(double),parameter::Eb=2000*invcm !double well barrier height
+  real(double),parameter::w0=1200*invcm !well frequency in harmonic approx 
+  real(double),parameter::D=Eb/(hbar*w0)!Dimensionless barrier height 
+  real(double),parameter::a=sqrt(hbar/(mass*w0))!spring cutoff distance
+
   !-----LOGICAL ASSERT TESTS-----
 
   write(*,*)'checking logical assert can be called with only a condition.....'
@@ -140,6 +156,66 @@ subroutine coretests
      stop
   end if
 
+  !-----DOUBLE REAL ASSERT TESTS-----
+  write(*,*)'checking double real assert can be called with only two double reals.....'
+  call assert(1.0_double,1.0_double)
+
+  write(*,*)'checking double real assert exits gracefully for not equal condition.....'
+  call assert(1.0_double,2.0_double,iostat=ierr)
+
+  write(*,*)'checking double real assert writes msg for not equal condition.....'
+  write(*,*)'--------------------------------------------------------------'
+  call assert(1.0_double,2.0_double,msg='double real assert is writting you a message.',iostat=ierr)
+  write(*,*)'--------------------------------------------------------------'
+  write(*,*)'Do you see a message in between the lines above? Answer true or false.'
+  read(*,*)pass
+  if(.not.pass)then
+     write(*,*)'User cannot see a message passed by double real assert.'
+     stop
+  end if
+
+  write(*,*)'checking double real assert does not write error message for equal condition.....'
+  call assert(1.0_double,1.0_double,msg='Error: double real assert writes error message for equal condition.')
+  
+  write(*,*)'checking double real assert iostat returns 0 for equal condition.....' 
+  call assert(1.0_double,1.0_double,iostat=ierr)
+  if(ierr.NE.0)then
+     write(*,*)'double real assert: iostat option does not return 0 for equal condition.'
+     stop
+  end if
+
+  write(*,*)'checking double real assert iostat returns 1 for not equal condition.....' 
+  call assert(1.0_double,2.0_double,iostat=ierr)
+  if(ierr.NE.1)then
+     write(*,*)'double real assert: iostat option does not return 1 for not equal condition'
+     stop
+  end if
+
+  write(*,*)'checking double real assert returns -1 for huge numbers.....' 
+  call assert(Huge(1.0_double),Huge(1.0_double),iostat=ierr)
+  if(ierr.NE.-1)then
+     write(*,*)'double real assert: iostat option does not return -1 for huge numbers'
+     stop
+  end if
+
+  write(*,*)'checking double real assert can be called with tolerance option.....'
+  call assert(1.0_double,1.0_double,tol=0.1_double,iostat=ierr) 
+
+  write(*,*)'checking double real assert returns 0 for two vaules within tolerance.....'
+  call assert(1.0_double,2.0_double,tol=3.0_double,iostat=ierr)
+  if(ierr.NE.0)then
+     write(*,*)'double real assert: iostat option does not return 0 for two values within tolerance'
+     stop
+  end if
+
+  write(*,*)'checking double real assert returns 1 for two vaules not within tolerance.....'
+  call assert(1.0_double,2.0_double,tol=0.1_double,iostat=ierr)
+  if(ierr.NE.1)then
+     write(*,*)'double real assert: iostat option does not return 1 for two values not within tolerance'
+     stop
+  end if
+
+  !-----FILE ASSERT
   write(*,*)'checking file assert returns 1 for missing file.....'
   call system('rm -f coretest.tmpfile')
   call assert('coretest.tmpfile',iostat=ierr)
@@ -423,6 +499,147 @@ subroutine coretests
           excited state wavefunctions is greater than 2%'
      stop
   end if
+
+  write(*,*)'test solvestate returns Cukier proton sates.....'
+  !--------------------------------
+  !Cukeir potential
+  !hbar=1
+  !me=1
+  !a0=1
+  !invcm=4.5563E-6
+  !angstrom=1.8897*a0
+  !mass=1836*me
+  !Eb=2000*invcm
+  !w0=1200*invcm
+  !D=Eb/(hbar*w0)
+  !a=sqrt(hbar/(mass*w0))
+  !L=npt*dx=128*.016=2.048
+  !gamma=1.0_double
+  !--------------------------------
+  dx=0.016*angstrom
+  !set xgrid and calculated array1(proton potential) and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid
+     x=grid(i)/a
+     y=x*x/4
+     array1(i)=y*(1-y/(4*D))   !potential energy
+  end do
+  array1=Eb-(hbar*w0)*array1
+
+  write(*,*)'solvestate returns same first excited wf when grid is inverted for Cukier potential'
+  !calculate inverted potential
+  do i=0,npt-1
+     array2(npt-1-i)=array1(i) !inverted potential energy
+  end do
+  !calculate states
+  call solvestate(N=1,E=x,wf=psi,V=array1,mass=mass,dx=dx)
+  call solvestate(N=1,E=y,wf=phi,V=array2,mass=mass,dx=dx)
+  !normalize wavefunctions
+  psi=psi/sqrt(sum(psi*psi))
+  phi=-phi/sqrt(sum(phi*phi))
+  !calculate overlap
+  S=0.0_double
+  do i=0,npt-1
+     S=S+psi(i)*phi(npt-1-i)
+  end do
+ ! write(*,*)S
+  call assert(S.GT.0.98.and.S.LT.1.02,msg='first excited wf not same (<2% error) as with inverted grid.')
+
+  !!diagnostic write potential and first 3 state solutions
+  !call solvestate(N=0,E=x,wf=psi,V=array1,mass=mass,dx=dx)
+  !call solvestate(N=1,E=y,wf=phi,V=array1,mass=mass,dx=dx)
+  !call solvestate(N=2,E=Eng,wf=chi,V=array1,mass=mass,dx=dx)
+  !open(123,file='CukierModel.dat')
+  !do i=0,npt-1
+  !   write(123,*)grid(i)/angstrom,array1(i)&
+  !        ,psi(i)*(hbar*w0)+x,phi(i)*(hbar*w0)+y&
+  !        ,chi(i)*(hbar*w0)+Eng,.5*(psi(i)*(hbar*w0)+phi(i)*(hbar*w0))
+  !end do
+  !close(123)
+
+  !!diagnostic calculate electronic coupling matrix
+  !call solvestate(N=0,E=x,wf=phi,V=array1,mass=mass,dx=dx)
+  !call solvestate(N=1,E=y,wf=chi,V=array1,mass=mass,dx=dx)
+  !psi=.5*(phi+chi)
+  !phi=.5*(phi-chi)
+  !call solvestate(N=2,E=Eng,wf=chi,V=array1,mass=mass,dx=dx)
+  !ElCoupMat(1,1)=sum(psi*exp(-gamma*abs(grid))*psi)
+  !ElCoupMat(1,2)=sum(psi*exp(-gamma*abs(grid))*phi)
+  !ElCoupMat(1,3)=sum(psi*exp(-gamma*abs(grid))*chi)
+  !ElCoupMat(2,1)= ElCoupMat(1,2)
+  !ElCoupMat(2,2)=sum(phi*exp(-gamma*abs(grid))*phi)
+  !ElCoupMat(2,3)=sum(phi*exp(-gamma*abs(grid))*chi)
+  !ElCoupMat(3,1)= ElCoupMat(1,3)
+  !ElCoupMat(3,2)= ElCoupMat(2,3)
+  !ElCoupMat(3,3)=sum(chi*exp(-gamma*abs(grid))*chi)
+  !open(123,file='CukierCouplingMat.dat')
+  !do i=1,3
+  !   write(123,*)(ElCoupMat(i,j),j=1,3)
+  !   write(*,*)(ElCoupMat(i,j),j=1,3)
+  !end do
+  !close(123)
+
+  write(*,*)'test solvestate returns particle in a box 1st excited state energy with error<2% .....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=2 for first excited state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  call solvestate(N=1,E=Eng,V=array1,mass=1.0_double,dx=dx)
+  x=0.5_double*(2*pi/(npt*dx))**2
+  !write(*,*)Eng,x,abs((Eng-x)/x)
+  x=(Eng-x)/x !relative error
+  if(abs(x).GT.2E-2)then
+     write(*,*)'solvestate energy relative error is greater than .02&
+          &for 1t exited state particle in a box'
+     stop
+  end if
+
+  write(*,*)'test solvestate can be called with energy increment option .....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=2 for first excited state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  x=0.1
+  call solvestate(N=1,E=Eng,V=array1,mass=1.0_double,dx=dx,dE=x)
+
+  write(*,*)'test solvestate can be called with growth factor option .....'
+  !--------------------------------
+  !Particle in a bax constants
+  !hbar=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=(n*hbar*pi/L)**2/(2m) n=2 for first excited state
+  !V(x)=0=array1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0._double !potential energy
+  x=0.1
+  call solvestate(N=1,E=Eng,V=array1,mass=1.0_double,dx=dx,growth=x)
+
+
+
+
 
   !test string module
 

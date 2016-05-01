@@ -214,7 +214,8 @@ contains
     integer(short),intent(in)::a,b
     character(len=*),optional,intent(in)::msg
     integer(short),optional,intent(out)::iostat
-    logical::inputOK=.true.
+    logical::inputOK
+    inputOK=.true.
     if(present(iostat))iostat=-1   
     if(check(a).NE.0)inputOK=.false.
     if(check(b).NE.0)inputOK=.false.
@@ -234,7 +235,8 @@ contains
     integer(long),intent(in)::a,b
     character(len=*),optional,intent(in)::msg
     integer(short),optional,intent(out)::iostat
-    logical::inputOK=.true.
+    logical::inputOK
+    inputOK=.true.
     if(present(iostat))iostat=-1
     if(check(a).NE.0)inputOK=.false.
     if(check(b).NE.0)inputOK=.false.
@@ -249,15 +251,20 @@ contains
     stop 
  end subroutine assert_longinteq
 !-------------------------
-  subroutine assert_doublerealeq(a,b,msg,iostat)
+  subroutine assert_doublerealeq(a,b,tol,msg,iostat)
     real(double),intent(in)::a,b
+    real(double),optional,intent(in)::tol
     character(len=*),optional,intent(in)::msg
     integer(short),optional,intent(out)::iostat
-    logical::inputOK=.true.
+    logical::inputOK
+    real(double)::tolerance
+    inputOK=.true.
     if(present(iostat))iostat=-1
     if(check(a).NE.0)inputOK=.false.
     if(check(b).NE.0)inputOK=.false.
-    if(abs(a-b).LT.epsilon(a).and.inputOK)then
+    tolerance=epsilon(a)
+    if(present(tol))tolerance=tol
+    if(abs(a-b).LT.tolerance.and.inputOK)then
        if(present(iostat))iostat=0
        return
     else

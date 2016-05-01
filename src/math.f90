@@ -22,7 +22,7 @@ module math
   end interface krondelta
 
   interface solvestate
-module procedure solve_numerov
+     module procedure solve_numerov
   end interface solvestate
 
 contains
@@ -35,13 +35,16 @@ contains
   !! \param[in] MASS particle mass in atomic mass units
   !! \param[in] dx space discretization increment in bohr
   !!<
-  subroutine solve_numerov(N,E,wf,V,mass,dx)
+  subroutine solve_numerov(N,E,wf,V,mass,dx,dE,growth)
     integer(long),intent(in)::N
     real(double),intent(inout)::E
     real(double),intent(in)::V(:),mass,dx
     real(double),intent(inout),optional::wf(:)
+    real(double),intent(in),optional::dE,growth
 
-    integer(long)::i,npt,nnode,nattempt,statesign
+    integer(long)::i,npt,nnode,statesign
+    integer(long)::maxattempt,nattempt
+    integer(long)::ctp1,ctp2
     real(double),dimension(size(V))::psi,g,s
     real(double)::E0 !energy origin minval(V)
     real(double)::Eb !lower energy bound (bottom)
@@ -55,52 +58,24 @@ contains
     E0=minval(V)
     statesign=2*mod(N,2)-1
     accuracy=dx**4
+    maxattempt=1000
     growthfactor=1.05
+    if(present(growth).and.growth.GT.0)growthfactor=1+growth
 
-!!$    if(maxval(V).NE.minval(V))then
-!!$       !set initial lower energy bound to 1% of potential energy range
-!!$       E=1E-2*(maxval(V)-minval(V))
-!!$    else
-       !set initial lower energy bound to 5% of grnd state particle in a box
-       !En=(n*hbar*pi/L)**2/(2m) n=1 for grnd state
-       E=(pi/(npt*dx))**2/(2*mass)*.05
-!!$    end if
+    !manually set lower energy bound to 0 relative to potential minimum E0
+    Eb=0.0
 
+    !set default initial upper energy bound to a tiny number
+    E=epsilon(Eb)
 
-
-    !Find lower energy bound
-    !Assume nnode<=N; increase E until we have the correct number of nodes
-    !Eb is penultimate energy setting before nnode=N
-    nnode=-1
-    nattempt=0
-    Eb=E
-    do while(nnode.LT.N.and.nattempt.LT.300)
-       nattempt=nattempt+1
-       !nnode<N so set lowerbound energy
-       Eb=E
-       !recalculate energy difference
-       g=2.0_double*mass*(E+E0-V)
-       !calculate numerov solution
-       psi=numerov(dx,g,s)
-       !count nodes
-       nnode=0
-       do i=2,npt
-          if(psi(i)/psi(i-1).LT.0)nnode=nnode+1
-       end do
-       !write(*,*)E,nnode,nattempt
-       !increase energy if necessary
-       if(nnode.LT.N)E=E*growthfactor
-    end do
-    if(nattempt.GE.300)then
-       write(*,*)'solve_numerov error: too many attempts to find lower bound state'
-       stop
-    end if
+    !Let user set initial upper energy bound
+    if(present(dE))E=dE
 
     !Find upper energy bound
     !increase E until nnode>N
     nnode=-1
     nattempt=0
-    do while(nnode.LE.N.and.nattempt.LT.300)
+    do while(nnode.LE.N.and.nattempt.LT.maxattempt)
        nattempt=nattempt+1
        !recalculate energy difference
        g=2.0_double*mass*(E+E0-V)
@@ -115,7 +90,7 @@ contains
        !increase energy if neccessary
        if(nnode.LE.N)E=E*growthfactor
     end do
-    if(nattempt.GE.300)then
+    if(nattempt.GE.maxattempt)then
        write(*,*)'solve_numerov error: too many attempts to find upper bound state'
        stop
     end if
@@ -129,8 +104,10 @@ contains
     accuracy=epsilon(dx)
     Ep=Eb !set previous energy to lower energy bound
     E=Et  !set energy to upper bound to ensure energy gap
-    !loop until wf stops diverging .and. too many attempts .and. energy stops changing
-    do while(abs(error).GT.accuracy.and.nattempt.LT.300.and.abs(E-Ep).GT.epsilon(E))
+    !loop until wf stops diverging .and. too many attempts
+    !    .and. energy stops changing
+    do while(abs(error).GT.accuracy.and.nattempt.LT.maxattempt&
+         .and.abs(E-Ep).GT.epsilon(E))
        nattempt=nattempt+1
        !save previous energy
        Ep=E
@@ -138,8 +115,28 @@ contains
        E=(Eb+Et)/2.0_double
        !recalculate energy difference
        g=2.0_double*mass*(E+E0-V)
+
+       !calculate classical turning points ctp1 and ctp2
+       ctp1=1
+       ctp2=npt
+       i=0
+       do while(npt+1-i.GT.ctp1)
+          i=i+1
+          if(g(i)/abs(g(i)).LE.0)ctp1=i
+          if(g(npt+1-i)/abs(g(npt+1-i)).LE.0)ctp2=npt+1-i
+       end do
+       !diagonstic print turning points
+       !write(*,*)npt,ctp1,ctp2
+       !stop
+
+       !scan from turning points
+
        !calculate numerov solution
        psi=numerov(dx,g,s)
+
+       !begin at classical turning points untill solution converges
+
+
        error=psi(npt)
        !count nodes
        nnode=0
@@ -161,7 +158,7 @@ contains
           if(psi(npt)/statesign.GT.accuracy)Et=E
        end if
     end do
-    if(nattempt.GE.300)then
+    if(nattempt.GE.maxattempt)then
        write(*,*)'solve_numerov error: too many attempts to find state'
        stop
     end if
@@ -183,6 +180,163 @@ contains
 
 
   end subroutine solve_numerov
+!!$!---------------------------
+!!$  !> \brief State energy for 1D potential
+!!$  !! \param[in] N state number, 0 for ground state
+!!$  !! \param[inout] E state energy in hartree output
+!!$  !! \param[inout] WF optional wavefunction output
+!!$  !! \param[in] V array containing potential energy in hartrees on equally spaced grid
+!!$  !! \param[in] MASS particle mass in atomic mass units
+!!$  !! \param[in] dx space discretization increment in bohr
+!!$  !!<
+!!$  subroutine solve_numerov(N,E,wf,V,mass,dx)
+!!$    integer(long),intent(in)::N
+!!$    real(double),intent(inout)::E
+!!$    real(double),intent(in)::V(:),mass,dx
+!!$    real(double),intent(inout),optional::wf(:)
+!!$
+!!$    integer(long)::i,npt,nnode,nattempt,statesign
+!!$    real(double),dimension(size(V))::psi,g,s
+!!$    real(double)::E0 !energy origin minval(V)
+!!$    real(double)::Eb !lower energy bound (bottom)
+!!$    real(double)::Et !upper energy bound (top)
+!!$    real(double)::Ep !previous energy to test convergence
+!!$    real(double)::error,accuracy,growthfactor
+!!$
+!!$    !constants
+!!$    npt=size(V)
+!!$    s=0.0_double
+!!$    E0=minval(V)
+!!$    statesign=2*mod(N,2)-1
+!!$    accuracy=dx**4
+!!$    growthfactor=1.05
+!!$
+!!$    !if(maxval(V).NE.minval(V))then
+!!$    !   !set initial lower energy bound to 1% of potential energy range
+!!$    !   E=1E-2*(maxval(V)-minval(V))
+!!$    !else
+!!$       !set initial lower energy bound to 5% of grnd state particle in a box
+!!$       !En=(n*hbar*pi/L)**2/(2m) n=1 for grnd state
+!!$       E=(pi/(npt*dx))**2/(2*mass)*.05
+!!$    !end if
+!!$
+!!$
+!!$
+!!$    !Find lower energy bound
+!!$    !Assume nnode<=N; increase E until we have the correct number of nodes
+!!$    !Eb is penultimate energy setting before nnode=N
+!!$    nnode=-1
+!!$    nattempt=0
+!!$    Eb=E
+!!$    do while(nnode.LT.N.and.nattempt.LT.maxattempt)
+!!$       nattempt=nattempt+1
+!!$       !nnode<N so set lowerbound energy
+!!$       Eb=E
+!!$       !recalculate energy difference
+!!$       g=2.0_double*mass*(E+E0-V)
+!!$       !calculate numerov solution
+!!$       psi=numerov(dx,g,s)
+!!$       !count nodes
+!!$       nnode=0
+!!$       do i=2,npt
+!!$          if(psi(i)/psi(i-1).LT.0)nnode=nnode+1
+!!$       end do
+!!$       !write(*,*)E,nnode,nattempt
+!!$       !increase energy if necessary
+!!$       if(nnode.LT.N)E=E*growthfactor
+!!$    end do
+!!$    if(nattempt.GE.maxattempt)then
+!!$       write(*,*)'solve_numerov error: too many attempts to find lower bound state'
+!!$       stop
+!!$    end if
+!!$
+!!$    !Find upper energy bound
+!!$    !increase E until nnode>N
+!!$    nnode=-1
+!!$    nattempt=0
+!!$    do while(nnode.LE.N.and.nattempt.LT.maxattempt)
+!!$       nattempt=nattempt+1
+!!$       !recalculate energy difference
+!!$       g=2.0_double*mass*(E+E0-V)
+!!$       !calculate numerov solution
+!!$       psi=numerov(dx,g,s)
+!!$       !count nodes
+!!$       nnode=0
+!!$       do i=2,npt
+!!$          if(psi(i)/psi(i-1).LT.0)nnode=nnode+1
+!!$       end do
+!!$       !write(*,*)E,nnode,nattempt
+!!$       !increase energy if neccessary
+!!$       if(nnode.LE.N)E=E*growthfactor
+!!$    end do
+!!$    if(nattempt.GE.maxattempt)then
+!!$       write(*,*)'solve_numerov error: too many attempts to find upper bound state'
+!!$       stop
+!!$    end if
+!!$    !set upper energy bound
+!!$    Et=E
+!!$
+!!$    !adjust energy by divide and conquer until
+!!$    !magnitude of last point is tiny
+!!$    error=huge(dx)
+!!$    nattempt=0
+!!$    accuracy=epsilon(dx)
+!!$    Ep=Eb !set previous energy to lower energy bound
+!!$    E=Et  !set energy to upper bound to ensure energy gap
+!!$    !loop until wf stops diverging .and. too many attempts .and. energy stops changing
+!!$    do while(abs(error).GT.accuracy.and.nattempt.LT.maxattempt.and.abs(E-Ep).GT.epsilon(E))
+!!$       nattempt=nattempt+1
+!!$       !save previous energy
+!!$       Ep=E
+!!$       !set energy between energy bounds
+!!$       E=(Eb+Et)/2.0_double
+!!$       !recalculate energy difference
+!!$       g=2.0_double*mass*(E+E0-V)
+!!$       !calculate numerov solution
+!!$       psi=numerov(dx,g,s)
+!!$       error=psi(npt)
+!!$       !count nodes
+!!$       nnode=0
+!!$       do i=2,npt
+!!$          if(psi(i)/psi(i-1).LT.0)nnode=nnode+1
+!!$       end do
+!!$       !write(*,*)Eb,E,(Eb+Et)/2.0_double,Et,nnode,nattempt
+!!$       !energy too big if number of nodes is greater than N
+!!$       if(nnode.GT.N)Et=E
+!!$       !energy too small if number of nodes is less than N
+!!$       if(nnode.LT.N)Eb=E
+!!$       !if number of nodes equals N then
+!!$       if(nnode.EQ.N)then
+!!$          !energy too small if divergence is negative for even state
+!!$          !or positive divergence for odd state
+!!$          if(psi(npt)/statesign.LT.accuracy)Eb=E
+!!$          !energy too big if divergence is positive for even state
+!!$          !or negative divergence for odd state
+!!$          if(psi(npt)/statesign.GT.accuracy)Et=E
+!!$       end if
+!!$    end do
+!!$    if(nattempt.GE.maxattempt)then
+!!$       write(*,*)'solve_numerov error: too many attempts to find state'
+!!$       stop
+!!$    end if
+!!$
+!!$    !add energy origin to final energy
+!!$    E=E+E0
+!!$
+!!$    !normalize wavefunction
+!!$    psi=psi/sqrt(sum(psi**2)*dx)
+!!$
+!!$    if(present(wf))then
+!!$       if(size(wf).EQ.npt)then
+!!$          wf=psi
+!!$       else
+!!$          write(*,*)'solve_numerov warning: wavefunction array provided wf is not same size as potential V&
+!!$               ; program will not change wf'
+!!$       end if
+!!$    end if
+!!$
+!!$
+!!$  end subroutine solve_numerov
 
 !---------------------------
   !> \brief solution to diffeq of the form d^2/dx^2 y(x)=s(x)-g(x)y(x)

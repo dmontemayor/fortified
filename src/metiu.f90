@@ -30,15 +30,16 @@ module metiu_class
      type(wavelet),private::ionA,ionB,ionC,electron !all matter
 
      !model parameters
-     integer(long)::npt    !electron dof discretization
-     integer(long)::nstate !number of electronic states
-     real(double)::R       !ionC position                                      
-     real(double)::V_b     !barrier on ground adiabatic state                  
-     real(double)::R_c     !ion-electron interaction potential cut-off distance
+     integer(long)::nstate   !number of electronic states
+     integer(long)::npt      !electron dof discretization
+     real(double)::xmin,xmax !electron dof boundaries
+     real(double)::R         !ionC position
+     real(double)::R_c       !ion-electron interaction cut-off distance
 
-     real(double),dimension(:),pointer::Eigenvalue !adiabatic state energies
+     real(double),dimension(:),pointer::adiabat !adiabatic state energies
 
      
+     !real(double)::V_b     !barrier on ground adiabatic state                  
 !!$    !scan potential
 !!$    integer(long),parameter::npt=256,nstate=2
 !!$    real(double),parameter::Rmin=-4.99*Angstrom,Rmax=4.99*Angstrom
@@ -155,19 +156,21 @@ contains
        
        !check if file is of type metiu
        read(unit,*)header
-       call assert(trim(header).EQ.this%name,msg='metiu_init: bad input file header in file'//file)
+       call assert(trim(header).EQ.this%name&
+            ,msg='metiu_init: bad input file header in file'//file)
               
        !READ static parameters
        !***          example            ***
        !***read scalar parameter from file***
        !read(unit,*)this%XXX
        !**************************************
-       read(unit,*)this%npt !electron dof discretization
        read(unit,*)this%nstate !number of electronic states
-       read(unit,*)this%R   !ionC position
-       read(unit,*)this%R_c !ion-electron interaction potential cut-off distance
+       read(unit,*)this%npt    !electron dof discretization
+       read(unit,*)this%xmin   !electron dof minval boundary
+       read(unit,*)this%xmax   !electron dof maxval boundary
+       read(unit,*)this%R      !ionC position
+       read(unit,*)this%R_c    !ion-electron interaction cut-off distance
 
-       
        !use reset to manage dynamic memory, reset sub-objects, and set random parameters
        !based on current static parameters
        call reset(this,state=1)
@@ -176,7 +179,6 @@ contains
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
        !************************
-       !read(unit,*)(this%Eigenvalue(i),i=0,this%nstate-1)
     
        !READ sub-objects
        !***      example     ***
@@ -204,8 +206,10 @@ contains
        !***set scalar parameter***
        !this%XXX=YYY
        !**************************
-       this%npt=128
        this%nstate=2
+       this%npt=255
+       this%xmin=-8.0_double*angstrom
+       this%xmax=8.0_double*angstrom
        this%R=0.0_double
        this%R_c=1.5_double*angstrom
        
@@ -213,7 +217,8 @@ contains
        call reset(this,state=1)
     end if
 
-    
+    !finished making now update object
+    call update(this)
 
   end subroutine metiu_init
 
@@ -238,46 +243,53 @@ contains
     use testing_class
     type(metiu),intent(inout)::this
 
+    real(double)::R1  !ion A position
+    real(double)::R2  !ion B position
+    real(double)::R   !ion C position 
+    real(double)::V_N !Coulombic interaction of ion C with fixed ions
+    real(double)::V_e(0:this%npt-1)!electronic potential for current R
+    real(double)::x   !electron dof
+    real(double)::dx  !electron dof increment
+    real(double)::psi(0:this%nstate-1,0:this%npt-1)!electron wf for current R
+
+    real(double)::y
+    integer(long)::j
+
     !scan potential
-    !integer(long),parameter::npt=256,nstate=2
+    !integer(long),parameter::npt=257,nstate=2
     !real(double),parameter::Rmin=-4.99*Angstrom,Rmax=4.99*Angstrom
     !real(double),parameter::dR=(Rmax-Rmin)/real(this%npt)
     !real(double),parameter::R1=-5.0_double*Angstrom  !ion A position
     !real(double),parameter::R2= 5.0_double*Angstrom  !ion B position
-    real(double)::R1 !ion A position
-    real(double)::R2 !ion B position
-    real(double)::Rmin !ion A position
-    real(double)::Rmax !ion B position
-    real(double)::dR !dof increment
-    real(double)::R  !ion C position
-    real(double)::x  !electron position
-    real(double)::y  !electron-ion distance
-    real(double)::V_N !Coulombic interaction of ion C with fixed ions
-    real(double)::V_e(0:this%npt-1)!electronic potential parameterized by R
-    real(double)::E(0:this%nstate-1,0:this%npt-1)  !adiabatic energies parameterized by R
-    real(double)::psi(0:this%nstate-1,0:this%npt-1) !adiabatic wave functions for given R
-    integer(long)::unit,i,j,unit2
+!!$    integer(long),parameter::Rnpt=127
+!!$    real(double),parameter::Rmin=-4.0*angstrom
+!!$    real(double),parameter::Rmax=4.0*angstrom
+!!$    real(double),parameter::dR=(Rmax-Rmin)/real(Rnpt) !ionC dof increment
+!!$    real(double)::E(0:this%nstate-1,0:Rnpt-1)  !adiabatic energies paramed by R
+!!$
+!!$    real(double)::x  !electron position
+!!$    real(double)::dx  !electron dof increment
+!!$    real(double)::xmin !-15 angstrom
+!!$    real(double)::xmax !15 angstrom
+!!$    real(double)::y  !electron-ion distance
+!!$    real(double)::V_e(0:this%npt-1)!electronic potential for given R
+!!$    integer(long)::unit,i,j,unit2
 
+
+
+!!!!!!!!!!!!
     R1=this%ionA%grid(0,0)
     R2=this%ionB%grid(0,0)
-    Rmin=this%ionA%grid(0,0)
-    Rmax=this%ionB%grid(0,0)
-    dR=(Rmax-Rmin)/real(this%npt)
+    R=this%ionC%grid(0,0)
+    dx=(this%xmax-this%xmin)/real(this%npt,double)
 
-
-
-    unit=newunit()
-    open(unit,file='metiu_pot.dat')
-    open(unit2,file='metiu_eng.dat')
-    do i=0,this%npt-1
-       R=Rmin+i*dR
        !ion-ion interaction
-       V_N=kC/abs(R-R1)+kC/abs(R-R2)
+       V_N=kC/abs(R-R1)+kC/abs(R-R2)!+kC/abs(R1-R2)
 
        !calculate electron-ion interaction
        V_e=0.0_double
        do j=0,this%npt-1
-          x=Rmin+j*dR
+          x=this%xmin+(j*dx)
           !interaction with ion A
           y=abs(x-R1)
           if(y.GT.epsilon(y))&
@@ -292,26 +304,75 @@ contains
                V_e(j)=V_e(j)-erf(y/this%R_c)/y
        end do
        V_e=V_e+V_N !add ion-ion interaction
-       call solvestate(0,E=E(0,i),wf=psi(0,:),V=V_e,mass=me,dx=dR)
-       call solvestate(1,E=E(1,i),wf=psi(1,:),V=V_e,mass=me,dx=dR)
 
-       do j=0,this%npt-1
-          x=Rmin+j*dR
-          write(unit,*)R/Angstrom,x/Angstrom,V_e(j)/eV,psi(0,j),psi(1,j)
-       end do
-       write(unit,*)
-       write(unit2,*)R/Angstrom,E(0,i)/eV,E(1,i)/eV,V_N/eV
-       !write(*,*)i,E(0,i)/eV,E(1,i)/eV
-    end do
-    close(unit)
-    close(unit2)
+       call solvestate(0,E=this%adiabat(0),wf=psi(0,:),V=V_e,mass=me,dx=dx)
+       call solvestate(1,E=this%adiabat(1),wf=psi(1,:),V=V_e,mass=me,dx=dx)
 
-!left off here
+       !normalize electron wavefunction
+       !this%electron%wf=psi(0,:)/sqrt(sum(psi(0,:)**2))
+       this%electron%wf=psi(1,:)/sqrt(sum(psi(1,:)**2))
 
-    !calculate V_b
-    write(*,*)E(0,this%npt/2)/eV,minval(E(0,:))/eV,maxval(E(0,this%npt/4:this%npt*3/4))/eV
-    this%V_b=maxval(E(0,this%npt/4:this%npt*3/4))-minval(E(0,:))
+!!!!!!!!!
 
+!!$    !this%R_c=2.5*angstrom
+!!$
+!!$    R1=this%ionA%grid(0,0)
+!!$    R2=this%ionB%grid(0,0)
+!!$
+    !xmin=-8.0*angstrom
+    !xmax=8.0*angstrom
+!!$    xmin=-5.0*angstrom
+!!$    xmax=5.0*angstrom
+!!$    dx=(xmax-xmin)/real(this%npt)
+
+!!$    unit=newunit()
+!!$    open(unit,file='metiu_pot.dat')
+!!$    open(unit2,file='metiu_eng.dat')
+!!$    do i=0,Rnpt-1
+!!$       R=Rmin+(i*dR)
+!!$
+!!$       !ion-ion interaction
+!!$       V_N=kC/abs(R-R1)+kC/abs(R-R2)!+kC/abs(R1-R2)
+!!$
+!!$       !calculate electron-ion interaction
+!!$       V_e=0.0_double
+!!$       do j=0,this%npt-1
+!!$          x=xmin+(j*dx)
+!!$          !interaction with ion A
+!!$          y=abs(x-R1)
+!!$          if(y.GT.epsilon(y))&
+!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
+!!$          !interaction with ion B
+!!$          y=abs(x-R2)
+!!$          if(y.GT.epsilon(y))&
+!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
+!!$          !interaciton with ion C
+!!$          y=abs(x-R)
+!!$          if(y.GT.epsilon(y))&
+!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
+!!$       end do
+!!$       V_e=V_e+V_N !add ion-ion interaction
+!!$
+!!$       call solvestate(0,E=E(0,i),wf=psi(0,:),V=V_e,mass=me,dx=dR)
+!!$       call solvestate(1,E=E(1,i),wf=psi(1,:),V=V_e,mass=me,dx=dR)
+!!$
+!!$       do j=0,this%npt-1
+!!$          x=xmin+j*dx
+!!$          write(unit,*)R/Angstrom,x/Angstrom,V_e(j)/eV,psi(0,j),psi(1,j)
+!!$       end do
+!!$       write(unit,*)
+!!$       write(unit2,*)R/Angstrom,E(0,i)/eV,E(1,i)/eV,V_N/eV
+!!$
+!!$    end do
+!!$    close(unit)
+!!$    close(unit2)
+
+
+!!$    !calculate V_b
+!!$    this%V_b=maxval(E(0,Rnpt/4:Rnpt*3/4))-minval(E(0,:))
+!!$    write(*,*)E(0,Rnpt/2)/eV,minval(E(0,:))/eV&
+!!$         ,maxval(E(0,Rnpt/4:Rnpt*3/4))/eV,this%V_b/eV
+!!$stop
     !!calculate Delta
     !this%Delta=E(1,this%npt/2)-E(0,this%npt/2)
 
@@ -352,7 +413,7 @@ contains
           !******        Example - cleanup pointer attribute 'PPP'       ****
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
-          if(associated(this%Eigenvalue))nullify(this%Eigenvalue)
+          if(associated(this%Adiabat))nullify(this%Adiabat)
           
           !kill all objects
           !**** example **********
@@ -373,8 +434,8 @@ contains
           !if(associated(this%PPP))nullify(this%PPP)
           !allocate(this%PPP(0:this%npt-1))
           !******************************************************
-          if(associated(this%Eigenvalue))nullify(this%Eigenvalue)
-          allocate(this%Eigenvalue(0:this%nstate-1))
+          if(associated(this%Adiabat))nullify(this%Adiabat)
+          allocate(this%Adiabat(0:this%nstate-1))
 
           !Set default dynamic memory values
           !***  Example - set values in pointer 'PPP' to zero ***
@@ -461,8 +522,10 @@ contains
     !******          Example - Backup a scalar attribute            ******
     ! write(unit,*)this%var
     !*********************************************************************
-    write(unit,*)this%npt
     write(unit,*)this%nstate
+    write(unit,*)this%npt
+    write(unit,*)this%xmin
+    write(unit,*)this%xmax
     write(unit,*)this%R   
     write(unit,*)this%R_c 
 
@@ -534,11 +597,6 @@ contains
 
     !Check all attributes are within acceptable values
 
-    !***   check npt is well behaved   ***
-    call assert(check(this%npt).EQ.0&
-         ,msg='metiu_check: npt failed check',iostat=metiu_check)
-    if(metiu_check.NE.0)return
-
     !***   check nstate is well behaved   ***
     call assert(check(this%nstate).EQ.0&
          ,msg='metiu_check: nstate failed check',iostat=metiu_check)
@@ -547,6 +605,21 @@ contains
     !***   check nstate is positive   ***
     call assert(this%nstate.GT.0&
          ,msg='metiu_check: nstate is not positive',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check npt is well behaved   ***
+    call assert(check(this%npt).EQ.0&
+         ,msg='metiu_check: npt failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check xmin is well behaved   ***
+    call assert(check(this%xmin).EQ.0&
+         ,msg='metiu_check: xmin failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check xmax is well behaved   ***
+    call assert(check(this%xmax).EQ.0&
+         ,msg='metiu_check: xmax failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
     !***   check R is well behaved   ***
@@ -569,9 +642,9 @@ contains
          ,msg='metiu_check: R_c is not positive',iostat=metiu_check)
     if(metiu_check.NE.0)return
     
-    !***   check Eigenvalue is well behaved   ***
-    call assert(check(this%Eigenvalue).EQ.0&
-         ,msg='metiu_check: Eigenvalue failed check',iostat=metiu_check)
+    !***   check Adiabat is well behaved   ***
+    call assert(check(this%Adiabat).EQ.0&
+         ,msg='metiu_check: Adiabat failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
     !**********   Example - check an object attribute 'primitive'  *********
@@ -675,7 +748,7 @@ contains
 
     write(*,*)'test make sets correct default value for npt '
     call make(this)
-    call assert(this%npt.EQ.128,msg='metiu default npt is not 128')
+    call assert(this%npt.EQ.255,msg='metiu default npt is not 255')
     call kill(this)
 
     write(*,*)'test npt attribute is stored properly in backup file'
@@ -817,7 +890,7 @@ contains
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default value for nstate '
+    write(*,*)'test make sets correct default value for nstate'
     call make(this)
     call assert(this%nstate.EQ.2,msg='metiu default nstate is not 2')
     call kill(this)
@@ -835,24 +908,36 @@ contains
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default groundstate energy.'
+    write(*,*)'test make sets correct default electron dof boundaries.'
     call make(this)
-    call assert(this%Eigenvalue(0),0.0_double&
-         ,msg='metiu default ground state energy is not 0.')
+    call assert(this%xmin.EQ.-8.0_double*angstrom&
+         ,msg='metiu default xmin is not -8 angstrom.')
+    call assert(this%xmax.EQ.8.0_double*angstrom&
+         ,msg='metiu default xmax is not 8 angstrom.')
+
+
+    !Reproduce Delta in figure 2 in JCP 102, 9285 (1995)
+    write(*,*)'test make set correct default transition energy (Delta).'
+    call make(this)
+    call assert(this%adiabat(1)-this%adiabat(0),1.28*eV,(0.02*1.28)*eV&
+         ,msg='metiu default transtion energy (Delta) is not 1.28 eV within 2% error.')
+    call kill(this)
+
+    write(*,*)'test make sets wf for default ionC position.'
+    call make(this)
+    call assert(real(sum(this%electron%wf*conjg(this%electron%wf)))&
+         ,1._double,tol=1E-8_double&
+         ,msg='electron wave function is not normalized.')
     call kill(this)
 
 
-
-
-    !Reproduce V_b and Delta in figure 2 in JCP 102, 9285 (1995)
-    write(*,*)'test V_b=0.87eV for R_c=1.50 Angstrom'
+    write(*,*)'test update sets correct transition energy (Delta) for Rc=1.75 angstrom.'
     call make(this)
-    this%R_c=1.50*angstrom
-    !this%R_c=2.50*angstrom
+    this%R_c=1.75*angstrom
     call update(this)
-    write(*,*)this%V_b,0.87*eV,abs(this%V_b-0.87*eV)/(0.87*eV)
-    call assert(abs(this%V_b-0.87*eV)/(0.87*eV).LT.0.05,msg='metiu figure 2a mismatch V_b does&
-         not equal 0.87eV within 5% error, for R_c=1.5 Angstrom')
+    write(*,*)this%adiabat/eV,(this%adiabat(1)-this%adiabat(0))/eV
+    call assert(this%adiabat(1)-this%adiabat(0),0.49*eV,(0.02*0.49)*eV&
+         ,msg='metiu default transtion energy (Delta) is not 0.49 eV within 2% error.')
     call kill(this)
 
 
