@@ -33,27 +33,11 @@ module metiu_class
      integer(long)::nstate   !number of electronic states
      integer(long)::npt      !electron dof discretization
      real(double)::xmin,xmax !electron dof boundaries
-     real(double)::R         !ionC position
-     real(double)::R_c       !ion-electron interaction cut-off distance
+     real(double)::R_a       !ionA-electron interaction cut-off distance
+     real(double)::R_b       !ionB-electron interaction cut-off distance
+     real(double)::R_c       !ionC-electron interaction cut-off distance
 
      real(double),dimension(:),pointer::adiabat !adiabatic state energies
-
-     
-     !real(double)::V_b     !barrier on ground adiabatic state                  
-!!$    !scan potential
-!!$    integer(long),parameter::npt=256,nstate=2
-!!$    real(double),parameter::Rmin=-4.99*Angstrom,Rmax=4.99*Angstrom
-!!$    real(double),parameter::dR=(Rmax-Rmin)/real(npt)
-!!$    real(double),parameter::R1=-5.0_double*Angstrom  !ion A position
-!!$    real(double),parameter::R2= 5.0_double*Angstrom  !ion B position
-!!$    real(double)::R  !ion C position
-!!$    real(double)::x  !electron position
-!!$    real(double)::y  !electron-ion distance
-!!$    real(double)::V_N !Coulombic interaction of ion C with fixed ions
-!!$    real(double)::V_e(0:npt-1)!electronic potential parameterized by R
-!!$    real(double)::E(0:nstate-1,0:npt-1)  !adiabatic energies parameterized by R
-!!$    real(double)::psi(0:nstate-1,0:npt-1) !adiabatic wave functions for given R
-
 
      !***********************************************************************!
      !=======================================================================!
@@ -168,10 +152,12 @@ contains
        read(unit,*)this%npt    !electron dof discretization
        read(unit,*)this%xmin   !electron dof minval boundary
        read(unit,*)this%xmax   !electron dof maxval boundary
-       read(unit,*)this%R      !ionC position
-       read(unit,*)this%R_c    !ion-electron interaction cut-off distance
+       read(unit,*)this%R_a    !ionA-electron interaction cut-off distance
+       read(unit,*)this%R_b    !ionB-electron interaction cut-off distance
+       read(unit,*)this%R_c    !ionC-electron interaction cut-off distance
 
-       !use reset to manage dynamic memory, reset sub-objects, and set random parameters
+       !use reset to manage dynamic memory
+       !, reset sub-objects, and set random parameters
        !based on current static parameters
        call reset(this,state=1)
 
@@ -208,14 +194,17 @@ contains
        !**************************
        this%nstate=2
        this%npt=255
-       this%xmin=-8.0_double*angstrom
-       this%xmax=8.0_double*angstrom
-       this%R=0.0_double
+       this%xmin=-10.0_double*angstrom
+       this%xmax=10.0_double*angstrom
+       this%R_a=1.5_double*angstrom
+       this%R_b=1.5_double*angstrom
        this%R_c=1.5_double*angstrom
        
        !Use reset to make a default object
        call reset(this,state=1)
     end if
+
+
 
     !finished making now update object
     call update(this)
@@ -252,141 +241,61 @@ contains
     real(double)::dx  !electron dof increment
     real(double)::psi(0:this%nstate-1,0:this%npt-1)!electron wf for current R
 
-    real(double)::y
-    integer(long)::j
+    real(double)::y,UeA,UeB,UeC
+    integer(long)::j,istate
 
-    !scan potential
-    !integer(long),parameter::npt=257,nstate=2
-    !real(double),parameter::Rmin=-4.99*Angstrom,Rmax=4.99*Angstrom
-    !real(double),parameter::dR=(Rmax-Rmin)/real(this%npt)
-    !real(double),parameter::R1=-5.0_double*Angstrom  !ion A position
-    !real(double),parameter::R2= 5.0_double*Angstrom  !ion B position
-!!$    integer(long),parameter::Rnpt=127
-!!$    real(double),parameter::Rmin=-4.0*angstrom
-!!$    real(double),parameter::Rmax=4.0*angstrom
-!!$    real(double),parameter::dR=(Rmax-Rmin)/real(Rnpt) !ionC dof increment
-!!$    real(double)::E(0:this%nstate-1,0:Rnpt-1)  !adiabatic energies paramed by R
-!!$
-!!$    real(double)::x  !electron position
-!!$    real(double)::dx  !electron dof increment
-!!$    real(double)::xmin !-15 angstrom
-!!$    real(double)::xmax !15 angstrom
-!!$    real(double)::y  !electron-ion distance
-!!$    real(double)::V_e(0:this%npt-1)!electronic potential for given R
-!!$    integer(long)::unit,i,j,unit2
-
-
-
-!!!!!!!!!!!!
     R1=this%ionA%grid(0,0)
     R2=this%ionB%grid(0,0)
     R=this%ionC%grid(0,0)
-    dx=(this%xmax-this%xmin)/real(this%npt,double)
+    dx=(this%xmax-this%xmin)/real(this%npt-1,double)
+    
+    !ion-ion interaction
+    V_N=kC/abs(R-R1)+kC/abs(R-R2)
+    
+    !calculate electron-ion interaction
+    V_e=0.0_double
+    do j=0,this%npt-1
+       x=this%xmin+(j*dx)
 
-       !ion-ion interaction
-       V_N=kC/abs(R-R1)+kC/abs(R-R2)!+kC/abs(R1-R2)
+       !interaction with ion A
+       y=abs(x-R1)
+       !lim x->0 erf(x/c)/x=2/(c*sqrt(pi))
+       UeA=2.0_double/(this%R_a*sqrt(pi))
+       if(y.GT.epsilon(y))&
+            UeA=erf(y/this%R_a)/y
 
-       !calculate electron-ion interaction
-       V_e=0.0_double
-       do j=0,this%npt-1
-          x=this%xmin+(j*dx)
-          !interaction with ion A
-          y=abs(x-R1)
-          if(y.GT.epsilon(y))&
-               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-          !interaction with ion B
-          y=abs(x-R2)
-          if(y.GT.epsilon(y))&
-               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-          !interaciton with ion C
-          y=abs(x-R)
-          if(y.GT.epsilon(y))&
-               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-       end do
-       V_e=V_e+V_N !add ion-ion interaction
+       !interaction with ion B
+       y=abs(x-R2)
+       UeB=2.0_double/(this%R_b*sqrt(pi))
+       if(y.GT.epsilon(y))&
+            UeB=erf(y/this%R_b)/y
 
-       call solvestate(0,E=this%adiabat(0),wf=psi(0,:),V=V_e,mass=me,dx=dx)
-       call solvestate(1,E=this%adiabat(1),wf=psi(1,:),V=V_e,mass=me,dx=dx)
+       !interaciton with ion C
+       y=abs(x-R)
+       UeC=2.0_double/(this%R_c*sqrt(pi))
+       if(y.GT.epsilon(y))&
+            UeC=erf(y/this%R_c)/y
 
-       !normalize electron wavefunction
-       !this%electron%wf=psi(0,:)/sqrt(sum(psi(0,:)**2))
-       this%electron%wf=psi(1,:)/sqrt(sum(psi(1,:)**2))
+       !sum up interactions
+       V_e(j)=-UeA-UeB-UeC
+    end do
+    V_e=V_e+V_N !add ion-ion interaction
 
-!!!!!!!!!
+    do istate=0,this%nstate-1
+       call solvestate(istate,E=this%adiabat(istate)&
+            ,wf=psi(istate,:),V=V_e,mass=me,dx=dx)
+    end do
 
-!!$    !this%R_c=2.5*angstrom
-!!$
-!!$    R1=this%ionA%grid(0,0)
-!!$    R2=this%ionB%grid(0,0)
-!!$
-    !xmin=-8.0*angstrom
-    !xmax=8.0*angstrom
-!!$    xmin=-5.0*angstrom
-!!$    xmax=5.0*angstrom
-!!$    dx=(xmax-xmin)/real(this%npt)
-
-!!$    unit=newunit()
-!!$    open(unit,file='metiu_pot.dat')
-!!$    open(unit2,file='metiu_eng.dat')
-!!$    do i=0,Rnpt-1
-!!$       R=Rmin+(i*dR)
-!!$
-!!$       !ion-ion interaction
-!!$       V_N=kC/abs(R-R1)+kC/abs(R-R2)!+kC/abs(R1-R2)
-!!$
-!!$       !calculate electron-ion interaction
-!!$       V_e=0.0_double
-!!$       do j=0,this%npt-1
-!!$          x=xmin+(j*dx)
-!!$          !interaction with ion A
-!!$          y=abs(x-R1)
-!!$          if(y.GT.epsilon(y))&
-!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-!!$          !interaction with ion B
-!!$          y=abs(x-R2)
-!!$          if(y.GT.epsilon(y))&
-!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-!!$          !interaciton with ion C
-!!$          y=abs(x-R)
-!!$          if(y.GT.epsilon(y))&
-!!$               V_e(j)=V_e(j)-erf(y/this%R_c)/y
-!!$       end do
-!!$       V_e=V_e+V_N !add ion-ion interaction
-!!$
-!!$       call solvestate(0,E=E(0,i),wf=psi(0,:),V=V_e,mass=me,dx=dR)
-!!$       call solvestate(1,E=E(1,i),wf=psi(1,:),V=V_e,mass=me,dx=dR)
-!!$
-!!$       do j=0,this%npt-1
-!!$          x=xmin+j*dx
-!!$          write(unit,*)R/Angstrom,x/Angstrom,V_e(j)/eV,psi(0,j),psi(1,j)
-!!$       end do
-!!$       write(unit,*)
-!!$       write(unit2,*)R/Angstrom,E(0,i)/eV,E(1,i)/eV,V_N/eV
-!!$
-!!$    end do
-!!$    close(unit)
-!!$    close(unit2)
-
-
-!!$    !calculate V_b
-!!$    this%V_b=maxval(E(0,Rnpt/4:Rnpt*3/4))-minval(E(0,:))
-!!$    write(*,*)E(0,Rnpt/2)/eV,minval(E(0,:))/eV&
-!!$         ,maxval(E(0,Rnpt/4:Rnpt*3/4))/eV,this%V_b/eV
-!!$stop
-    !!calculate Delta
-    !this%Delta=E(1,this%npt/2)-E(0,this%npt/2)
-
-    !Recompute any attribute values that might have evolved
-
-
-
-    !****************************      Example     ******************************
-    !*** attribute 'var' is always equall to the trace of the denisity matrix *** 
+    !normalize electron wavefunction
+    this%electron%wf=psi(0,:)/sqrt(sum(psi(0,:)**2))
+ 
+    !***************************      Example     *****************************
+    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
     ! end do
-    !****************************************************************************
+    !**************************************************************************
 
   end subroutine metiu_update
 
@@ -423,7 +332,7 @@ contains
           call kill(this%ionB)
           call kill(this%ionC)
           call kill(this%electron)
-          
+
           !un-initialized metiu object
           this%initialized=.false.
        else
@@ -465,7 +374,7 @@ contains
           !**************************
           this%ionA%grid=-5.0_double*angstrom
           this%ionB%grid=5.0_double*angstrom
-          this%ionC%grid=this%R
+          this%ionC%grid=0.0_double*angstrom!this%R
 
           !declare initialization complete
           this%initialized=.true.
@@ -488,7 +397,9 @@ contains
        call reset(this%ionB)
        call reset(this%ionC)
        call reset(this%electron)
-       
+
+       !update now that object is fully reset and not in null state
+       call update(this)
     end if
     
   end subroutine metiu_reset
@@ -526,7 +437,8 @@ contains
     write(unit,*)this%npt
     write(unit,*)this%xmin
     write(unit,*)this%xmax
-    write(unit,*)this%R   
+    write(unit,*)this%R_a 
+    write(unit,*)this%R_b 
     write(unit,*)this%R_c 
 
     
@@ -622,22 +534,44 @@ contains
          ,msg='metiu_check: xmax failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
-    !***   check R is well behaved   ***
-    call assert(check(this%R).EQ.0&
-         ,msg='metiu_check: R failed check',iostat=metiu_check)
+    !***   check ionC position is well behaved   ***
+    call assert(check(this%ionC%grid(0,0)).EQ.0&
+         ,msg='metiu_check: ion C position failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
-    !***   check R is between -5 and 5 angstrom   ***
-    call assert(this%R.GT.-5*angstrom .and. this%R.LT.5*angstrom&
-         ,msg='metiu_check: R not in range (-5:5) angstrom',iostat=metiu_check)
+    !***   check ionC position is between -5 and 5 angstrom   ***
+    call assert(this%ionC%grid(0,0).GT.-5*angstrom&
+         .and. this%ionC%grid(0,0).LT.5*angstrom&
+         ,msg='metiu_check: ionC position not in range (-5:5) angstrom'&
+         ,iostat=metiu_check)
     if(metiu_check.NE.0)return
 
+    !***   check R_a is well behaved   ***
+    call assert(check(this%R_a).EQ.0&
+         ,msg='metiu_check: R_a failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check R_a is positive   ***
+    call assert(this%R_a.GT.epsilon(this%R_a)&
+         ,msg='metiu_check: R_a is not positive',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+    
+    !***   check R_b is well behaved   ***
+    call assert(check(this%R_b).EQ.0&
+         ,msg='metiu_check: R_b failed check',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+
+    !***   check R_b is positive   ***
+    call assert(this%R_b.GT.epsilon(this%R_b)&
+         ,msg='metiu_check: R_b is not positive',iostat=metiu_check)
+    if(metiu_check.NE.0)return
+    
     !***   check R_c is well behaved   ***
     call assert(check(this%R_c).EQ.0&
          ,msg='metiu_check: R_c failed check',iostat=metiu_check)
     if(metiu_check.NE.0)return
 
-    !***   check R_C is positive   ***
+    !***   check R_c is positive   ***
     call assert(this%R_c.GT.epsilon(this%R_c)&
          ,msg='metiu_check: R_c is not positive',iostat=metiu_check)
     if(metiu_check.NE.0)return
@@ -706,7 +640,13 @@ contains
     type(metiu)::this
     character(len=label)::string
     integer(long)::unit
+    integer(short)::ierr
     
+    !diagnostic vars
+    integer(long)::i
+    integer(long)::Rnpt
+    real(double)::Rmin,Rmax,dR,R,x,y
+
     !verify metiu is compatible with current version
     include 'verification'
 
@@ -852,24 +792,49 @@ contains
     call kill(this)
     call system('rm -f metiu.tmpfile')
 
-    write(*,*)'test make sets correct default value for R '
+    write(*,*)'test make sets correct default value for ion C position '
     call make(this)
-    call assert(this%R,0.0_double,msg='metiu default ionC poistion is not 0')
+    call assert(this%ionC%grid(0,0),0.0_double&
+         ,msg='metiu default ionC poistion is not 0')
     call kill(this)
 
-    write(*,*)'test R attribute is stored properly in backup file'
+    write(*,*)'test make sets correct default value for R_a '
     call make(this)
-    this%R=1.0!First, manually set metiu attributes to non-default values
+    call assert(this%R_a,1.5*angstrom&
+         ,msg='metiu default cut-off distance is not 1.5 angstrom')
+    call kill(this)
+
+    write(*,*)'test R_a attribute is stored properly in backup file'
+    call make(this)
+    this%R_a=1.0_double!First, manually set metiu attributes to non-default values
     call reset(this,state=1)
     call system('rm -f metiu.tmpfile')
     call backup(this,file='metiu.tmpfile')
     call kill(this)
     call make(this,file='metiu.tmpfile')
     !Then, assert non default attribute values are conserved
-    call assert(this%R,1.0_double,msg='metiu R is not stored properly')
+    call assert(this%R_a,1.0_double,msg='metiu R_a is not stored properly')
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
+    write(*,*)'test make sets correct default value for R_b '
+    call make(this)
+    call assert(this%R_b,1.5*angstrom&
+         ,msg='metiu default cut-off distance is not 1.5 angstrom')
+    call kill(this)
+
+    write(*,*)'test R_b attribute is stored properly in backup file'
+    call make(this)
+    this%R_b=1.0_double!First, manually set metiu attributes to non-default values
+    call reset(this,state=1)
+    call system('rm -f metiu.tmpfile')
+    call backup(this,file='metiu.tmpfile')
+    call kill(this)
+    call make(this,file='metiu.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%R_b,1.0_double,msg='metiu R_b is not stored properly')
+    call kill(this)    
+    call system('rm -f metiu.tmpfile')
 
     write(*,*)'test make sets correct default value for R_c '
     call make(this)
@@ -908,37 +873,185 @@ contains
     call kill(this)    
     call system('rm -f metiu.tmpfile')
 
+    !write(*,*)'Diagnostic: Reproduce asymm potential'
+    !unit=newunit()
+    !open(unit,file='metiu_asymm.dat')
+    !call make(this)
+    !this%nstate=3
+    !this%R_a=3.0_double*a0
+    !this%R_b=3.45_double*a0
+    !this%R_c=5.0_double*a0
+    !call reset(this,state=1)
+    !Rnpt=100
+    !Rmin=-7.5*a0
+    !Rmax=7.5*a0
+    !dR=(Rmax-Rmin)/real(Rnpt-1,double)
+    !do i=0,Rnpt-1
+    !   !Scan ion C position
+    !   R=Rmin+(i*dR)
+    !   !update electronic hamiltonian
+    !   this%ionC%grid(0,0)=R
+    !   call update(this)
+    !   write(unit,*)R/a0,this%adiabat/Eh
+    !end do
+    !close(unit)
+    !call kill(this)
+
     write(*,*)'test make sets correct default electron dof boundaries.'
     call make(this)
-    call assert(this%xmin.EQ.-8.0_double*angstrom&
-         ,msg='metiu default xmin is not -8 angstrom.')
-    call assert(this%xmax.EQ.8.0_double*angstrom&
-         ,msg='metiu default xmax is not 8 angstrom.')
+    call assert(this%xmin.EQ.-10.0_double*angstrom&
+         ,msg='metiu default xmin is not -10 angstrom.')
+    call assert(this%xmax.EQ.10.0_double*angstrom&
+         ,msg='metiu default xmax is not 10 angstrom.')
 
-
-    !Reproduce Delta in figure 2 in JCP 102, 9285 (1995)
-    write(*,*)'test make set correct default transition energy (Delta).'
-    call make(this)
-    call assert(this%adiabat(1)-this%adiabat(0),1.28*eV,(0.02*1.28)*eV&
-         ,msg='metiu default transtion energy (Delta) is not 1.28 eV within 2% error.')
-    call kill(this)
-
-    write(*,*)'test make sets wf for default ionC position.'
+    write(*,*)'test make calculates normalized wf for default ionC position.'
     call make(this)
     call assert(real(sum(this%electron%wf*conjg(this%electron%wf)))&
          ,1._double,tol=1E-8_double&
          ,msg='electron wave function is not normalized.')
     call kill(this)
 
-
-    write(*,*)'test update sets correct transition energy (Delta) for Rc=1.75 angstrom.'
+    write(*,*)'test make set correct default transition energy (Delta).'
     call make(this)
+    y=this%adiabat(1)-this%adiabat(0)
+    x=1.28*eV
+    call assert(y,x,0.02*x&
+         ,msg='metiu default transtion energy (Delta) is not 1.28 eV&
+         & within 2% error.',iostat=ierr)
+    if(ierr.NE.0)then
+       write(*,*)'Diagnostic: Reproduce figure 2a in JCP 102, 9285 (1995)'
+       unit=newunit()
+       open(unit,file='Fig2a_JCP_102_9285.dat')
+       this%nstate=3
+       call reset(this,state=1)
+       Rnpt=100
+       Rmin=-4*angstrom
+       Rmax=4*angstrom
+       dR=(Rmax-Rmin)/real(Rnpt-1,double)
+       do i=0,Rnpt-1
+          !Scan ion C position
+          R=Rmin+(i*dR)
+          !update electronic hamiltonian
+          this%ionC%grid(0,0)=R
+          call update(this)
+          write(unit,*)R/Angstrom,this%adiabat/eV
+       end do
+       close(unit)
+       stop
+    end if
+    call kill(this)
+
+    write(*,*)'test update sets correct transition energy (Delta) for&
+         & Rc=1.75 angstrom.'
+    call make(this)
+    this%R_a=1.5_double*angstrom
+    this%R_b=1.5_double*angstrom
     this%R_c=1.75*angstrom
     call update(this)
-    write(*,*)this%adiabat/eV,(this%adiabat(1)-this%adiabat(0))/eV
-    call assert(this%adiabat(1)-this%adiabat(0),0.49*eV,(0.02*0.49)*eV&
-         ,msg='metiu default transtion energy (Delta) is not 0.49 eV within 2% error.')
+    y=this%adiabat(1)-this%adiabat(0)
+    x=0.49*eV
+    call assert(y,x,0.02*x&
+         ,msg='metiu default transtion energy (Delta) is not 0.49 eV&
+         & within 2% error.',iostat=ierr)
+    if(ierr.NE.0)then
+       write(*,*)'Diagnostic: Reproduce figure 2b in JCP 102, 9285 (1995)'
+       unit=newunit()
+       open(unit,file='Fig2b_JCP_102_9285.dat')
+       call make(this)
+       this%nstate=3
+       call reset(this,state=1)
+       Rnpt=100
+       Rmin=-4*angstrom
+       Rmax=4*angstrom
+       dR=(Rmax-Rmin)/real(Rnpt-1,double)
+       do i=0,Rnpt-1
+          !Scan ion C position
+          R=Rmin+(i*dR)
+          !update electronic hamiltonian
+          this%ionC%grid(0,0)=R
+          call update(this)
+          write(unit,*)R/Angstrom,this%adiabat/eV
+       end do
+       close(unit)
+       stop
+    end if
     call kill(this)
+
+    write(*,*)'test update sets correct transition energy (Delta) for&
+         & Rc=2.00 angstrom.'
+    call make(this)
+    this%R_a=1.5_double*angstrom
+    this%R_b=1.5_double*angstrom
+    this%R_c=2.00*angstrom
+    call update(this)
+    y=this%adiabat(1)-this%adiabat(0)
+    x=0.17*eV
+    call assert(y,x,0.02*x&
+         ,msg='metiu default transtion energy (Delta) is not 0.17 eV&
+         & within 2% error.',iostat=ierr)
+    if(ierr.NE.0)then
+       write(*,*)'Diagnostic: Reproduce figure 2c in JCP 102, 9285 (1995)'
+       unit=newunit()
+       open(unit,file='Fig2c_JCP_102_9285.dat')
+       this%nstate=3
+       call reset(this,state=1)
+       Rnpt=100
+       Rmin=-4*angstrom
+       Rmax=4*angstrom
+       dR=(Rmax-Rmin)/real(Rnpt-1,double)
+       do i=0,Rnpt-1
+          !Scan ion C position
+          R=Rmin+(i*dR)
+          !update electronic hamiltonian
+          this%ionC%grid(0,0)=R
+          call update(this)
+          write(unit,*)R/Angstrom,this%adiabat/eV
+       end do
+       close(unit)
+       stop
+    end if
+    call kill(this)
+
+
+    write(*,*)'test update sets correct transition energy (Delta)&
+         & for Rc=2.50 angstrom.'
+    call make(this)
+    !this%npt=501
+    !this%xmin=-20*angstrom
+    !this%xmax=20*angstrom
+    this%R_a=1.5_double*angstrom
+    this%R_b=1.5_double*angstrom
+    this%R_c=2.50*angstrom
+    call reset(this,state=1)
+    y=this%adiabat(1)-this%adiabat(0)
+    x=0.05*eV
+    call assert(y,x,0.0055*eV&
+         ,msg='metiu default transtion energy (Delta) is not 0.05 eV&
+         & upto 3 sigfigs.',iostat=ierr)
+    if(ierr.NE.0)then
+       write(*,*)'Delta=',y/eV,(y-x)/x
+       write(*,*)'Diagnostic: Reproduce figure 2d in JCP 102, 9285 (1995)'
+       unit=newunit()
+       open(unit,file='Fig2d_JCP_102_9285.dat')
+       this%nstate=3
+       call reset(this,state=1)
+       Rnpt=101
+       Rmin=-4*angstrom
+       Rmax=4*angstrom
+       dR=(Rmax-Rmin)/real(Rnpt-1,double)
+       do i=0,Rnpt-1
+          !Scan ion C position
+          R=Rmin+(i*dR)
+          !update electronic hamiltonian
+          this%ionC%grid(0,0)=R
+          call update(this)
+          write(unit,*)R/Angstrom,this%adiabat/eV
+       end do
+       close(unit)
+       stop
+    end if
+    call kill(this)
+
 
 
 

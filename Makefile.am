@@ -17,7 +17,7 @@ cann_SOURCES = $(corefiles) $(auxfiles) $(cannfiles) src/cann_driver.f90
 
 ###### NONADMD Non-Adiabatic Molecular Dynamics ###### 	
 nonadmd_FCFLAGS =  -fopenmp -J src/
-nonadmdfiles = src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/metiu.f90
+nonadmdfiles = src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/metiu.f90 src/cukier.f90
 nonadmd_SOURCES = $(corefiles) $(auxfiles) $(nonadmdfiles) src/nonadmd_driver.f90
 
 ###### TEST module ###### 	

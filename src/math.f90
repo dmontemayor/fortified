@@ -44,7 +44,6 @@ contains
 
     integer(long)::i,npt,nnode,statesign
     integer(long)::maxattempt,nattempt
-    integer(long)::ctp1,ctp2
     real(double),dimension(size(V))::psi,g,s
     real(double)::E0 !energy origin minval(V)
     real(double)::Eb !lower energy bound (bottom)
@@ -66,7 +65,7 @@ contains
     Eb=0.0
 
     !set default initial upper energy bound to a tiny number
-    E=epsilon(Eb)
+    E=epsilon(E)
 
     !Let user set initial upper energy bound
     if(present(dE))E=dE
@@ -98,10 +97,11 @@ contains
     Et=E
 
     !adjust energy by divide and conquer until
-    !magnitude of last point is tiny
+    !change between last 2 points is tiny
     error=huge(dx)
     nattempt=0
     accuracy=epsilon(dx)
+    !accuracy=dx**4
     Ep=Eb !set previous energy to lower energy bound
     E=Et  !set energy to upper bound to ensure energy gap
     !loop until wf stops diverging .and. too many attempts
@@ -116,28 +116,13 @@ contains
        !recalculate energy difference
        g=2.0_double*mass*(E+E0-V)
 
-       !calculate classical turning points ctp1 and ctp2
-       ctp1=1
-       ctp2=npt
-       i=0
-       do while(npt+1-i.GT.ctp1)
-          i=i+1
-          if(g(i)/abs(g(i)).LE.0)ctp1=i
-          if(g(npt+1-i)/abs(g(npt+1-i)).LE.0)ctp2=npt+1-i
-       end do
-       !diagonstic print turning points
-       !write(*,*)npt,ctp1,ctp2
-       !stop
-
-       !scan from turning points
-
        !calculate numerov solution
        psi=numerov(dx,g,s)
 
-       !begin at classical turning points untill solution converges
+       !calcualte error - asymptotic slope
+       !error=psi(npt)
+       error=abs(psi(npt)-psi(npt-1))
 
-
-       error=psi(npt)
        !count nodes
        nnode=0
        do i=2,npt
@@ -356,12 +341,15 @@ contains
     hh12=dx*dx/12.0_double
     hh512=5.0_double*hh12
 
-    !initialize numerov's solution to zero
-    numerov=0.0_double
+    !!initialize numerov's solution to zero
+    !numerov=0.0_double
+    !initialize numerov's solution to accurracy
+    numerov=accuracy
 
     !set first point very small
     !numerov(2)=epsilon(1.0_double)
-    numerov(2)=0.1_double*accuracy!epsilon(1.0_double)
+    !numerov(2)=0.1_double*accuracy
+    numerov(2)=2.0_double*accuracy
 
     !propagate solution
     do i=3,npt

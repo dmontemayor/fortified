@@ -30,10 +30,10 @@ write(*,*)'Begin Verification Process.'
 
     write(*,*)'test backup method creates a backup file.'
     call make(this)
-    call system('rm -f object.tmpfile')
+    call system('rm -f object.tmpfile*')
     call backup(this,file='object.tmpfile')
     call assert('object.tmpfile',msg='backup file was not created.')
-    call system('rm -f object.tmpfile')
+    call system('rm -f object.tmpfile*')
     call kill(this)
 
     write(*,*)'test object can be created with backup file'
@@ -42,18 +42,18 @@ write(*,*)'Begin Verification Process.'
     call kill(this)
     call make(this,file='object.tmpfile')
     call assert(check(this).EQ.0,msg='object was not created properly from backupfile.')
-    call system('rm -f object.tmpfile')
+    call system('rm -f object.tmpfile*')
     
     write(*,*)'test backup file begins with object name in first line'
     call make(this)
-    call system('rm -f object.tmpfile')
+    call system('rm -f object.tmpfile*')
     call backup(this,file='object.tmpfile')
     unit=newunit()
     open(unit,file='object.tmpfile')
     read(unit,*)string
     close(unit)
     call assert(trim(string).EQ.trim(this%name),msg='save file does not have object name on first line.')
-    call system('rm -f object.tmpfile')
+    call system('rm -f object.tmpfile*')
     call kill(this)
     
     write(*,*)'test object can be updated'

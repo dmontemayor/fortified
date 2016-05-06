@@ -393,13 +393,20 @@ subroutine coretests
   array1=1.0_double-grid*grid !energy diferrence =2*mass(E-V(x))/hbar=2E-2V
   array2=0.0_double           !independent function =0
   psi=numerov(dx,array1,array2)
-  if(abs(psi(0)).GT.epsilon(1.0_double))then
-     write(*,*)'numerov solution does not equal zero for first point'
+  !if(abs(psi(0)).GT.epsilon(1.0_double))then
+  !   write(*,*)'numerov solution does not equal zero for first point'
+  !   stop
+  !end if
+  x=abs(psi(1)-psi(0))
+  if(x.GT.dx**4)then
+     write(*,*)'point diff=',x,'accuracy=',dx**4
+     write(*,*)'numerov solution starting point difference is greater than dx**4'
      stop
   end if
-  !write(*,*)psi(npt-1),dx**4
-  if(abs(psi(npt-1)).GT.dx**4)then
-     write(*,*)'numerov solution final point error is greater than dx**4'
+  x=abs(psi(npt-1)-psi(npt-2))
+  if(x.GT.dx**4)then
+     write(*,*)'point diff=',x,'accuracy=',dx**4
+     write(*,*)'numerov solution final point difference is greater than dx**4'
      stop
   end if
 
@@ -438,9 +445,9 @@ subroutine coretests
   array1=0._double !potential energy
   call solvestate(N=0,E=Eng,V=array1,mass=1.0_double,dx=dx)
   x=0.5_double*(pi/(npt*dx))**2
-  !write(*,*)Eng,x,abs((Eng-x)/x)
   x=(Eng-x)/x !relative error
   if(abs(x).GT.2E-2)then
+     write(*,*)'result=',Eng,'Theo. solution=',x,'Rel. Error=',abs((Eng-x)/x)
      write(*,*)'solvestate energy relative error is greater than .02 for grnd state particle in a box'
      stop
   end if
@@ -502,7 +509,7 @@ subroutine coretests
 
   write(*,*)'test solvestate returns Cukier proton sates.....'
   !--------------------------------
-  !Cukeir potential
+  !Cukier potential
   !hbar=1
   !me=1
   !a0=1
@@ -513,10 +520,10 @@ subroutine coretests
   !w0=1200*invcm
   !D=Eb/(hbar*w0)
   !a=sqrt(hbar/(mass*w0))
-  !L=npt*dx=128*.016=2.048
+  !L=npt*dx=128*.018=2.304
   !gamma=1.0_double
   !--------------------------------
-  dx=0.016*angstrom
+  dx=0.018*angstrom
   !set xgrid and calculated array1(proton potential) and array2
   do i=0,npt-1
      grid(i)=(i-npt/2)*dx !xgrid
@@ -526,24 +533,37 @@ subroutine coretests
   end do
   array1=Eb-(hbar*w0)*array1
 
-  write(*,*)'solvestate returns same first excited wf when grid is inverted for Cukier potential'
   !calculate inverted potential
   do i=0,npt-1
      array2(npt-1-i)=array1(i) !inverted potential energy
   end do
-  !calculate states
+  !calculate first excited states
   call solvestate(N=1,E=x,wf=psi,V=array1,mass=mass,dx=dx)
   call solvestate(N=1,E=y,wf=phi,V=array2,mass=mass,dx=dx)
   !normalize wavefunctions
   psi=psi/sqrt(sum(psi*psi))
   phi=-phi/sqrt(sum(phi*phi))
+
+  !write(*,*)'Diagnostic: write Cukier potential with first and&
+  !& inverted state solutions.'
+  !open(123,file='Cukier-invertedstate.dat')
+  !do i=0,npt-1
+  !   write(123,*)grid(i),array1(i)&
+  !        ,psi(i)*(hbar*w0),phi(i)*(hbar*w0)
+  !end do
+  !close(123)
+  !write(*,*)'solvestate returns same first excited wf when grid is&
+  !& inverted for Cukier potential'
+
   !calculate overlap
   S=0.0_double
   do i=0,npt-1
      S=S+psi(i)*phi(npt-1-i)
   end do
- ! write(*,*)S
-  call assert(S.GT.0.98.and.S.LT.1.02,msg='first excited wf not same (<2% error) as with inverted grid.')
+  S=sqrt(S)
+  !write(*,*)S
+  call assert(S.GT.0.98,msg='first excited wf not same (<2% error) as with inverted grid.')
+
 
   !!diagnostic write potential and first 3 state solutions
   !call solvestate(N=0,E=x,wf=psi,V=array1,mass=mass,dx=dx)
@@ -636,6 +656,78 @@ subroutine coretests
   array1=0._double !potential energy
   x=0.1
   call solvestate(N=1,E=Eng,V=array1,mass=1.0_double,dx=dx,growth=x)
+
+  write(*,*)'test solvestate returns correct ground state harmonic oscillator energy.....'
+  !--------------------------------
+  !harmonic oscillator constants
+  !hbar=1
+  !omega=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=hbar*omega(n+1/2)
+  !V(x)=1/2*mass*omega^2*x^2
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  dx=0.05_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0.5_double*grid**2 !potential energy
+  call solvestate(N=0,E=Eng,wf=psi,V=array1,mass=1.0_double,dx=dx)
+  x=0.5_double
+  x=(Eng-x)/x !relative error
+  if(abs(x).GT.2E-2)then
+     write(*,*)'Calc. Eng=',Eng,'Theo. Eng=',x,'Rel. error=',abs((Eng-x)/x)
+     write(*,*)'solvestate energy relative error is greater than .02&
+          & for ground state harmonic oscillator'
+
+     write(*,*)'Diagnostic: write hamonic oscillator potential with&
+     & calculated ground state.'
+     open(123,file='solvestate-HOgroundstate.dat')
+     do i=0,npt-1
+        write(123,*)grid(i),array1(i)&
+             ,psi(i)+Eng
+     end do
+     close(123)
+
+     stop
+  end if
+
+  write(*,*)'test solvestate returns correct ground state energy for shifted harmonic oscillator.....'
+  !--------------------------------
+  !harmonic oscillator constants
+  !hbar=1
+  !omega=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=hbar*omega(n+1/2)
+  !V(x)=1/2*mass*omega^2*x^2-1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  dx=0.05_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  array1=0.5_double*grid**2-1.0_double !potential energy
+  call solvestate(N=0,E=Eng,wf=psi,V=array1,mass=1.0_double,dx=dx)
+  x=-0.5_double
+  x=(Eng-x)/x !relative error
+  if(abs(x).GT.2E-2)then
+     write(*,*)'Calc. Eng=',Eng,'Theo. Eng=',x,'Rel. error=',abs((Eng-x)/x)
+     write(*,*)'solvestate energy relative error is greater than .02&
+          & for ground state harmonic oscillator'
+
+     write(*,*)'Diagnostic: write shifted hamonic oscillator potential with&
+     & calculated ground state.'
+     open(123,file='solvestate-shiftedHOgroundstate.dat')
+     do i=0,npt-1
+        write(123,*)grid(i),array1(i)&
+             ,psi(i)+Eng
+     end do
+     close(123)
+
+     stop
+  end if
 
 
 

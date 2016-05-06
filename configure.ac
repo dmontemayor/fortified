@@ -86,6 +86,7 @@ AC_CONFIG_SRCDIR([src/quasiparticle.f90])
 AC_CONFIG_SRCDIR([src/ham.f90])
 AC_CONFIG_SRCDIR([src/wavelet.f90])
 AC_CONFIG_SRCDIR([src/metiu.f90])
+AC_CONFIG_SRCDIR([src/cukier.f90])
  
 # nonadmd data files
 #AC_CONFIG_SRCDIR([data/XXXX.f90])

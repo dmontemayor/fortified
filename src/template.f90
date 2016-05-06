@@ -242,6 +242,11 @@ contains
           !call kill(this%object)
           !***********************
           
+          !set all static parameters to error values
+          !**** example **********
+          !this%nstate=-1
+          !***********************
+
           !un-initialized metiu object
           this%initialized=.false.
        else
