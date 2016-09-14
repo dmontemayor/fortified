@@ -5,14 +5,14 @@
 !! a series of ffn objects. The device class can train the network by
 !! backpropagation.
 !<------------------------------------------------------------------------
-module DEVICE_class
+module device_class
   use type_kinds
   use layer_class
   use ffn_class
   implicit none
   private
 
-  public::DEVICE, DEVICE_test
+  public::device, device_test
   public::make, kill, status, backup, update, reset, check, describe
   public::link, forwardpass, backprop, measure
 
@@ -22,7 +22,7 @@ module DEVICE_class
      real(double),dimension(:,:),pointer::gW
   end type ffnptr
 
-  type DEVICE
+  type device
      logical::initialized=.false.
      character(len=label)::name='device'
      type(layer)::vislayer
@@ -30,41 +30,41 @@ module DEVICE_class
      integer(long)::rank=huge(1)
      type(ffnptr),dimension(:),pointer::hiddenlayer
      real(double)::learningrate
-  end type DEVICE
+  end type device
 
   !> calculate device perfomance
   interface measure
-     module procedure DEVICE_measure
+     module procedure device_measure
   end interface
 
   !> calculate error gradient by backpropagation
   interface backprop
-     module procedure DEVICE_backprop
+     module procedure device_backprop
   end interface
 
   !> propagate input signal up to change top layerstates
   interface forwardpass
-     module procedure DEVICE_forwardpass
+     module procedure device_forwardpass
   end interface
 
-  !> link ffn to DEVICE
+  !> link ffn to device
   interface link
-     module procedure DEVICE_link
+     module procedure device_link
   end interface
 
-  !> Creates the DEVICE object.
+  !> Creates the device object.
   interface make
-     module procedure DEVICE_init
+     module procedure device_init
   end interface
 
-  !> Destroys the DEVICE object.
+  !> Destroys the device object.
   interface kill
-     module procedure DEVICE_kill
+     module procedure device_kill
   end interface
 
-  !> Returns the current state of the DEVICE object.
+  !> Returns the current state of the device object.
   interface status
-     module procedure DEVICE_status
+     module procedure device_status
   end interface
 
   !> Returns a plain text description of the device object.
@@ -72,24 +72,24 @@ module DEVICE_class
      module procedure device_describe
   end interface
   
-  !> Backups the current state of the DEVICE object.
+  !> Backups the current state of the device object.
   interface backup
-     module procedure DEVICE_backup
+     module procedure device_backup
   end interface
 
-  !> Recaluclates the DEVICE object.
+  !> Recaluclates the device object.
   interface update
-     module procedure DEVICE_update
+     module procedure device_update
   end interface
 
-  !> Reinitializes the DEVICE object.
+  !> Reinitializes the device object.
   interface reset
-     module procedure DEVICE_reset
+     module procedure device_reset
   end interface
 
-  !> Checks that the DEVICE object.
+  !> Checks that the device object.
   interface check
-     module procedure DEVICE_check
+     module procedure device_check
   end interface
 
 contains
@@ -107,7 +107,7 @@ contains
 
   !======================================================================
   !> \brief calucate Device performance given given dataset
-  !> \param this is the DEVICE object to be measured.
+  !> \param this is the device object to be measured.
   !> \param[in] dataset is a realmatrix of size  Ninput + Noutput x Nsample
   !>  containing a batch of Nsample training data vetor pairs.
   !> \param[in] file is an optional string name of output file to save analysis
@@ -118,10 +118,10 @@ contains
   !> \param[in] nmeasure is an optional integer to repeat the measurement
   !>            ,average measurement is returned
   !=====================================================================
-  !subroutine DEVICE_measure(this,dataset,mse,bce,file,nmeasure,xrange,xmin)
-  subroutine DEVICE_measure(this,dataset,mse,bce,file,nmeasure)
+  !subroutine device_measure(this,dataset,mse,bce,file,nmeasure,xrange,xmin)
+  subroutine device_measure(this,dataset,mse,bce,file,nmeasure)
     use testing_class
-    type(DEVICE),intent(inout)::this
+    type(device),intent(inout)::this
     real(double),intent(in)::dataset(:,:)
     real(double),intent(inout),optional::mse,bce
     character(len=*),intent(in),optional::file
@@ -141,7 +141,7 @@ contains
     end do
     
     !check dataset
-    call assert(size(dataset,1).EQ.nx+ny,msg='DEVICE_measure: dataset dim 1 is incongruent with device io',iostat=ierr)
+    call assert(size(dataset,1).EQ.nx+ny,msg='device_measure: dataset dim 1 is incongruent with device io',iostat=ierr)
     if(ierr.NE.0)return
 
     nmeas=1
@@ -212,17 +212,17 @@ contains
        close(2232)
     end if
     
-  end subroutine DEVICE_measure
+  end subroutine device_measure
 
   !======================================================================
   !> \brief back propagate error graident given dataset.
-  !> \param this is the DEVICE object to be measured.
+  !> \param this is the device object to be measured.
   !> \param[in] dataset is a realmatrix of size  Ninput + Noutput x Nsample
   !>  containing a batch of Nsample training data vetor pairs.
   !=====================================================================
-  subroutine DEVICE_backprop(this,dataset)
+  subroutine device_backprop(this,dataset)
     !use testing_class
-    type(DEVICE),intent(inout)::this
+    type(device),intent(inout)::this
     real(double),intent(in)::dataset(:,:)
 
     integer(short)::ierr
@@ -230,7 +230,7 @@ contains
     real(double)::zsum
 
     !!check device
-    !call assert(check(this).EQ.0,msg='DEVICE_backprop: input device did not pass check',iostat=ierr)
+    !call assert(check(this).EQ.0,msg='device_backprop: input device did not pass check',iostat=ierr)
     !if(ierr.NE.0)return
 
     !setup io
@@ -241,7 +241,7 @@ contains
     end do
 
     !!check dataset
-    !call assert(size(dataset,1).EQ.nx+ny,msg='DEVICE_backprop: dataset dim 1 is incongruent with device io',iostat=ierr)
+    !call assert(size(dataset,1).EQ.nx+ny,msg='device_backprop: dataset dim 1 is incongruent with device io',iostat=ierr)
     !if(ierr.NE.0)return
 
     nsample=size(dataset,2)
@@ -305,13 +305,13 @@ contains
     end do
 
 
-  end subroutine DEVICE_backprop
+  end subroutine device_backprop
   !======================================================================
-  !> \brief propagate any input signal up the DEVICE object.
-  !> \param this is the DEVICE object to be updated.
+  !> \brief propagate any input signal up the device object.
+  !> \param this is the device object to be updated.
   !=====================================================================
-  subroutine DEVICE_forwardpass(this,derivative)
-    type(DEVICE),intent(inout)::this
+  subroutine device_forwardpass(this,derivative)
+    type(device),intent(inout)::this
     logical,intent(in),optional::derivative
 
     logical::df
@@ -330,15 +330,15 @@ contains
        end do
     end do
 
-  end subroutine DEVICE_forwardpass
+  end subroutine device_forwardpass
  
  !======================================================================
-  !> \brief links ffn to the DEVICE object.
-  !> \param this is the DEVICE object to be initialized.
+  !> \brief links ffn to the device object.
+  !> \param this is the device object to be initialized.
   !> \param ffn is an ffn to add to the device
   !=====================================================================
-  subroutine DEVICE_link(this,newffn)
-    type(DEVICE),intent(inout)::this
+  subroutine device_link(this,newffn)
+    type(device),intent(inout)::this
     type(ffn),intent(inout),target::newffn
     type(ffnptr),dimension(:),pointer::tmphiddenlayer
 
@@ -400,15 +400,15 @@ contains
     !set device rank
     this%rank=maxrank
 
-  end subroutine DEVICE_link
+  end subroutine device_link
 
   !======================================================================
-  !> \brief Creates and initializes the DEVICE object.
-  !> \param this is the DEVICE object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously backupd DEVICE file.
+  !> \brief Creates and initializes the device object.
+  !> \param this is the device object to be initialized.
+  !> \param[in] file is an optional string containing the name of a previously backupd device file.
   !=====================================================================
-  subroutine DEVICE_init(this,file,N,activation,loss)
-    type(DEVICE),intent(inout)::this
+  subroutine device_init(this,file,N,activation,loss)
+    type(device),intent(inout)::this
     character*(*),intent(in),optional::file
     integer(long),optional,intent(in)::N
     character*(*),optional,intent(in)::activation,loss
@@ -435,31 +435,31 @@ contains
 
     !declare initialization complete
     this%initialized=.true.
-  end subroutine DEVICE_init
+  end subroutine device_init
 
   !======================================================================
-  !> \brief Destroys the DEVICE object.
-  !> \param this is the DEVICE object to be destroyed.
+  !> \brief Destroys the device object.
+  !> \param this is the device object to be destroyed.
   !====================================================================
-  subroutine DEVICE_kill(this)
-    type(DEVICE),intent(inout)::this
+  subroutine device_kill(this)
+    type(device),intent(inout)::this
  
     call kill(this%vislayer)
     if(associated(this%hiddenlayer))nullify(this%hiddenlayer)
 
-    !un-initialized DEVICE object
+    !un-initialized device object
     this%initialized=.false.
-  end subroutine DEVICE_kill
+  end subroutine device_kill
 
   !======================================================================
-  !> \brief Computes the current state of DEVICE object.
-  !> \param this is the DEVICE  object to be updated.
+  !> \brief Computes the current state of device object.
+  !> \param this is the device  object to be updated.
   !======================================================================
-  subroutine DEVICE_update(this)
-    type(DEVICE),intent(inout)::this
+  subroutine device_update(this)
+    type(device),intent(inout)::this
 
 
-  end subroutine DEVICE_update
+  end subroutine device_update
 
   !======================================================================
   !> \brief Re-initiallizes the device object.
@@ -514,16 +514,58 @@ contains
   end subroutine device_reset
 
   !======================================================================
-  !> \brief Backups the current state of the DEVICE object to file.
-  !> \param[in] this is the DEVICE  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \brief Backups the current state of the device object to file.
+  !> \param[in] THIS is the device  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
-  subroutine DEVICE_backup(this,file)
-    type(DEVICE),intent(in)::this
+  subroutine device_backup(this,file)
+    use filemanager
+    use string
+    use testing_class
+    type(device),intent(in)::this
     character*(*),intent(in)::file
+    integer(short)::unit
+    logical::fileisopen
+    integer(long)::i,j
+    
+    !check input file
+    inquire(file=file,opened=fileisopen,number=unit)
+    if(unit.LT.0)unit=newunit()
+    if(.not.fileisopen)open(unit,file=file)
+    
+    !check device object
+    call assert(check(this).EQ.0,msg='device object does not pass check.')
 
-  end subroutine DEVICE_backup
+    !always write the data type on the first line
+    write(unit,*)'device'
 
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
+
+
+    !First, Scalar parameters
+    !******          Example - Backup a scalar parameter            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
+
+
+    !Second, Dynamic arrays
+    !***       Example - Backup an NxM matrix                          ***
+    ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
+    !*********************************************************************
+
+
+    !Last,objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%object,file//'.object')
+    ! write(unit,*)quote(file//'.object')!write the object location
+    !*********************************************************************
+    
+
+    !finished writing all attributes - now close backup file
+    close(unit)  
+  end subroutine device_backup
+  
   !======================================================================
   !> \brief Retrun the device object as a single line record entry.
   !> \param[in] this is the device object.
@@ -540,69 +582,69 @@ contains
   end function device_status
 
   !======================================================================
-  !> \brief Checks the DEVICE object.
-  !> \param[in] this is the DEVICE object to be checked.
+  !> \brief Checks the device object.
+  !> \param[in] this is the device object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function DEVICE_check(this)
+  integer(short)function device_check(this)
     use testing_class
-    type(DEVICE),intent(in)::this
+    type(device),intent(in)::this
 
     integer(long)::i
   
     !initiate with no problems found 
-    DEVICE_check=0
-    !call Note('Checking DEVICE.')
+    device_check=0
+    !call Note('Checking device.')
 
     !check that object is initialized
-    call assert(this%initialized,msg='DEVICE_check: DEVICE object not initialized.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
+    call assert(this%initialized,msg='device_check: device object not initialized.',iostat=device_check)
+    if(device_check.NE.0)return
 
     !check vislayer
-    call assert(check(this%vislayer).EQ.0,msg='DEVICE_check: vislayer failed check.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
+    call assert(check(this%vislayer).EQ.0,msg='device_check: vislayer failed check.',iostat=device_check)
+    if(device_check.NE.0)return
 
     !check nlayer
-    call assert(this%nlayer,this%nlayer,msg='DEVICE_check: nlayer has bad values.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
-    call assert(this%nlayer.GE.0,msg='DEVICE_check: nlayer is negative.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
+    call assert(this%nlayer,this%nlayer,msg='device_check: nlayer has bad values.',iostat=device_check)
+    if(device_check.NE.0)return
+    call assert(this%nlayer.GE.0,msg='device_check: nlayer is negative.',iostat=device_check)
+    if(device_check.NE.0)return
 
     !check ffn hiddenlayer pointer array points to something and is correct size
     if(this%nlayer.GT.0)then
        call assert(associated(this%hiddenlayer)&
-            ,msg='DEVICE_check: is not allocated hiddenlayer pointer array.',iostat=DEVICE_check)
-       if(DEVICE_check.NE.0)return
+            ,msg='device_check: is not allocated hiddenlayer pointer array.',iostat=device_check)
+       if(device_check.NE.0)return
        call assert(size(this%hiddenlayer).EQ.this%nlayer&
-            ,msg='DEVICE_check: is not allocated hiddenlayer pointer array.',iostat=DEVICE_check)
-       if(DEVICE_check.NE.0)return
+            ,msg='device_check: is not allocated hiddenlayer pointer array.',iostat=device_check)
+       if(device_check.NE.0)return
     end if
 
     !check ffn targets in hiddenlayer pointer array
     if(this%nlayer.GT.0)then
        do i=1,this%nlayer
           call assert(check(this%hiddenlayer(i)%ffn).EQ.0&
-               ,msg='DEVICE_check: bad ffn found in hiddenlayer pointer array.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: bad ffn found in hiddenlayer pointer array.',iostat=device_check)
+          if(device_check.NE.0)return
        end do
     end if
 
     !check rank
-    call assert(this%rank,this%rank,msg='DEVICE_check: device rank has bad value.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
-    call assert(this%rank.GE.0,msg='DEVICE_check: rank is negative.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
+    call assert(this%rank,this%rank,msg='device_check: device rank has bad value.',iostat=device_check)
+    if(device_check.NE.0)return
+    call assert(this%rank.GE.0,msg='device_check: rank is negative.',iostat=device_check)
+    if(device_check.NE.0)return
 
     !check hiddenlayer rank assignments
     if(this%nlayer.GT.0)then
        do i=1,this%nlayer
           call assert(this%hiddenlayer(i)%rank.EQ.this%hiddenlayer(i)%rank&
-               ,msg='DEVICE_check: bad ffn rank value found in hiddenlayer array.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: bad ffn rank value found in hiddenlayer array.',iostat=device_check)
+          if(device_check.NE.0)return
           call assert(this%hiddenlayer(i)%rank.LE.this%rank&
-               ,msg='DEVICE_check: hiddenlayer ffn rank is greater than device rank.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: hiddenlayer ffn rank is greater than device rank.',iostat=device_check)
+          if(device_check.NE.0)return
        end do
     end if
 
@@ -610,40 +652,40 @@ contains
     if(this%nlayer.GT.0)then
        do i=1,this%nlayer
           call assert(associated(this%hiddenlayer(i)%gW)&
-               ,msg='DEVICE_check: derivative weights not allocated.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: derivative weights not allocated.',iostat=device_check)
+          if(device_check.NE.0)return
           call assert(size(this%hiddenlayer(i)%gW,1).EQ.size(this%hiddenlayer(i)%ffn%W,1)&
-               ,msg='DEVICE_check: derivative weight dimension 1 does not equal ffn weight dim 1.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: derivative weight dimension 1 does not equal ffn weight dim 1.',iostat=device_check)
+          if(device_check.NE.0)return
           call assert(size(this%hiddenlayer(i)%gW,2).EQ.size(this%hiddenlayer(i)%ffn%W,2)&
-               ,msg='DEVICE_check: derivative weight dimension 2 does not equal ffn weight dim 2.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: derivative weight dimension 2 does not equal ffn weight dim 2.',iostat=device_check)
+          if(device_check.NE.0)return
           call assert(all(this%hiddenlayer(i)%gW.EQ.this%hiddenlayer(i)%gW)&
-               ,msg='DEVICE_check: hiddenlayer gW has bad values.',iostat=DEVICE_check)
-          if(DEVICE_check.NE.0)return
+               ,msg='device_check: hiddenlayer gW has bad values.',iostat=device_check)
+          if(device_check.NE.0)return
        end do
     end if
 
     !check learningrate
-    call assert(this%learningrate,this%learningrate,msg='DEVICE_check: learning rate has bad values.'&
-         ,iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
-    call assert(this%learningrate.GT.epsilon(1.0_double),msg='learningrate is tiny.',iostat=DEVICE_check)
-    if(DEVICE_check.NE.0)return
+    call assert(this%learningrate,this%learningrate,msg='device_check: learning rate has bad values.'&
+         ,iostat=device_check)
+    if(device_check.NE.0)return
+    call assert(this%learningrate.GT.epsilon(1.0_double),msg='learningrate is tiny.',iostat=device_check)
+    if(device_check.NE.0)return
           
-  end function DEVICE_check
+  end function device_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the DEVICE methods.
+  !> \brief Tests the device methods.
   !> \return Will print to stdio result of tests
   !======================================================================
-  subroutine DEVICE_test
+  subroutine device_test
     use testing_class
     use filemanager
     use progressbar
     use MDutils
 
-    type(DEVICE)::this
+    type(device)::this
     type(ffn)::ffn1,ffn2
 
     integer(short)::ierr
@@ -657,15 +699,26 @@ contains
 
     character(len=label)::string
     integer(long)::unit
+
+    character ( len = path ) :: csv_file_name! = 'csv_4col_5row.csv'
+    !integer   ( kind = 4 ) csv_file_status
+    !integer   ( kind = 4 ) csv_file_unit
+    !integer   ( kind = 4 ) csv_record_status
+    !integer   ( kind = 4 ) i
+    integer(long) line_num
+    character ( len = label ) record
+    integer(long) value_count
+
+    
     !verify device is compatible with current version
     include 'verification'
 
-    write(*,*)'test DEVICE can be created with vislayer size specification.'
+    write(*,*)'test device can be created with vislayer size specification.'
     call make(this,N=4)
-    call assert(check(this).EQ.0,msg='DEVICE object was not created properly.')
-    write(*,*)'test DEVICE kill method sets initiallization flag to false.'
+    call assert(check(this).EQ.0,msg='device object was not created properly.')
+    write(*,*)'test device kill method sets initiallization flag to false.'
     call kill(this)
-    call assert(.not.this%initialized,msg='DEVICE object remains initialized after killed.')
+    call assert(.not.this%initialized,msg='device object remains initialized after killed.')
 
     write(*,*)'test make method creates vislayer of correct size.'
     call make(this,N=4)
@@ -774,180 +827,211 @@ contains
     call kill(ffn1)
 
 
-    write(*,*)'test training by back propagation reduces MSE with zpot dataset with tanh regression.'
-    call make(this,N=1)!for x value
-    this%learningrate=1E-8
-    nepoch=50000
-    call make(ffn1,N=30,activation='tanh')
-    call make(ffn2,N=1) !for y value
-    call link(this,ffn1)
-    call link(this,ffn2)
-    !allocate dataset
-    if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(2,500)) 
-    !read training set
-    open(111,file='data/zpot.dat')
-    do i=1,500
-       read(111,*)dataset(:,i)
-    end do
-    close(111)
-    !get starting MSE
-    call measure(this,dataset,MSE=MSE0)
-    open(123,file='testbackprop_zpot.error')
-    do epoch=0,nepoch
-       call backprop(this,dataset)
-       if(mod(epoch,500).EQ.0)then
-          call assert(check(this).EQ.0,msg='backpropagation failed')
-          call progress(epoch,nepoch)
-          this%learningrate=this%learningrate*.95
-          !get new MSE
-          call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
-          write(123,*)epoch,MSE
-          flush(123)
-       end if
-    end do
-    close(123)
-    !get final MSE
-    call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
-    !cleanup data set 
-    if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/zpot.plt')
-    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
-    call kill(this)
-    call kill(ffn2)
-    call kill(ffn1)
+!!$    write(*,*)'test training by back propagation reduces MSE with zpot dataset with tanh regression.'
+!!$    call make(this,N=1)!for x value
+!!$    this%learningrate=1E-8
+!!$    nepoch=50000
+!!$    call make(ffn1,N=30,activation='tanh')
+!!$    call make(ffn2,N=1) !for y value
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(2,500)) 
+!!$    !read training set
+!!$    open(111,file='data/zpot.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_zpot.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,500).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_zpot.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/zpot.plt')
+!!$    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1)
+!!$
+!!$    write(*,*)'test training by back propagation reduces MSE with cubic dataset with tanh regression.'
+!!$    call make(this,N=1)
+!!$    this%learningrate=1E-11
+!!$    nepoch=50000
+!!$    call make(ffn1,N=20,activation='tanh')
+!!$    call make(ffn2,N=1)
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    ffn2%W(1,:)=-60.0
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(2,500)) 
+!!$    !read training set
+!!$    open(111,file='data/cubic.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_cubic.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,1000).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/cubic.plt')
+!!$    call assert(MSE.LT.MSE0,msg='cubic dataset MSE is not reduced by training with backpropagation.')
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1) 
+!!$
+!!$    write(*,*)'test backprop training reduces MSE for xor dataset with tanh bernoulli regression.'
+!!$    call make(this,N=2)
+!!$    this%learningrate=1E-5
+!!$    nepoch=10000
+!!$    call make(ffn1,N=100,activation='tanh')
+!!$    call make(ffn2,N=1,activation='bernoulli')
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(3,500)) 
+!!$    !read training set
+!!$    open(111,file='data/xor.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_xor.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,nepoch/100).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/xor.plt')
+!!$    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.'&
+!!$         ,iostat=ierr)
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1)
+!!$
+!!$     write(*,*)'test backprop training reduces MSE for xor dataset with oscillator bernoulli regression.'
+!!$    call make(this,N=2)
+!!$    this%learningrate=1E-5
+!!$    nepoch=10000
+!!$    call make(ffn1,N=100,activation='oscillator')
+!!$    call make(ffn2,N=1,activation='bernoulli')
+!!$    call link(this,ffn1)
+!!$    call link(this,ffn2)
+!!$    !allocate dataset
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    allocate(dataset(3,500)) 
+!!$    !read training set
+!!$    open(111,file='data/xor.dat')
+!!$    do i=1,500
+!!$       read(111,*)dataset(:,i)
+!!$    end do
+!!$    close(111)
+!!$    !get starting MSE
+!!$    call measure(this,dataset,MSE=MSE0)
+!!$    open(123,file='testbackprop_xorsinusoid.error')
+!!$    do epoch=0,nepoch
+!!$       call backprop(this,dataset)
+!!$       if(mod(epoch,nepoch/100).EQ.0)then
+!!$          call assert(check(this).EQ.0,msg='backpropagation failed')
+!!$          call progress(epoch,nepoch)
+!!$          this%learningrate=this%learningrate*.95
+!!$          !get new MSE
+!!$          call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
+!!$          write(123,*)epoch,MSE
+!!$          flush(123)
+!!$       end if
+!!$    end do
+!!$    close(123)
+!!$    !get final MSE
+!!$    call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
+!!$    !cleanup data set 
+!!$    if(allocated(dataset))deallocate(dataset)
+!!$    call system('gnuplot -persist data/xorsinusoid.plt')
+!!$    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.'&
+!!$         ,iostat=ierr)
+!!$    call kill(this)
+!!$    call kill(ffn2)
+!!$    call kill(ffn1)
 
-    write(*,*)'test training by back propagation reduces MSE with cubic dataset with tanh regression.'
-    call make(this,N=1)
-    this%learningrate=1E-11
-    nepoch=50000
-    call make(ffn1,N=20,activation='tanh')
-    call make(ffn2,N=1)
-    call link(this,ffn1)
-    call link(this,ffn2)
-    ffn2%W(1,:)=-60.0
-    !allocate dataset
-    if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(2,500)) 
-    !read training set
-    open(111,file='data/cubic.dat')
-    do i=1,500
-       read(111,*)dataset(:,i)
-    end do
-    close(111)
-    !get starting MSE
-    call measure(this,dataset,MSE=MSE0)
-    open(123,file='testbackprop_cubic.error')
-    do epoch=0,nepoch
-       call backprop(this,dataset)
-       if(mod(epoch,1000).EQ.0)then
-          call assert(check(this).EQ.0,msg='backpropagation failed')
-          call progress(epoch,nepoch)
-          this%learningrate=this%learningrate*.95
-          !get new MSE
-          call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
-          write(123,*)epoch,MSE
-          flush(123)
-       end if
-    end do
-    close(123)
-    !get final MSE
-    call measure(this,dataset,MSE=MSE,file='testbackprop_cubic.out')
-    !cleanup data set 
-    if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/cubic.plt')
-    call assert(MSE.LT.MSE0,msg='cubic dataset MSE is not reduced by training with backpropagation.')
-    call kill(this)
-    call kill(ffn2)
-    call kill(ffn1) 
-
-    write(*,*)'test backprop training reduces MSE for xor dataset with tanh bernoulli regression.'
-    call make(this,N=2)
-    this%learningrate=1E-5
-    nepoch=10000
-    call make(ffn1,N=100,activation='tanh')
-    call make(ffn2,N=1,activation='bernoulli')
-    call link(this,ffn1)
-    call link(this,ffn2)
-    !allocate dataset
-    if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(3,500)) 
-    !read training set
-    open(111,file='data/xor.dat')
-    do i=1,500
-       read(111,*)dataset(:,i)
-    end do
-    close(111)
-    !get starting MSE
-    call measure(this,dataset,MSE=MSE0)
-    open(123,file='testbackprop_xor.error')
-    do epoch=0,nepoch
-       call backprop(this,dataset)
-       if(mod(epoch,nepoch/100).EQ.0)then
-          call assert(check(this).EQ.0,msg='backpropagation failed')
-          call progress(epoch,nepoch)
-          this%learningrate=this%learningrate*.95
-          !get new MSE
-          call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
-          write(123,*)epoch,MSE
-          flush(123)
-       end if
-    end do
-    close(123)
-    !get final MSE
-    call measure(this,dataset,MSE=MSE,file='testbackprop_xor.out')
-    !cleanup data set 
-    if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/xor.plt')
-    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
-    call kill(this)
-    call kill(ffn2)
-    call kill(ffn1)
-
-     write(*,*)'test backprop training reduces MSE for xor dataset with oscillator bernoulli regression.'
-    call make(this,N=2)
-    this%learningrate=1E-5
-    nepoch=10000
-    call make(ffn1,N=100,activation='oscillator')
-    call make(ffn2,N=1,activation='bernoulli')
-    call link(this,ffn1)
-    call link(this,ffn2)
-    !allocate dataset
-    if(allocated(dataset))deallocate(dataset)
-    allocate(dataset(3,500)) 
-    !read training set
-    open(111,file='data/xor.dat')
-    do i=1,500
-       read(111,*)dataset(:,i)
-    end do
-    close(111)
-    !get starting MSE
-    call measure(this,dataset,MSE=MSE0)
-    open(123,file='testbackprop_xorsinusoid.error')
-    do epoch=0,nepoch
-       call backprop(this,dataset)
-       if(mod(epoch,nepoch/100).EQ.0)then
-          call assert(check(this).EQ.0,msg='backpropagation failed')
-          call progress(epoch,nepoch)
-          this%learningrate=this%learningrate*.95
-          !get new MSE
-          call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
-          write(123,*)epoch,MSE
-          flush(123)
-       end if
-    end do
-    close(123)
-    !get final MSE
-    call measure(this,dataset,MSE=MSE,file='testbackprop_xorsinusoid.out')
-    !cleanup data set 
-    if(allocated(dataset))deallocate(dataset)
-    call system('gnuplot -persist data/xorsinusoid.plt')
-    call assert(MSE.LT.MSE0,msg='MSE is not reduced by training with backpropagation.')
-    call kill(this)
-    call kill(ffn2)
-    call kill(ffn1)
 
 
+!!!!!!!!!!!!!!!!!
+    write(*,*)'test to read perception data'
+    
+    !call csv_file_line_count ( csv_file_name, line_num )
+    call csv_file_line_count ( 'perception.csv', line_num )
+
+    write ( *, '(a,i8,a)' ) '  File contains ', line_num, ' lines.'
+
+    !call csv_file_open_read ( csv_file_name, csv_file_unit )
+    unit= newunit()
+    call csv_file_open_read ( 'perception.csv', unit )
+
+    do i = 1, line_num
+       read ( unit, '(a)', iostat = ierr ) record
+       write ( *, '(a)' ) i, trim ( record )
+       call csv_value_count ( record, ierr, value_count )
+       write ( *, * ) i, value_count
+    end do
+
+    !call csv_file_close_read ( csv_file_name, csv_file_unit )
+    call csv_file_close_read ( 'perception.csv', unit )
+
+!!!!!!!!!!!!!!!!!    
+
+
+
+
+    
     write(*,*)'test backprop training reduces MSE for protstruct dataset.'
 
     nx=5*9
@@ -1112,9 +1196,11 @@ contains
     call kill(ffn1)
     
 
-    write(*,*)'ALL DEVICE TESTS PASSED!'
-  end subroutine DEVICE_test
+
+
+    
+    write(*,*)'ALL device TESTS PASSED!'
+  end subroutine device_test
   !-----------------------------------------
 
-end module DEVICE_class
-
+end module device_class

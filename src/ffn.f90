@@ -1,19 +1,19 @@
 !>\brief
 !! Class ffn
 !!\details
-!! Feed foward network FFN is a type of layer distinguished by its connecting
+!! Feed foward network ffn is a type of layer distinguished by its connecting
 !! weights to external input nodes. 
 !<------------------------------------------------------------------------
-module FFN_class
+module ffn_class
   use type_kinds
   use layer_class
   implicit none
   private
 
-  public::FFN, FFN_test
+  public::ffn, ffn_test
   public::make, kill, status, backup, update, reset, check, describe, link
 
-  type FFN
+  type ffn
      logical::initialized=.false.
      character(len=label)::name='ffn'
      type(layer)::layer
@@ -26,21 +26,21 @@ module FFN_class
      type(realptr),dimension(:),pointer::markerror
      type(realptr),dimension(:,:),pointer::WT
 
-  end type FFN
+  end type ffn
 
-  !> Creates the FFN object.
+  !> Creates the ffn object.
   interface make
-     module procedure FFN_init
+     module procedure ffn_init
   end interface
 
-  !> Destroys the FFN object.
+  !> Destroys the ffn object.
   interface kill
-     module procedure FFN_kill
+     module procedure ffn_kill
   end interface
 
-  !> Returns the current state of the FFN object.
+  !> Returns the current state of the ffn object.
   interface status
-     module procedure FFN_status
+     module procedure ffn_status
   end interface
 
   !> Returns a plain text description of the ffn object.
@@ -48,30 +48,30 @@ module FFN_class
      module procedure ffn_describe
   end interface
   
-  !> Backups the current state of the FFN object.
+  !> Backups the current state of the ffn object.
   interface backup
-     module procedure FFN_backup
+     module procedure ffn_backup
   end interface
 
-  !> Recaluclates the FFN object.
+  !> Recaluclates the ffn object.
   interface update
-     module procedure FFN_update
+     module procedure ffn_update
   end interface
 
-  !> Reinitializes the FFN object.
+  !> Reinitializes the ffn object.
   interface reset
-     module procedure FFN_reset
+     module procedure ffn_reset
   end interface
 
-  !> Checks that the FFN object.
+  !> Checks that the ffn object.
   interface check
-     module procedure FFN_check
+     module procedure ffn_check
   end interface
 
-  !> Links that the FFN object.
+  !> Links that the ffn object.
   interface link
-     module procedure FFN_link
-     module procedure FFN_FFN_link
+     module procedure ffn_link
+     module procedure ffn_ffn_link
   end interface
 
 contains
@@ -88,13 +88,13 @@ contains
   end function ffn_describe
 
   !======================================================================
-  !> \brief Links the FFN object to a prior FFN.
-  !> \param this is the FFN object.
-  !> \param sourceFFN is the prior FFN object.
+  !> \brief Links the ffn object to a prior ffn.
+  !> \param this is the ffn object.
+  !> \param sourceffn is the prior ffn object.
   !=====================================================================
-  subroutine FFN_FFN_link(this,sourceffn)
+  subroutine ffn_ffn_link(this,sourceffn)
     use rand_class
-    type(FFN),intent(inout)::this
+    type(ffn),intent(inout)::this
     type(ffn),intent(inout)::sourceffn
     type(realptr),dimension(:),pointer::tmpsource
     real(double),dimension(:,:),allocatable::tmpW
@@ -229,15 +229,15 @@ contains
     !nullify temp markweights
     if(associated(tmpWT))nullify(tmpWT)
 
-  end subroutine FFN_FFN_link
+  end subroutine ffn_ffn_link
   !======================================================================
-  !> \brief Links the FFN object to a prior sourcelayer.
-  !> \param this is the FFN object.
+  !> \brief Links the ffn object to a prior sourcelayer.
+  !> \param this is the ffn object.
   !> \param sourcelayer is a layer object.
   !=====================================================================
-  subroutine FFN_link(this,sourcelayer)
+  subroutine ffn_link(this,sourcelayer)
     use rand_class
-    type(FFN),intent(inout)::this
+    type(ffn),intent(inout)::this
     type(layer),intent(in)::sourcelayer
     type(realptr),dimension(:),pointer::tmpsource
     real(double),dimension(:,:),allocatable::tmpW
@@ -301,17 +301,17 @@ contains
     !nullify temp weights
     deallocate(tmpW)
 
-  end subroutine FFN_link
+  end subroutine ffn_link
 
   !======================================================================
-  !> \brief Creates and initializes the FFN object.
-  !> \param this is the FFN object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously backupd FFN file.
+  !> \brief Creates and initializes the ffn object.
+  !> \param this is the ffn object to be initialized.
+  !> \param[in] file is an optional string containing the name of a previously backupd ffn file.
 !!$  !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine FFN_init(this,N,activation,file)
+  subroutine ffn_init(this,N,activation,file)
     use rand_class
-    type(FFN),intent(inout)::this
+    type(ffn),intent(inout)::this
     integer(long),optional,intent(in)::N
     character(len=*),optional,intent(in)::activation
     character*(*),intent(in),optional::file
@@ -365,14 +365,14 @@ contains
     !declare initialization complete
     this%initialized=.true.
 
-  end subroutine FFN_init
+  end subroutine ffn_init
 
   !======================================================================
-  !> \brief Destroys the FFN object.
-  !> \param this is the FFN object to be destroyed.
+  !> \brief Destroys the ffn object.
+  !> \param this is the ffn object to be destroyed.
   !====================================================================
-  subroutine FFN_kill(this)
-    type(FFN),intent(inout)::this
+  subroutine ffn_kill(this)
+    type(ffn),intent(inout)::this
  
     !kill the layer primitive
     call kill(this%layer)
@@ -388,14 +388,14 @@ contains
     !un-initialize ffn object
     this%initialized=.false.
 
-  end subroutine FFN_kill
+  end subroutine ffn_kill
 
   !======================================================================
-  !> \brief Computes the current state of FFN object.
-  !> \param this is the FFN  object to be updated.
+  !> \brief Computes the current state of ffn object.
+  !> \param this is the ffn  object to be updated.
   !======================================================================
-  subroutine FFN_update(this,derivative)
-    type(FFN),intent(inout)::this
+  subroutine ffn_update(this,derivative)
+    type(ffn),intent(inout)::this
     real(double),allocatable::source(:)
     logical,intent(in),optional::derivative
 
@@ -421,7 +421,7 @@ contains
     !update ffn layer state according to input
     call update(this%layer,df)
 
-  end subroutine FFN_update
+  end subroutine ffn_update
 
   !======================================================================
   !> \brief Re-initiallizes the ffn object.
@@ -474,63 +474,60 @@ contains
     !************************************************************************
 
   end subroutine ffn_reset
-
+  
   !======================================================================
-  !> \brief Backups the current state of the FFN object to file.
-  !> \param[in] this is the FFN  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \brief Backups the current state of the ffn object to file.
+  !> \param[in] THIS is the ffn  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
-  subroutine FFN_backup(this,file)
-    type(FFN),intent(in)::this
+  subroutine ffn_backup(this,file)
+    use filemanager
+    use string
+    use testing_class
+    type(ffn),intent(in)::this
     character*(*),intent(in)::file
+    integer(short)::unit
+    logical::fileisopen
+    integer(long)::i,j
+    
+    !check input file
+    inquire(file=file,opened=fileisopen,number=unit)
+    if(unit.LT.0)unit=newunit()
+    if(.not.fileisopen)open(unit,file=file)
+    
+    !check ffn object
+    call assert(check(this).EQ.0,msg='ffn object does not pass check.')
 
-!!$    integer(short)::unit
-!!$    logical::usedunit      
-!!$
-!!$    call note('Begin FFN_backup.')
-!!$    call Note('input file= '//file)
-!!$    if(check(this).NE.0)then
-!!$       call warn('FFN_backup: failed check.','not saving object.')
-!!$    else
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open backup file
-!!$       open(unit,file=file)
-!!$
-!!$       !always write the data type on the first line
-!!$       write(unit,*)'FFN'
-!!$
-!!$       !backup the layer
-!!$       call backup(this%layer,file//'.layer')
-!!$
-!!$       !write the location of the layer
-!!$       write(unit,*)quote(file//'.layer')
-!!$
-!!$       !******      Backup below all the derived type's attributes       ******!
-!!$       !******         in the order the MAKE command reads them         ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !******      Example - Backup an attribute called 'var  '    ***********!
-!!$       ! write(unit,*)this%var                                               !
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
-!!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
-!!$       !*********************************************************************!
-!!$
-!!$
-!!$       !finished saving all attributes - now close backup file
-!!$       close(unit)
-!!$    end if
-  end subroutine FFN_backup
+    !always write the data type on the first line
+    write(unit,*)'ffn'
 
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
+
+
+    !First, Scalar parameters
+    !******          Example - Backup a scalar parameter            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
+
+
+    !Second, Dynamic arrays
+    !***       Example - Backup an NxM matrix                          ***
+    ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
+    !*********************************************************************
+
+
+    !Last,objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%object,file//'.object')
+    ! write(unit,*)quote(file//'.object')!write the object location
+    !*********************************************************************
+    
+
+    !finished writing all attributes - now close backup file
+    close(unit)  
+  end subroutine ffn_backup
+  
   !======================================================================
   !> \brief Retrun the ffn object as a single line record entry.
   !> \param[in] this is the ffn object.
@@ -547,120 +544,120 @@ contains
   end function ffn_status
 
   !======================================================================
-  !> \brief Checks the FFN object.
-  !> \param[in] this is the FFN object to be checked.
+  !> \brief Checks the ffn object.
+  !> \param[in] this is the ffn object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function FFN_check(this)
+  integer(short)function ffn_check(this)
     use testing_class
-    type(FFN),intent(in)::this
+    type(ffn),intent(in)::this
 
     integer(long)::i,j
 
     !initiate with no problems found 
-    FFN_check=0
+    ffn_check=0
 
     !check that object is initialized
-    call assert(this%initialized,msg='FFN_check: FFN object not initialized.',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(this%initialized,msg='ffn_check: ffn object not initialized.',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check the layer
-    call assert(check(this%layer).EQ.0,msg='FFN_check: failed layer check!',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(check(this%layer).EQ.0,msg='ffn_check: failed layer check!',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check zerothsource
-    call assert(associated(this%zerothsource),msg='FFN_check: zerothsource is not associated',iostat=FFN_check)
-    if(FFN_check.NE.0)return
-    call assert(this%zerothsource.EQ.1.0_double,msg='FFN_check: zerothsource is not 1.0',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(associated(this%zerothsource),msg='ffn_check: zerothsource is not associated',iostat=ffn_check)
+    if(ffn_check.NE.0)return
+    call assert(this%zerothsource.EQ.1.0_double,msg='ffn_check: zerothsource is not 1.0',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check source
-    call assert(associated(this%source),msg='FFN_check: source is not associated',iostat=FFN_check)
-    if(FFN_check.NE.0)return
-    call assert(size(this%source).GE.1,msg='FFN_check: source size is less than 1',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(associated(this%source),msg='ffn_check: source is not associated',iostat=ffn_check)
+    if(ffn_check.NE.0)return
+    call assert(size(this%source).GE.1,msg='ffn_check: source size is less than 1',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     do i=0,size(this%source)-1
        call assert(this%source(i)%ptr.EQ.this%source(i)%ptr&
-            ,msg='FFN_check: source elements point to NaN values',iostat=FFN_check)
-       if(FFN_check.NE.0)return
+            ,msg='ffn_check: source elements point to NaN values',iostat=ffn_check)
+       if(ffn_check.NE.0)return
     end do
 
     !check source counter
-    call assert(size(this%source).EQ.this%nsource,msg='FFN_check: source counter does not equal size of source pointer array',&
-         iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(size(this%source).EQ.this%nsource,msg='ffn_check: source counter does not equal size of source pointer array',&
+         iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check weight matrix
-    call assert(associated(this%W),msg='FFN_check: weight matrix W is not associated',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(associated(this%W),msg='ffn_check: weight matrix W is not associated',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     call assert(size(this%W,1).EQ.this%layer%N&
-         ,msg='FFN_check: W dim 1 size does not equal number of layer nodes',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+         ,msg='ffn_check: W dim 1 size does not equal number of layer nodes',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     call assert(size(this%W,2).EQ.this%nsource&
-         ,msg='FFN_check: W dim 1 size does not equal number of sources',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+         ,msg='ffn_check: W dim 1 size does not equal number of sources',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     call assert(all(this%W.EQ.this%W)&
-         ,msg='FFN_check: Weight elements have NaN values',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+         ,msg='ffn_check: Weight elements have NaN values',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check error vector
-    call assert(associated(this%error),msg='FFN_check: error vector is not associated',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(associated(this%error),msg='ffn_check: error vector is not associated',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     call assert(size(this%error).EQ.this%layer%N+1&
-         ,msg='FFN_check: error vector size does not equal number of layer nodes +1',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+         ,msg='ffn_check: error vector size does not equal number of layer nodes +1',iostat=ffn_check)
+    if(ffn_check.NE.0)return
     call assert(all(this%error.EQ.this%error)&
-         ,msg='FFN_check: error vector elements have NaN values',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+         ,msg='ffn_check: error vector elements have NaN values',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !check mark counter
-    call assert(this%nmark.GE.0,msg='mark counter is less negative.',iostat=FFN_check)
-    if(FFN_check.NE.0)return
+    call assert(this%nmark.GE.0,msg='mark counter is less negative.',iostat=ffn_check)
+    if(ffn_check.NE.0)return
 
     !if marks are present
     if(this%nmark.GT.0)then
        
        !check markerror
-       call assert(associated(this%markerror),msg='mark error is not associated while mark counter is positive.',iostat=FFN_check)
-       if(FFN_check.NE.0)return
-       call assert(size(this%markerror).EQ.this%nmark,msg='FFN_check: mark counter does not equal size of markerror pointer array',&
-            iostat=FFN_check)
-       if(FFN_check.NE.0)return
+       call assert(associated(this%markerror),msg='mark error is not associated while mark counter is positive.',iostat=ffn_check)
+       if(ffn_check.NE.0)return
+       call assert(size(this%markerror).EQ.this%nmark,msg='ffn_check: mark counter does not equal size of markerror pointer array',&
+            iostat=ffn_check)
+       if(ffn_check.NE.0)return
        do i=1,this%nmark
           call assert(this%markerror(i)%ptr.EQ.this%markerror(i)%ptr&
-               ,msg='FFN_check: markerror elements point to NaN values',iostat=FFN_check)
-          if(FFN_check.NE.0)return
+               ,msg='ffn_check: markerror elements point to NaN values',iostat=ffn_check)
+          if(ffn_check.NE.0)return
        end do
 
        !check markweight matrix
        call assert(size(this%WT,1).EQ.this%nmark&
-            ,msg='FFN_check: WT dim 1 size does not equal number of marks',iostat=FFN_check)
-       if(FFN_check.NE.0)return
+            ,msg='ffn_check: WT dim 1 size does not equal number of marks',iostat=ffn_check)
+       if(ffn_check.NE.0)return
        call assert(size(this%WT,2).EQ.this%layer%N&
-            ,msg='FFN_check: WT dim 2 size does not equal number of layer nodes',iostat=FFN_check)
-       if(FFN_check.NE.0)return
+            ,msg='ffn_check: WT dim 2 size does not equal number of layer nodes',iostat=ffn_check)
+       if(ffn_check.NE.0)return
        do i=1,this%nmark
           do j=1,this%layer%N
              call assert(this%WT(i,j)%ptr.EQ.this%WT(i,j)%ptr&
-                  ,msg='FFN_check: mark weight elements have NaN values',iostat=FFN_check)
+                  ,msg='ffn_check: mark weight elements have NaN values',iostat=ffn_check)
           end do
        end do
-       if(FFN_check.NE.0)return
+       if(ffn_check.NE.0)return
     end if
 
-  end function FFN_check
+  end function ffn_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the FFN methods.
-  !> \param[in] this is the FFN object whose methods will be excercised.
+  !> \brief Tests the ffn methods.
+  !> \param[in] this is the ffn object whose methods will be excercised.
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine FFN_test
+  subroutine ffn_test
     use testing_class
     use filemanager
-    type(FFN)::this,sourceffn,sourceffn2,markffn,markffn2
+    type(ffn)::this,sourceffn,sourceffn2,markffn,markffn2
     type(layer)::sourcelayer,sourcelayer2
 
     integer i,j
@@ -971,8 +968,8 @@ contains
     call assert(this%layer%dnode(1).EQ.1.0_double,msg='update with derivative flag does not update layer dnode properly.')
     call kill(this)
 
-  end subroutine FFN_test
+  end subroutine ffn_test
   !-----------------------------------------
 
-end module FFN_class
+end module ffn_class
 

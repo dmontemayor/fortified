@@ -1,20 +1,20 @@
 !>\brief
 !! Class som
 !!\details
-!! Self organizing map SOM is a type of feed foward network distinguished
+!! Self organizing map som is a type of feed foward network distinguished
 !! by a map of interconnected nodes in the map space.
 !! weights to external input nodes. 
 !<------------------------------------------------------------------------
-module SOM_class
+module som_class
   use type_kinds
   use ffn_class
   implicit none
   private
 
-  public::SOM, SOM_test
+  public::som, som_test
   public::make, kill, status, backup, update, reset, check, describe, trainstep
 
-  type SOM
+  type som
      logical::initialized=.false.
      character(len=label)::name='som'
      type(ffn)::ffn
@@ -23,26 +23,26 @@ module SOM_class
      logical::mexhat
      real(double)::sigmastart,sigmadecay
      real(double)::learningstart,learningdecay
-  end type SOM
+  end type som
 
-  !> Train SOM object by one step.
+  !> Train som object by one step.
   interface trainstep
-     module procedure SOM_trainstep
+     module procedure som_trainstep
   end interface
 
-  !> Creates the SOM object.
+  !> Creates the som object.
   interface make
-     module procedure SOM_init
+     module procedure som_init
   end interface
 
-  !> Destroys the SOM object.
+  !> Destroys the som object.
   interface kill
-     module procedure SOM_kill
+     module procedure som_kill
   end interface
 
-  !> Returns the current state of the SOM object.
+  !> Returns the current state of the som object.
   interface status
-     module procedure SOM_status
+     module procedure som_status
   end interface
 
   !> Returns a plain text description of the som object.
@@ -50,24 +50,24 @@ module SOM_class
      module procedure som_describe
   end interface
   
-  !> Backups the current state of the SOM object.
+  !> Backups the current state of the som object.
   interface backup
-     module procedure SOM_backup
+     module procedure som_backup
   end interface
 
-  !> Recaluclates the SOM object.
+  !> Recaluclates the som object.
   interface update
-     module procedure SOM_update
+     module procedure som_update
   end interface
 
-  !> Reinitializes the SOM object.
+  !> Reinitializes the som object.
   interface reset
-     module procedure SOM_reset
+     module procedure som_reset
   end interface
 
-  !> Checks that the SOM object.
+  !> Checks that the som object.
   interface check
-     module procedure SOM_check
+     module procedure som_check
   end interface
 
 contains
@@ -84,12 +84,12 @@ contains
   end function som_describe
 
   !======================================================================
-  !> \brief Evolves the SOM object by one training step.
-  !> \param this is the SOM object to be evolved.
+  !> \brief Evolves the som object by one training step.
+  !> \param this is the som object to be evolved.
   !> \param[in] S is the current training step
   !=====================================================================
-  subroutine SOM_trainstep(this,S)
-    type(SOM),intent(inout)::this
+  subroutine som_trainstep(this,S)
+    type(som),intent(inout)::this
     integer(long),intent(in)::S
     real(double)::dW(this%ffn%layer%N,this%ffn%nsource),NF(this%ffn%layer%N)
 
@@ -127,16 +127,16 @@ contains
        this%ffn%W(:,j-1)=this%ffn%W(:,j-1)+LF*NF*dW(:,j)
     end do
 
-  end subroutine SOM_trainstep
+  end subroutine som_trainstep
 
   !======================================================================
-  !> \brief SOM learning function
-  !> \param this is the SOM object to measure.
+  !> \brief som learning function
+  !> \param this is the som object to measure.
   !> \param[in] S is the current training step.
   !=====================================================================
   function Lfunc(this,S)
     use functions
-    type(SOM),intent(inout)::this
+    type(som),intent(inout)::this
     integer(long),intent(in)::S
     real(double)::Lfunc
     Lfunc=this%learningstart*exp(-this%learningdecay*S)
@@ -144,14 +144,14 @@ contains
   end function Lfunc
 
   !======================================================================
-  !> \brief SOM neigborhood function
-  !> \param this is the SOM object to measure.
+  !> \brief som neigborhood function
+  !> \param this is the som object to measure.
   !> \param[in] A is the winning node.
   !> \param[in] S is the current training step.
   !=====================================================================
   function Nfunc(this,A,S)
     use functions
-    type(SOM),intent(inout)::this
+    type(som),intent(inout)::this
     integer(long),intent(in)::A,S
     real(double),dimension(this%ffn%layer%N)::Nfunc,x
     integer(long)::i
@@ -170,13 +170,13 @@ contains
   end function Nfunc
 
   !======================================================================
-  !> \brief cartesian (L2norm) distance between two nodes in SOM.
-  !> \param this is the SOM object to measure.
+  !> \brief cartesian (L2norm) distance between two nodes in som.
+  !> \param this is the som object to measure.
   !> \param[in] A is the starting node.
   !> \param[in] B is the ending node.
   !=====================================================================
   real(double) function cartdist(this,A,B)
-    type(SOM),intent(inout)::this
+    type(som),intent(inout)::this
     integer(long),intent(in)::A,B
 
     cartdist=sqrt(sum((this%nodecoord(A,:)-this%nodecoord(B,:))**2))
@@ -185,13 +185,13 @@ contains
   end function cartdist
 
   !======================================================================
-  !> \brief Creates and initializes the SOM object.
-  !> \param this is the SOM object to be initialized.
-  !> \param[in] file is an optional string containing the name of a previously backupd SOM file.
+  !> \brief Creates and initializes the som object.
+  !> \param this is the som object to be initialized.
+  !> \param[in] file is an optional string containing the name of a previously backupd som file.
   !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine SOM_init(this,N,ND1,ND2,ND3,hcp,file)
-    type(SOM),intent(inout)::this
+  subroutine som_init(this,N,ND1,ND2,ND3,hcp,file)
+    type(som),intent(inout)::this
     integer(long),intent(in),optional::N
     integer(long),intent(in),optional::ND1,ND2,ND3
     logical,intent(in),optional::hcp
@@ -260,14 +260,14 @@ contains
 
     !declare initialization complete
     this%initialized=.true.
-  end subroutine SOM_init
+  end subroutine som_init
 
   !======================================================================
-  !> \brief Destroys the SOM object.
-  !> \param this is the SOM object to be destroyed.
+  !> \brief Destroys the som object.
+  !> \param this is the som object to be destroyed.
   !====================================================================
-  subroutine SOM_kill(this)
-    type(SOM),intent(inout)::this
+  subroutine som_kill(this)
+    type(som),intent(inout)::this
  
     !kill the layer primitive
     call kill(this%ffn)
@@ -278,16 +278,16 @@ contains
     !un-initialize som object
     this%initialized=.false.
 
-  end subroutine SOM_kill
+  end subroutine som_kill
 
   !======================================================================
-  !> \brief Computes the current state of SOM object.
-  !> \param this is the SOM  object to be updated.
+  !> \brief Computes the current state of som object.
+  !> \param this is the som  object to be updated.
   !======================================================================
-  subroutine SOM_update(this)
-    type(SOM),intent(inout)::this
+  subroutine som_update(this)
+    type(som),intent(inout)::this
 
-  end subroutine SOM_update
+  end subroutine som_update
 
   !======================================================================
   !> \brief Re-initiallizes the som object.
@@ -342,16 +342,58 @@ contains
   end subroutine som_reset
 
   !======================================================================
-  !> \brief Backups the current state of the SOM object to file.
-  !> \param[in] this is the SOM  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \brief Backups the current state of the som object to file.
+  !> \param[in] THIS is the som  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
-  subroutine SOM_backup(this,file)
-    type(SOM),intent(in)::this
+  subroutine som_backup(this,file)
+    use filemanager
+    use string
+    use testing_class
+    type(som),intent(in)::this
     character*(*),intent(in)::file
+    integer(short)::unit
+    logical::fileisopen
+    integer(long)::i,j
+    
+    !check input file
+    inquire(file=file,opened=fileisopen,number=unit)
+    if(unit.LT.0)unit=newunit()
+    if(.not.fileisopen)open(unit,file=file)
+    
+    !check som object
+    call assert(check(this).EQ.0,msg='som object does not pass check.')
 
-  end subroutine SOM_backup
+    !always write the data type on the first line
+    write(unit,*)'som'
 
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
+
+
+    !First, Scalar parameters
+    !******          Example - Backup a scalar parameter            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
+
+
+    !Second, Dynamic arrays
+    !***       Example - Backup an NxM matrix                          ***
+    ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
+    !*********************************************************************
+
+
+    !Last,objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%object,file//'.object')
+    ! write(unit,*)quote(file//'.object')!write the object location
+    !*********************************************************************
+    
+
+    !finished writing all attributes - now close backup file
+    close(unit)  
+  end subroutine som_backup
+  
   !======================================================================
   !> \brief Retrun the som object as a single line record entry.
   !> \param[in] this is the som object.
@@ -368,77 +410,77 @@ contains
   end function som_status
 
   !======================================================================
-  !> \brief Checks the SOM object.
-  !> \param[in] this is the SOM object to be checked.
+  !> \brief Checks the som object.
+  !> \param[in] this is the som object to be checked.
   !> \return Nothing if all checks pass or 1 and a warn for the first failed check.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function SOM_check(this)
+  integer(short)function som_check(this)
     use testing_class
-    type(SOM),intent(in)::this
+    type(som),intent(in)::this
 
     !initiate with no problems found 
-    SOM_check=0
+    som_check=0
 
     !check that object is initialized
-    call assert(this%initialized,msg='SOM_check: SOM object not initialized.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%initialized,msg='som_check: som object not initialized.',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check the ffn
-    call assert(check(this%ffn).EQ.0,msg='SOM_check: failed ffn check!',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(check(this%ffn).EQ.0,msg='som_check: failed ffn check!',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check map dimensions
-    call assert(this%ND1*this%ND2*this%ND3.EQ.this%ffn%layer%N,msg='SOM_check: all nodes must fit in rectangular 3D grid.'&
-         ,iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%ND1*this%ND2*this%ND3.EQ.this%ffn%layer%N,msg='som_check: all nodes must fit in rectangular 3D grid.'&
+         ,iostat=som_check)
+    if(som_check.NE.0)return
 
     !check node coordinates
-    call assert(associated(this%nodeCoord),msg='SOM_check: node coordinates not associated',iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(size(this%nodecoord).EQ.this%ffn%layer%N*3,msg='SOM_check: size of node coordinates not equal to number of nodes.',&
-         iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(all(this%nodecoord.EQ.this%nodecoord),msg='SOM_check: node coordinates have NaN values.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(associated(this%nodeCoord),msg='som_check: node coordinates not associated',iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(size(this%nodecoord).EQ.this%ffn%layer%N*3,msg='som_check: size of node coordinates not equal to number of nodes.',&
+         iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(all(this%nodecoord.EQ.this%nodecoord),msg='som_check: node coordinates have NaN values.',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check sigmastart
-    call assert(this%sigmastart,this%sigmastart,msg='SOM_check: sigmastart has NaN or huge vaule.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(this%sigmastart.GT.epsilon(1.0_double),msg='SOM_check: sigmastart has tiny or negative value.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%sigmastart,this%sigmastart,msg='som_check: sigmastart has NaN or huge vaule.',iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(this%sigmastart.GT.epsilon(1.0_double),msg='som_check: sigmastart has tiny or negative value.',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check sigmadecay
-    call assert(this%sigmadecay,this%sigmadecay,msg='SOM_check: sigmadecay has NaN or huge vaule.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(this%sigmadecay.GE.0.0_double,msg='SOM_check: sigmadecay has negative value.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%sigmadecay,this%sigmadecay,msg='som_check: sigmadecay has NaN or huge vaule.',iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(this%sigmadecay.GE.0.0_double,msg='som_check: sigmadecay has negative value.',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check learningstart
-    call assert(this%learningstart,this%learningstart,msg='SOM_check: learningstart has NaN or huge vaule.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(this%learningstart.GE.0.0_double,msg='SOM_check: learningstart has negative value.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%learningstart,this%learningstart,msg='som_check: learningstart has NaN or huge vaule.',iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(this%learningstart.GE.0.0_double,msg='som_check: learningstart has negative value.',iostat=som_check)
+    if(som_check.NE.0)return
 
     !check learningdecay
-    call assert(this%learningdecay,this%learningdecay,msg='SOM_check: learningdecay has NaN or huge vaule.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
-    call assert(this%learningdecay.GE.0.0_double,msg='SOM_check: learningdecay has negative value.',iostat=SOM_check)
-    if(SOM_check.NE.0)return
+    call assert(this%learningdecay,this%learningdecay,msg='som_check: learningdecay has NaN or huge vaule.',iostat=som_check)
+    if(som_check.NE.0)return
+    call assert(this%learningdecay.GE.0.0_double,msg='som_check: learningdecay has negative value.',iostat=som_check)
+    if(som_check.NE.0)return
 
-  end function SOM_check
+  end function som_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the SOM methods.
-  !> \param[in] this is the SOM object whose methods will be excercised.
+  !> \brief Tests the som methods.
+  !> \param[in] this is the som object whose methods will be excercised.
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine SOM_test
+  subroutine som_test
     use testing_class
     use filemanager
     use layer_class
-    type(SOM)::this
+    type(som)::this
     type(layer)::sourcelayer
 
     real(double),allocatable::vector(:),mat(:,:)
@@ -641,7 +683,7 @@ contains
          ,msg='learning function does not equal exp(-1)/100 at first learning step when learningdecay is set to 1.')
     call kill(this)
 
-    write(*,*)'test SOM training step evolves node toward source node at 1.0'
+    write(*,*)'test som training step evolves node toward source node at 1.0'
     call make (sourcelayer,N=1)
     sourcelayer%node=1.0_double
     call make(this,N=1)
@@ -658,12 +700,12 @@ contains
        y=y+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     y=sqrt(y)
-    call assert(y.LT.x,msg='SOM node did not evolve node toward source node at 1.0.')
+    call assert(y.LT.x,msg='som node did not evolve node toward source node at 1.0.')
     call kill(this)
     call kill(sourcelayer)
 
 
-    write(*,*)'test SOM training step evolves node toward source node vector at (-1.0,-1.0)'
+    write(*,*)'test som training step evolves node toward source node vector at (-1.0,-1.0)'
     call make (sourcelayer,N=2)
     sourcelayer%node(1:2)=-1.0_double
     call make(this,N=1)
@@ -679,12 +721,12 @@ contains
        y=y+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
     y=sqrt(y)
-    call assert(y.LT.x,msg='SOM node did not evolve node toward source node vector at (-1.0,-1.0).')
+    call assert(y.LT.x,msg='som node did not evolve node toward source node vector at (-1.0,-1.0).')
     call kill(this)
     call kill(sourcelayer)
 
 
-    write(*,*)'test training SOM with doublewell data set evolves 2 classifiers to points (1,2) and (-1,-2).'
+    write(*,*)'test training som with doublewell data set evolves 2 classifiers to points (1,2) and (-1,-2).'
     call make (sourcelayer,N=2)
     call make(this,N=2)
     call link(this%ffn,sourcelayer)
@@ -713,12 +755,12 @@ contains
     else !node 1 closer to point (1,2)
        x=sqrt((this%ffn%W(2,1)+1)**2+(this%ffn%W(2,2)+2)**2) !calc distance of node 2 to point (-1,-2)
     end if
-    call assert(x.LT.0.16.and.y.LT.0.05,msg='SOM did not evolve well 2 nodes toward the centers of the doublepotential.')
+    call assert(x.LT.0.16.and.y.LT.0.05,msg='som did not evolve well 2 nodes toward the centers of the doublepotential.')
     call kill(this)
     call kill(sourcelayer)
     
 
-    write(*,*)'test training SOM with zpotential data set evolves 10 classifiers on 1D map toward z potential.'
+    write(*,*)'test training som with zpotential data set evolves 10 classifiers on 1D map toward z potential.'
     call make (sourcelayer,N=2)
     call make(this,N=10)
     call link(this%ffn,sourcelayer)
@@ -750,12 +792,12 @@ contains
        z=z+(this%ffn%W(i,2)-y)**2
     end do
     z=z/500.0
-    call assert(z.LT.1.5E-3,msg='SOM zpotential training MSE is greater than 1.5E-3')
+    call assert(z.LT.1.5E-3,msg='som zpotential training MSE is greater than 1.5E-3')
     call kill(this)
     call kill(sourcelayer)
 
 !!$stop
-!!$    write(*,*)'test training SOM with protstruct dataset to recover 3 classifiers&
+!!$    write(*,*)'test training som with protstruct dataset to recover 3 classifiers&
 !!$         & alphahelix, betasheet, and randomcoil with acceptable accuracy.'
 !!$    resname(1)='A'!Alanine ALA
 !!$    resname(2)='R'!Arginine ARG
@@ -822,7 +864,7 @@ contains
 !!$                      end do
 !!$                   end do
 !!$
-!!$                   !load points into SOM and train
+!!$                   !load points into som and train
 !!$                   write(*,*)trim(seq)
 !!$                   write(*,*)sourcelayer%input(1:20)
 !!$                   write(*,*)sourcelayer%input(21:39)
@@ -891,9 +933,9 @@ contains
 !!$                      k=k+1
 !!$                   end do
 !!$                end do
-!!$                !find nearest SOM classifier
+!!$                !find nearest som classifier
 !!$                do j=1,3
-!!$                   !get distance of input coord with SOM node j
+!!$                   !get distance of input coord with som node j
 !!$                   x=sqrt(sum( (this%ffn%W(j,1:60)-sourcelayer%input(1:60))**2))
 !!$                   if(j.EQ.1)then
 !!$                      !autoamtic save mindistance z and classifier k if first classifier
@@ -907,7 +949,7 @@ contains
 !!$                   end if
 !!$                end do
 !!$                
-!!$                !correlate SOM classifier k with training classifier j
+!!$                !correlate som classifier k with training classifier j
 !!$                select case(labseq(i:i))
 !!$                case ('h')
 !!$                   j=1
@@ -952,13 +994,13 @@ contains
 !!$    end do
 !!$    write(222,*)'----------------------------------------'
 !!$    close(222)
-!!$!    call assert(z.LT.1.07E-3,msg='SOM zpotential training MSE is greater than 1.07E-3')
+!!$!    call assert(z.LT.1.07E-3,msg='som zpotential training MSE is greater than 1.07E-3')
 !!$    call kill(this)
 !!$    call kill(sourcelayer)
 
 
-  end subroutine SOM_test
+  end subroutine som_test
   !-----------------------------------------
 
-end module SOM_class
+end module som_class
 

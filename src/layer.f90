@@ -246,58 +246,55 @@ contains
 
   !======================================================================
   !> \brief Backups the current state of the layer object to file.
-  !> \param[in] this is the layer  object to be updated.
-  !> \param[in] file is a string containing the location of the backup file.
+  !> \param[in] THIS is the layer  object to be updated.
+  !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
   subroutine layer_backup(this,file)
+    use filemanager
+    use string
+    use testing_class
     type(layer),intent(in)::this
     character*(*),intent(in)::file
+    integer(short)::unit
+    logical::fileisopen
+    integer(long)::i,j
+    
+    !check input file
+    inquire(file=file,opened=fileisopen,number=unit)
+    if(unit.LT.0)unit=newunit()
+    if(.not.fileisopen)open(unit,file=file)
+    
+    !check layer object
+    call assert(check(this).EQ.0,msg='layer object does not pass check.')
 
-!!$    integer(short)::unit
-!!$    logical::usedunit      
-!!$
-!!$    call note('Begin layer_backup.')
-!!$    call Note('input file= '//file)
-!!$    if(check(this).NE.0)then
-!!$       call warn('layer_backup: failed check.','not saving object.')
-!!$    else
-!!$
-!!$       !assign a unique unit label
-!!$       unit=newunit()
-!!$
-!!$       !open backup file
-!!$       open(unit,file=file)
-!!$
-!!$       !always write the data type on the first line
-!!$       write(unit,*)'layer'
-!!$
-!!$       !backup the primitive
-!!$       call backup(this%primitive,file//'.primitive')
-!!$
-!!$       !write the location of the primitive
-!!$       write(unit,*)quote(file//'.primitive')
-!!$
-!!$       !******      Backup below all the derived type's attributes       ******!
-!!$       !******         in the order the MAKE command reads them         ******!
-!!$
-!!$
-!!$
-!!$
-!!$
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !******      Example - Backup an attribute called 'var  '    ***********!
-!!$       ! write(unit,*)this%var                                               !
-!!$       !*********************************************************************!
-!!$       !=====================================================================!
-!!$       !***  Example - Backup an NxM matrix attribute called 'matrix'  ********!
-!!$       ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)                       !
-!!$       !*********************************************************************!
-!!$
-!!$
-!!$       !finished saving all attributes - now close backup file
-!!$       close(unit)
-!!$    end if
+    !always write the data type on the first line
+    write(unit,*)'layer'
+
+    !******      Backup below all the derived type's attributes       ****
+    !******         in the order the MAKE method reads them           ****
+
+
+    !First, Scalar parameters
+    !******          Example - Backup a scalar parameter            ******
+    ! write(unit,*)this%var
+    !*********************************************************************
+
+
+    !Second, Dynamic arrays
+    !***       Example - Backup an NxM matrix                          ***
+    ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
+    !*********************************************************************
+
+
+    !Last,objects
+    !******              Example - Backup an object            ***********
+    ! call backup(this%object,file//'.object')
+    ! write(unit,*)quote(file//'.object')!write the object location
+    !*********************************************************************
+    
+
+    !finished writing all attributes - now close backup file
+    close(unit)  
   end subroutine layer_backup
 
   !======================================================================

@@ -5,7 +5,7 @@ corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/fun
 
 testfiles = src/coretests.f90
 
-auxfiles = src/MDutils.f90 src/atomicunits.f90
+auxfiles = src/MDutils.f90 src/atomicunits.f90 src/csv_io.f90
 
 # All fortified executable modules
 bin_PROGRAMS = nonadmd cann test

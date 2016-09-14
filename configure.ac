@@ -28,6 +28,7 @@ AC_CONFIG_SRCDIR([src/testdrivercap.in])
 AC_CONFIG_SRCDIR([src/MDutils.f90])
 AC_CONFIG_SRCDIR([src/atomicunits.f90])
 AC_CONFIG_SRCDIR([src/lapack.f])
+AC_CONFIG_SRCDIR([src/csv_io.f90])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
