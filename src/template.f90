@@ -150,15 +150,16 @@ contains
        !read static parameters
        !***             example            ***
        !***read scalar parameters from file***
-       !read(unit,*)this%XXX
+       !read(unit,*)this%NNN
        !**************************************
        
-       !use reset to manage dynamic memory, reset sub-objects, and set random parameters
+       !use reset to manage dynamic memory
+       !, reset sub-objects, and set calculated variable seeds
        call reset(this,state=1)
        
        !READ dynamic array values
        !***      example     ***
-       !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
+       !read(unit,*)(this%PPP(i),i=0,this%NNN-1)
        !************************
        
        !READ sub-objects
@@ -176,12 +177,16 @@ contains
        !Set static parameters to default settings
        !***       example      ***
        !***set scalar parameter***
-       !this%XXX=123
+       !this%NNN=123
        !**************************
        
        !Use reset to make a default object
        call reset(this,state=1)
     end if
+
+
+    !finished making now update object
+    call update(this)
 
   end subroutine template_init
 
@@ -204,15 +209,15 @@ contains
   subroutine template_update(this)
     type(template),intent(inout)::this
 
-    !Recompute any attribute values that might have evolved
+    !Recompute calculated variables that might have evolved
 
-    !****************************      Example     ******************************
-    !*** attribute 'var' is always equall to the trace of the denisity matrix *** 
+    !***************************      Example     *****************************
+    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
     ! end do
-    !****************************************************************************
+    !**************************************************************************
 
   end subroutine template_update
 
@@ -242,7 +247,7 @@ contains
           !call kill(this%object)
           !***********************
           
-          !set all static parameters to error values
+          !set all scalar parameters to error values
           !**** example **********
           !this%nstate=-1
           !***********************
@@ -265,7 +270,7 @@ contains
           !overwrite sub-object default static parameters
           !***       example      ***
           !***set object static parameter***
-          !this%object%XXX=123
+          !this%object%NNN=123
           !**************************
 
           !reset all sub objects to correct any memory issues
@@ -273,7 +278,7 @@ contains
           !call reset(this%object,state=1)
           !************************
 
-          !overwrite sub-object default dynamic parameters
+          !overwrite sub-object default dynamic array
           !***       example      ***
           !***set object pointer array values***
           !this%object%PPP(:)=XXX
@@ -288,26 +293,17 @@ contains
     !reset object based on current static parameters
     if(this%initialized)then
 
-       !Sample Random parameters
+       !Sample calculated variable seeds
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
        
-!!$       !Reallocate all dynamic memory
-!!$       !***  Example - cleanup pointer attribute 'PPP'     ***
-!!$       !***            then reallocate memory              ***
-!!$       !if(associated(this%PPP))nullify(this%PPP)
-!!$       !allocate(this%PPP(0:this%npt-1))
-!!$       !******************************************************
-!!$       
-!!$       !Reset dynamic memory values
-!!$       !***  Example - set values in pointer 'PPP' to zero ***
-!!$       !this%PPP(:)=0.0_double
-!!$       !******************************************************
-
        !Resample sub-objects
        !**** example **********
        !call reset(this%object)
        !***********************
+
+       !update now that object is fully reset and not in null state
+       call update(this)
 
     end if
     
@@ -344,14 +340,14 @@ contains
     !******         in the order the MAKE method reads them           ****
 
 
-    !First, Scalar attributes
-    !******          Example - Backup a scalar attribute            ******
+    !First, Scalar parameters
+    !******          Example - Backup a scalar parameter            ******
     ! write(unit,*)this%var
     !*********************************************************************
 
 
-    !Second, Dynamic attributes
-    !***       Example - Backup an NxM matrix attribute                ***
+    !Second, Dynamic arrays
+    !***       Example - Backup an NxM matrix                          ***
     ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
     !*********************************************************************
 
@@ -391,6 +387,27 @@ contains
   integer(short)function template_check(this)
     use testing_class
     type(template),intent(in)::this
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! check method should be extended to optionally check individual
+    !! attributes.
+    !!Usage: check(this,element='NNN')
+    !!check method
+    !!    if(present(element))
+    !!      select case(element)
+    !!        case (element='NNN')
+    !!             ...
+    !!        case (element='XXX')
+    !!             ...
+    !!        default
+    !!             throw error unkown element
+    !!      end select
+    !!    else
+    !!      run all checks
+    !!    end if
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     !initiate with no problems found 
     template_check=0
@@ -473,46 +490,136 @@ contains
     !verify template is compatible with current version
     include 'verification'
 
-    !================== consider the following tests ========================
-    !-----  make tests -----
-    !***          example          ****
-    !write(*,*)'test make sets correct default values'
-    !call make(this)
-    !call assert(this%XXX.EQ.YYY,msg='template default XXX is not YYY')
+    !================== consider the following tests for =====================
+    !=========================================================================
+
+    !==================       static parameters             ==================
+
+    !!write(*,*)'test kill template breaks static parameter NNN'
+    !!call make(this) !make template
+    !!call kill(this)
+    !!call assert(check(this%NNN).NE.0,&
+    !!     msg='kill template does not break static parameter NNN')
+    !! check method should be extended to optionally check individual
+    !! attributes.
+    !!Usage: check(this,element='NNN')
+    !!check method
+    !!    if(present(element))
+    !!      select case(element)
+    !!        case (element='NNN')
+    !!             ...
+    !!        case (element='XXX')
+    !!             ...
+    !!        default
+    !!             throw error unkown element
+    !!      end select
+    !!    else
+    !!      run all checks
+    !!    end if
+
+    !write(*,*)'test static parameter NNN is stored properly in backup file'
+    !call make(this) !make template
+    !this%NNN=MMM    !manually set static parameter to non-default value
+    !call system('rm -f template.tmpfile*') !remove any previous backup file(s)
+    !call backup(this,file='template.tmpfile') !create backup file
+    !call kill(this) !destroy template
+    !call make(this,file='template.tmpfile') !make new template from backup file
+    !call system('rm -f template.tmpfile*') !remove backup file(s)
+    !!assert non default parameter is conserved
+    !call assert(this%NNN.EQ.MMM,&
+    !     msg='template static parameter NNN is not stored properly')
+    !call kill(this)    !destroy template to clean up memory
+
+    !write(*,*)'test make sets correct default value for static parameter NNN'
+    !call make(this) !make template
+    !call assert(this%NNN.EQ.MMM,&
+    !     msg='template default static parameter NNN is not MMM')
     !call kill(this)
-    !**********************************
 
-    !----- kill tests -----
-    !***          example          ****
-    !write(*,*)'test kill cleans up dynamic memory and pointers'
+    !write(*,*)'test edge case for static parameter NNN breaks template'
+    !call make(this) !make template
+    !this%NNN=MMM
+    !call assert(check(this).NE.0,&
+    !     msg='edge case value MMM for static parameter NNN &
+    !     &does not break template')
+    !call kill(this)
+
+    !==================    dynamic arrays and pointers      ==================
+
+    !write(*,*)'test make allocates memory for dyanamic pointer array PPP'
+    !call make(this)
+    !call assert(associated(this%PPP),msg='template dynamic pointer array &
+    !     &PPP remains associated after killed.')
+    !call kill(this)
+
+    !write(*,*)'test kill deallocates memory for dynamic pointer array PPP'
     !call make(this)
     !call kill(this)
-    !call assert(.not.associated(this%PPP),msg='template pointer PPP remains associated after killed.')
-    !**********************************
+    !call assert(.not.associated(this%PPP),msg='template dynamic pointer array &
+    !     &PPP remains associated after killed.')
 
-    !----- backup tests -----
-    !***          example          ****
-    !write(*,*)'test attributes are stored properly in backup file'
-    !call make(this)
-    !this%var=XXX!First, manually set template attributes to non-default values
-    !call system('rm -f template.tmpfile')
-    !call backup(this,file='template.tmpfile')
-    !call kill(this)
-    !call make(this,file='template.tmpfile')
-    !call system('rm -f template.tmpfile')
-    !call assert(this%var.EQ.XXX)!Then, assert non default attribute values are conserved
-    !call kill(this)    
-    !**********************************
+    !write(*,*)'test dynamic pointer array PPP is saved properly in backup file'
+    !call make(this) !make template
+    !this%PPP=YYY    !manually set dynamic pointer array to non-default value
+    !call system('rm -f template.tmpfile*') !remove any previous backup file(s)
+    !call backup(this,file='template.tmpfile') !create backup file
+    !call kill(this) !destroy template
+    !call make(this,file='template.tmpfile') !make new template from backup file
+    !call system('rm -f template.tmpfile*') !remove backup file(s)
+    !!assert non default parameter is conserved
+    !call assert(all(this%PPP.EQ.YYY),&
+    !     msg='template dynamic pointer array PPP is not stored properly')
+    !call kill(this)    !destroy template to clean up memory
 
-    !----- status tests -----
-
-    !----- update tests -----
-
-    !----- reset tests -----
+    !write(*,*)'test make allocates dynamic pointer array PPP of default size'
+    !call make(this) !make template
+    !!assert dynamic pointer array has proper size for all dimensions
+    !call assert(size(this%PPP,J).EQ.N),&
+    !     msg='template dynamic pointer array PPP is not of size N for &
+    !     &dimension J')
+    !call assert(size(this%PPP,I).EQ.N),&
+    !     msg='template dynamic pointer array PPP is not of size N for &
+    !     &dimension I')
+    !call kill(this)    !destroy template to clean up memory
     
-    !----- fail cases -----
+    !write(*,*)'test dynamic pointer array PPP can be resized by adjusting &
+    !     & static parameter NNN then reseting with state=1'
+    !call make(this) !make template
+    !this%NNN=MMM !adjust static parameter NNN to non-default value
+    !call reset(this,state=1) !reset template to reallocate dynamic memory
+    !!assert dynamic pointer array size has changed properly
+    !call assert(size(this%PPP,J).EQ.MMM),&
+    !     msg='template dynamic pointer array PPP did not change size upon &
+    !     &reset with state=1')
+    !call kill(this)    !destroy template to clean up memory
 
+    !write(*,*)'test edge case for dynamic pointer array PPP breaks template'
+    !call make(this) !make template
+    !this%PPP=YYY !set edge case value
+    !assert edge case value breaks template
+    !call assert(check(this).NE.0,&
+    !     msg='edge case value YYY for dynamic pointer array PPP &
+    !     &does not break template')
+    !call kill(this)    !destroy template to clean up memory
+
+    !==================        calculated variables         ==================
+
+    !write(*,*)'test make sets default value for calculated variable XXX'
+    !call make(this) !make template
+    !call assert(this%XXX.EQ.YYY,&
+    !     msg='template default calculated variable XXX is not YYY')
+    !call kill(this)
+
+    !write(*,*)'test edge case for calculated variable XXX breaks template'
+    !call make(this) !make template
+    !this%XXX=YYY
+    !call assert(check(this).NE.0,&
+    !     msg='edge case value YYY for calculated variable XXX &
+    !     &does not break template')
+    !call kill(this)
     !========================================================================
+
+
 
 
 

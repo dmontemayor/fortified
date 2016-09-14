@@ -1,6 +1,11 @@
 !>\brief
 !! wavelet class
 !!\details
+!! A wavefunction in vector representation of npt points with ndof degrees
+!! of freedom.
+!! The wavefunction is a list of npt points by 2+ndof columns. The first
+!! two columns represent the real and imaginary weights of the vector
+!! denoted by the following ndof columns.
 !<------------------------------------------------------------------------
 module wavelet_class
  use type_kinds
@@ -15,10 +20,12 @@ module wavelet_class
      character(len=label)::name='wavelet'
      
      !***************      Enter wavelet attributes here     ***************!
-     integer(long)::ndof !space dimension
-     integer(long)::npt  !space discritization
-     complex(double),dimension(:),pointer::wf !wavefunction in delta function rep
-     real(double),dimension(:,:),pointer::grid !delta function coordinates
+     integer(long)::ndof  !degrees of freedom
+     integer(long)::npt  !number of points
+
+     !wavefunction in delta function rep
+     real(double),dimension(:,:),pointer::wf 
+     !real(double),dimension(:,:),pointer::grid !delta function coordinates
 
      !***********************************************************************!
      !=======================================================================!
@@ -136,8 +143,8 @@ contains
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
        !************************
-       read(unit,*)(this%wf(i),i=0,this%npt-1)
-       read(unit,*)((this%grid(i,j),j=0,this%ndof-1),i=0,this%npt-1)
+       read(unit,*)((this%wf(i,j),j=0,this%ndof+1),i=0,this%npt-1)
+       !read(unit,*)((this%grid(i,j),j=0,this%ndof-1),i=0,this%npt-1)
        
        !READ sub-objects
        !***      example     ***
@@ -220,13 +227,17 @@ contains
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
           if(associated(this%wf))nullify(this%wf)
-          if(associated(this%grid))nullify(this%grid)
+          !if(associated(this%grid))nullify(this%grid)
           
           !kill all objects
           !**** example **********
           !call kill(this%object)
           !***********************
           
+          !set static parameters to error values
+          this%ndof=-1
+          this%npt=-1
+
           !un-initialized metiu object
           this%initialized=.false.
        else
@@ -238,17 +249,17 @@ contains
           !allocate(this%PPP(0:this%npt-1))
           !******************************************************
           if(associated(this%wf))nullify(this%wf)
-          allocate(this%wf(0:this%npt-1))
+          allocate(this%wf(0:this%npt-1,0:this%ndof+1))
 
-          if(associated(this%grid))nullify(this%grid)
-          allocate(this%grid(0:this%npt-1,0:this%ndof-1))
+          !if(associated(this%grid))nullify(this%grid)
+          !allocate(this%grid(0:this%npt-1,0:this%ndof-1))
           
           !Set default dynamic memory values
           !***  Example - set values in pointer 'PPP' to zero ***
           !this%PPP(:)=0.0_double
           !******************************************************
-          this%wf=(1.0_double,0.0_double)
-          this%grid=0.0_double
+          !this%wf=(1.0_double,0.0_double)
+          !this%grid=0.0_double
                     
           !overwrite sub-object default static parameters
           !***       example      ***
@@ -331,8 +342,8 @@ contains
     !***       Example - Backup an NxM matrix attribute                ***
     ! write(unit,*)((this%matrix(i,j),j=0,size(this%matrix,2)-1),i=0,size(this%matrix,1)-1)
     !*********************************************************************
-    write(unit,*)(this%wf(i),i=0,size(this%wf)-1)
-    write(unit,*)((this%grid(i,j),j=0,size(this%grid,2)-1),i=0,size(this%grid,1)-1)
+    write(unit,*)((this%wf(i,j),j=0,size(this%wf,2)-1),i=0,size(this%wf,1)-1)
+    !write(unit,*)((this%grid(i,j),j=0,size(this%grid,2)-1),i=0,size(this%grid,1)-1)
 
 
     !objects
@@ -394,6 +405,10 @@ contains
          ,msg='wavelet_check: ndof failed check',iostat=wavelet_check)
     if(wavelet_check.NE.0)return
 
+    call assert(this%ndof.LE.3&
+         ,msg='wavelet_check: ndof>3 not allowed',iostat=wavelet_check)
+    if(wavelet_check.NE.0)return
+
     call assert(this%ndof.GT.0&
          ,msg='wavelet_check: ndof is not positive.',iostat=wavelet_check)
     if(wavelet_check.NE.0)return
@@ -417,40 +432,40 @@ contains
     ! delta function corrdianates are specified with the GRID attribute. 
     !------------
 
-    ! complex elements of wf should all be well behaved.
-    call assert(check(this%wf).EQ.0&
-         ,msg='wavelet_check: wf failed check',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
+!!$    ! complex elements of wf should all be well behaved.
+!!$    call assert(check(this%wf).EQ.0&
+!!$         ,msg='wavelet_check: wf failed check',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
+!!$
+!!$    ! wf should form positive definate density
+!!$    call assert(real(sum(this%wf*conjg(this%wf)),double).GT.epsilon(1.0_double)&
+!!$         ,msg='wavelet_check: wf does not have positive density',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
+!!$    
+!!$    ! wf should be represented by NPT delta functions
+!!$    call assert(size(this%wf).EQ.this%npt&
+!!$         ,msg='wavelet_check: wf is not the same size as npt',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
 
-    ! wf should form positive definate density
-    call assert(real(sum(this%wf*conjg(this%wf)),double).GT.epsilon(1.0_double)&
-         ,msg='wavelet_check: wf does not have positive density',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
-    
-    ! wf should be represented by NPT delta functions
-    call assert(size(this%wf).EQ.this%npt&
-         ,msg='wavelet_check: wf is not the same size as npt',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
 
-
-    !----------- grid
-    ! Description:
-    ! grid specifies the corrdinates of the NPT delta functions representing WF 
-    ! grid should be real and NPT x NDOF.
-    !------------
-
-    ! real elements of grid should all be well behaved.
-    call assert(check(this%grid).EQ.0&
-         ,msg='wavelet_check: grid failed check',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
-
-    ! grid should specify NPT x NDOF delta function coordinates
-    call assert(size(this%grid,1).EQ.this%npt&
-         ,msg='wavelet_check: grid dimension 1 is not the same size as npt',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
-    call assert(size(this%grid,2).EQ.this%ndof&
-         ,msg='wavelet_check: grid dimension 2 is not the same size as ndof',iostat=wavelet_check)
-    if(wavelet_check.NE.0)return
+!!$    !----------- grid
+!!$    ! Description:
+!!$    ! grid specifies the corrdinates of the NPT delta functions representing WF 
+!!$    ! grid should be real and NPT x NDOF.
+!!$    !------------
+!!$
+!!$    ! real elements of grid should all be well behaved.
+!!$    call assert(check(this%grid).EQ.0&
+!!$         ,msg='wavelet_check: grid failed check',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
+!!$
+!!$    ! grid should specify NPT x NDOF delta function coordinates
+!!$    call assert(size(this%grid,1).EQ.this%npt&
+!!$         ,msg='wavelet_check: grid dimension 1 is not the same size as npt',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
+!!$    call assert(size(this%grid,2).EQ.this%ndof&
+!!$         ,msg='wavelet_check: grid dimension 2 is not the same size as ndof',iostat=wavelet_check)
+!!$    if(wavelet_check.NE.0)return
 
 
 
@@ -517,34 +532,81 @@ contains
     !verify wavelet is compatible with current version
     include 'verification'
 
-    write(*,*)'test wavelet breaks with non-positive number of degrees of freedom.'
+    write(*,*)'test NDOF attribute is stored properly in backup file'
     call make(this)
-    this%ndof=0
+    this%ndof=2!First, manually set wavelet attributes to non-default values
     call reset(this,state=1)
-    call assert(check(this).NE.0,msg='wavelet does not break with non-positive NDOF.')
+    call system('rm -f wavelet.tmpfile*')
+    call backup(this,file='wavelet.tmpfile')
     call kill(this)
+    call make(this,file='wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%ndof.EQ.2,msg='wavelet NDOF not stored properly')
+    call kill(this)    
+    call system('rm -f wavelet.tmpfile*')
 
     write(*,*)'test defaut degrees of freedom is 1'
     call make(this)
     call assert(this%ndof.EQ.1,msg='wavelet default NDOF is not 1.')
     call kill(this)
 
-    write(*,*)'test wavelet breaks with non-positive basis set size.'
+    write(*,*)'test wavelet breaks with &
+         & number of degrees of freedom greater than 3.'
+    call make(this)
+    this%ndof=4
+    call reset(this,state=1)
+    call assert(check(this).NE.0,msg='wavelet does not break with&
+         & NDOF>3.')
+    call kill(this)
+
+    write(*,*)'test wavelet breaks with non-positive &
+         & number of degrees of freedom.'
+    call make(this)
+    this%ndof=0
+    call reset(this,state=1)
+    call assert(check(this).NE.0,msg='wavelet does not break with&
+         & non-positive NDOF.')
+    call kill(this)
+
+    write(*,*)'test NPT attribute is stored properly in backup file'
+    call make(this)
+    this%npt=2!First, manually set wavelet attributes to non-default values
+    call reset(this,state=1)
+    call system('rm -f wavelet.tmpfile*')
+    call backup(this,file='wavelet.tmpfile')
+    call kill(this)
+    call make(this,file='wavelet.tmpfile')
+    !Then, assert non default attribute values are conserved
+    call assert(this%npt.EQ.2,msg='wavelet NPT not stored properly')
+    call kill(this)    
+    call system('rm -f wavelet.tmpfile*')
+
+    write(*,*)'test defaut number of points is 1'
+    call make(this)
+    call assert(this%npt.EQ.1,msg='wavelet default NPT is not 1.')
+    call kill(this)
+
+    write(*,*)'test wavelet breaks with huge number of points.'
+    call make(this)
+    this%npt=huge(this%npt)
+    call reset(this,state=1)
+    call assert(check(this).NE.0,msg='wavelet does not break with&
+         & huge NPT.')
+    call kill(this)
+
+    write(*,*)'test wavelet breaks with non-positive &
+         & number of points.'
     call make(this)
     this%npt=0
     call reset(this,state=1)
-    call assert(check(this).NE.0,msg='wavelet does not break with non-positive basis set size.')
+    call assert(check(this).NE.0,msg='wavelet does not break with&
+         & non-positive NPT.')
     call kill(this)
 
-    write(*,*)'test default basis set size is 1.'
+    write(*,*)'test make allocates wf pointer'
     call make(this)
-    call assert(this%npt.EQ.1,msg='wavelet default basis set size is not 1.')
-    call kill(this)
-
-    write(*,*)'test wavelet breaks if density is not positive definite'
-    call make(this)
-    this%wf=0._double
-    call assert(check(this).NE.0,msg='wavelet does not break with non-positive definite density.')
+    call assert(associated(this%wf),msg='wavelet pointer WF is not&
+         & associated after make.')
     call kill(this)
 
     write(*,*)'test kill cleans up wf pointer'
@@ -552,73 +614,77 @@ contains
     call kill(this)
     call assert(.not.associated(this%wf),msg='wavelet pointer WF remains associated after killed.')
 
-    write(*,*)'test kill cleans up grid pointer'
-    call make(this)
-    call kill(this)
-    call assert(.not.associated(this%grid),msg='wavelet pointer GRID remains associated after killed.')
-
-    write(*,*)'test NDOF attribute is stored properly in backup file'
-    call make(this)
-    this%ndof=2!First, manually set wavelet attributes to non-default values
-    call reset(this,state=1)
-    call system('rm -f wavelet.tmpfile')
-    call backup(this,file='wavelet.tmpfile')
-    call kill(this)
-    call make(this,file='wavelet.tmpfile')
-    call system('rm -f wavelet.tmpfile')
-    !Then, assert non default attribute values are conserved
-    call assert(this%ndof.EQ.2,msg='wavelet NDOF not stored properly')
-    call kill(this)    
-
-    write(*,*)'test wavelet breaks if WF size is not basis set size NPT.'
-    call make(this)
-    this%npt=size(this%wf)+1
-    call assert(check(this).NE.0,msg='wavelet does not break when NPT is not the same size as WF')
-    call kill(this)
-
-    write(*,*)'test wavelet breaks if GRID size is not NPT x NDOF.'
-    call make(this)
-    this%npt=size(this%grid,1)+1
-    this%ndof=size(this%grid,2)+1
-    call assert(check(this).NE.0,msg='wavelet does not break when GRID is not the same size as NPT x NDOF')
-    call kill(this)
-
-    write(*,*)'test NPT attribute is stored properly in backup file'
-    call make(this)
-    this%npt=2!First, manually set wavelet attributes to non-default values
-    call reset(this,state=1)
-    call system('rm -f wavelet.tmpfile')
-    call backup(this,file='wavelet.tmpfile')
-    call kill(this)
-    call make(this,file='wavelet.tmpfile')
-    call system('rm -f wavelet.tmpfile')
-    !Then, assert non default attribute values are conserved
-    call assert(this%npt.EQ.2,msg='wavelet NPT not stored properly')
-    call kill(this)    
-
     write(*,*)'test WF attribute is stored properly in backup file'
     call make(this)
     this%wf=0.5!First, manually set wavelet attributes to non-default values
-    call system('rm -f wavelet.tmpfile')
+    call update(this)
+    call system('rm -f wavelet.tmpfile*')
+    write(*,*)this%wf
+    write(*,*)size(this%wf,1),size(this%wf,2)
     call backup(this,file='wavelet.tmpfile')
     call kill(this)
     call make(this,file='wavelet.tmpfile')
-    call system('rm -f wavelet.tmpfile')
     !Then, assert non default attribute values are conserved
+    write(*,*)this%wf
+    write(*,*)size(this%wf,1),size(this%wf,2)
     call assert(all(this%wf.EQ.0.5),msg='wavelet WF not stored properly')
     call kill(this)    
+    call system('rm -f wavelet.tmpfile*')
 
-    write(*,*)'test GRID attribute is stored properly in backup file'
-    call make(this)
-    this%grid=1.5!First, manually set wavelet attributes to non-default values
-    call system('rm -f wavelet.tmpfile')
-    call backup(this,file='wavelet.tmpfile')
-    call kill(this)
-    call make(this,file='wavelet.tmpfile')
-    call system('rm -f wavelet.tmpfile')
-    !Then, assert non default attribute values are conserved
-    call assert(all(this%grid.EQ.1.5),msg='wavelet GRID not stored properly')
-    call kill(this)    
+
+
+!!$
+!!$    write(*,*)'test wavelet breaks with non-positive basis set size.'
+!!$    call make(this)
+!!$    this%npt=0
+!!$    call reset(this,state=1)
+!!$    call assert(check(this).NE.0,msg='wavelet does not break with non-positive basis set size.')
+!!$    call kill(this)
+!!$
+!!$    write(*,*)'test default basis set size is 1.'
+!!$    call make(this)
+!!$    call assert(this%npt.EQ.1,msg='wavelet default basis set size is not 1.')
+!!$    call kill(this)
+
+!!$    write(*,*)'test wavelet breaks if density is not positive definite'
+!!$    call make(this)
+!!$    this%wf=0._double
+!!$    call assert(check(this).NE.0,msg='wavelet does not break with non-positive definite density.')
+!!$    call kill(this)
+!!$
+
+!!$    write(*,*)'test kill cleans up grid pointer'
+!!$    call make(this)
+!!$    call kill(this)
+!!$    call assert(.not.associated(this%grid),msg='wavelet pointer GRID remains associated after killed.')
+
+
+!!$    write(*,*)'test wavelet breaks if WF size is not basis set size NPT.'
+!!$    call make(this)
+!!$    this%npt=size(this%wf)+1
+!!$    call assert(check(this).NE.0,msg='wavelet does not break when NPT is not the same size as WF')
+!!$    call kill(this)
+
+!!$    write(*,*)'test wavelet breaks if GRID size is not NPT x NDOF.'
+!!$    call make(this)
+!!$    this%npt=size(this%grid,1)+1
+!!$    this%ndof=size(this%grid,2)+1
+!!$    call assert(check(this).NE.0,msg='wavelet does not break when GRID is not the same size as NPT x NDOF')
+!!$    call kill(this)
+
+
+
+!!$    write(*,*)'test GRID attribute is stored properly in backup file'
+!!$    call make(this)
+!!$    this%grid=1.5!First, manually set wavelet attributes to non-default values
+!!$    call system('rm -f wavelet.tmpfile')
+!!$    call backup(this,file='wavelet.tmpfile')
+!!$    call kill(this)
+!!$    call make(this,file='wavelet.tmpfile')
+!!$    call system('rm -f wavelet.tmpfile')
+!!$    !Then, assert non default attribute values are conserved
+!!$    call assert(all(this%grid.EQ.1.5),msg='wavelet GRID not stored properly')
+!!$    call kill(this)    
 
     !================== consider the following tests ========================
     !-----  make tests -----

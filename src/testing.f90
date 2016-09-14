@@ -25,6 +25,7 @@ module testing_class
      module procedure check_doublecomplex
      module procedure check_doublecomplexpointer
      module procedure check_doublecomplexpointermatrix
+     module procedure check_doublecomplexpointer3Dmatrix
      module procedure check_doublerealpointermatrix
   end interface check
 
@@ -54,6 +55,34 @@ contains
     end if
     return
   end function check_doublerealpointermatrix
+!-------------------------
+  integer(short) function check_doublecomplexpointer3Dmatrix(ptr)
+    complex(double),pointer,intent(in)::ptr(:,:,:)
+    complex(double)::targ(size(ptr,1),size(ptr,2),size(ptr,3))
+    integer(short)::ierr(size(ptr,1),size(ptr,2),size(ptr,3))
+    integer(long)::i,j,k
+    !initiate with no problems found
+    check_doublecomplexpointer3Dmatrix=0
+    !check if pointer points to something
+    if(.not.associated(ptr))then
+       check_doublecomplexpointer3Dmatrix=-1
+       return
+    end if
+    !check that elements are well behaved
+    targ=ptr
+    ierr=0
+    do i=1,size(ptr,1)
+       do j=1,size(ptr,2)
+          do k=1,size(ptr,3)
+             ierr(i,j,K)=check(targ(i,j,k))
+          end do
+       end do
+    end do
+    if(any(ierr.NE.0))then
+       check_doublecomplexpointer3Dmatrix=-1
+    end if
+    return
+  end function check_doublecomplexpointer3Dmatrix
 !-------------------------
   integer(short) function check_doublecomplexpointermatrix(ptr)
     complex(double),pointer,intent(in)::ptr(:,:)

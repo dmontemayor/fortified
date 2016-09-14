@@ -204,8 +204,6 @@ contains
        call reset(this,state=1)
     end if
 
-
-
     !finished making now update object
     call update(this)
 
@@ -332,6 +330,9 @@ contains
           call kill(this%ionB)
           call kill(this%ionC)
           call kill(this%electron)
+
+          !set static parameters to error values
+
 
           !un-initialized metiu object
           this%initialized=.false.

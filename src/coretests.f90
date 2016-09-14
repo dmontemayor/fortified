@@ -15,11 +15,18 @@ subroutine coretests
   real(double),pointer::ptr(:) 
   complex(double),pointer::zptr(:) 
 
-  integer(long),parameter::npt=127
+  integer(long),parameter::order=7
+  integer(long),parameter::npt=2**order
   real(double)::dx=0.05,Eng
   real(double),dimension(0:npt-1)::psi,grid,array1,array2,phi,chi
+  real(double),dimension(0:npt-1,0:npt-1)::rho
   real(double),dimension(3,3)::ElCoupMat
-  integer(long)::i,nnode,j
+  integer(long)::i,nnode,j,k
+
+  !spacefilling curves
+  integer(long)::N
+  integer(long)::coord(2)
+  real(double),dimension(0:(npt*npt)-1)::Lrho
   
   !Cuckier model constants
   real(double),parameter::hbar=1 !planck const
@@ -35,6 +42,8 @@ subroutine coretests
   real(double),parameter::w0=1200*invcm !well frequency in harmonic approx 
   real(double),parameter::D=Eb/(hbar*w0)!Dimensionless barrier height 
   real(double),parameter::a=sqrt(hbar/(mass*w0))!spring cutoff distance
+
+
 
   !-----LOGICAL ASSERT TESTS-----
 
@@ -230,19 +239,19 @@ subroutine coretests
   call system('rm -f coretest.tmpfile')
 
 
-  !--------- OPEN MP ----------
-  write(*,*)'checking omp is available.....'
-  call assert(omp_get_num_procs().GT.0,msg=&
-       'number of available processors is not greater than 0')
-  call assert(omp_get_max_threads().GT.0,msg=&
-       'number of available threads is not greater than 0')
-  call assert(omp_get_max_threads().GE.omp_get_num_procs(),msg=&
-       'number of threads is less than number of processors available'&
-       ,iostat=ierr)
-  if(ierr.NE.0)then
-     write(*,*)'try setting the environment variable with'
-     write(*,*)'export OMP_NUM_THREADS=',omp_get_num_procs()
-  end if
+!!$  !--------- OPEN MP ----------
+!!$  write(*,*)'checking omp is available.....'
+!!$  call assert(omp_get_num_procs().GT.0,msg=&
+!!$       'number of available processors is not greater than 0')
+!!$  call assert(omp_get_max_threads().GT.0,msg=&
+!!$       'number of available threads is not greater than 0')
+!!$  call assert(omp_get_max_threads().GE.omp_get_num_procs(),msg=&
+!!$       'number of threads is less than number of processors available'&
+!!$       ,iostat=ierr)
+!!$  if(ierr.NE.0)then
+!!$     write(*,*)'try setting the environment variable with'
+!!$     write(*,*)'export OMP_NUM_THREADS=',omp_get_num_procs()
+!!$  end if
 
 
   !--- filemanager ------
@@ -731,6 +740,189 @@ subroutine coretests
 
 
 
+  write(*,*)'test Hpoly returns correct hermite polynomial defintion.....'
+  !set xgrid and calculated array1 and array2
+  dx=0.05_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  ! Calculate 4th Hermite polynomial H_4(x)=16x^4-48x^2+12
+  array1=Hpoly(4,grid)
+  array2=16*grid**4-48*grid**2+12
+  !calcualte rmsd x
+  x=sqrt(sum((array1-array2)**2)/real(npt))
+  if(x.GT.2E-2)then
+     write(*,*)'Hpoly(n=4) RMSD=',x
+     write(*,*)'RMSD error is greater than .02 on xrange [-3.4:3.4]&
+          & with discritization of 128 grid points'
+     open(123,file='Hpolytest.dat')
+     do i=0,npt-1
+        write(123,*)grid(i),array1(i),array2(i)
+     end do
+     close(123)
+     stop
+  end if
+
+  write(*,*)'test HOwf returns correct harmonic oscillator wavefunction.....'
+  !--------------------------------
+  !harmonic oscillator constants
+  !hbar=1
+  !omega=1
+  !mass=1
+  !L=npt*dx=128*.05=6.4
+  !En=hbar*omega(n+1/2)
+  !V(x)=1/2*mass*omega^2*x^2-1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  dx=0.05_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  ! Calculate 4th excited state wavefunction 
+  !psi_n(x)=Norm*exp(-0.5*(x/sigma)**2)*Hpoly(n,x/sigma)
+  !Norm=1/sqrt((sqrt(pi)*sigma)*(2**n*factorial(n)))=1/sqrt(sqrt(pi)*384)
+  !sigma=sqrt(hbar/(mass*omega))=1
+  !Y=sqrt(sqrt(pi)*384)
+  psi=exp(-0.5_double*grid**2)*Hpoly(4,grid)!/Y
+  Y=sqrt(sum(psi*psi))
+  psi=psi/Y
+  x=1.0_double
+  call HOwf(4,grid,x,x,chi)
+  !calcualte rmsd x
+  x=sqrt(sum((chi-psi)**2)/real(npt))
+  if(x.GT.2E-2)then
+     write(*,*)'HOwf(n=4) RMSD=',x
+     write(*,*)'RMSD error is greater than .02 on xrange [-3.4:3.4]&
+          & with discritization of 128 grid points'
+     open(123,file='HOwf.dat')
+     do i=0,npt-1
+        write(123,*)grid(i),chi(i),psi(i)
+     end do
+     close(123)
+     stop
+  end if
+
+  write(*,*)'test HOwf returns 11th excited  wavefunction.....'
+  !--------------------------------
+  !harmonic oscillator constants
+  !hbar=1
+  !omega=1
+  !mass=1
+  !L=npt*dx=128*.07=8.96
+  !En=hbar*omega(n+1/2)
+  !V(x)=1/2*mass*omega^2*x^2-1
+  !--------------------------------
+  !set xgrid and calculated array1 and array2
+  dx=0.07_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  ! Calculate 4th excited state wavefunction 
+  !psi_n(x)=Norm*exp(-0.5*(x/sigma)**2)*Hpoly(n,x/sigma)
+  !Norm=1/sqrt((sqrt(pi)*sigma)*(2**n*factorial(n)))=arb
+  !sigma=sqrt(hbar/(mass*omega))=1
+  psi=exp(-0.5_double*grid**2)*Hpoly(11,grid)
+  Y=sqrt(sum(psi*psi))
+  psi=psi/Y
+  x=1.0_double
+  call HOwf(11,grid,x,x,chi)
+  !calcualte rmsd x
+  x=sqrt(sum((chi-psi)**2)/real(npt))
+  if(x.GT.2E-2)then
+     write(*,*)'HOwf(n=4) RMSD=',x
+     write(*,*)'RMSD error is greater than .02 on xrange [-8.96:8.96]&
+          & with discritization of 128 grid points'
+     open(123,file='HOwf.dat')
+     do i=0,npt-1
+        write(123,*)grid(i),chi(i),psi(i)
+     end do
+     close(123)
+     stop
+  end if
+
+  !test hilbert curve
+  write(*,*)'test that hilbert curve is max at point npt/2 for ground state HO density'
+  !set xgrid
+  dx=0.05_double
+  do i=0,npt-1
+     grid(i)=(i-npt/2)*dx !xgrid 
+  end do
+  x=1.0_double
+  !create HO ground state density
+  call HOwf(0,grid,x,x,psi)
+  do i=0,npt-1
+     do j=0,npt-1
+        rho(i,j)=psi(i)*psi(j)
+     end do
+  end do
+  !transform density rho into linear hilbert curve
+  Lrho=hilbertcurve(rho)
+  !assert max of Lrho is at point npt**2/2
+  !write(*,*) maxloc(Lrho)-1,size(Lrho),npt*npt/2
+  if(maxloc(Lrho,1)-1.NE.npt*npt/2)then
+     write(*,*)'maxloc of Lrho', maxloc(Lrho)-1,'is not npt*npt/2',npt*npt/2
+     stop
+  end if
+
+!!$  write(*,*)'Diagnostic: write denisty along hilbert curve.'
+!!$  !create HO |0><1| density
+!!$  psi=grid
+!!$  chi=-grid
+!!$  !call HOwf(0,grid,x,x,psi)
+!!$  !call HOwf(0,grid,x,x,chi)
+!!$  do i=0,npt-1
+!!$     do j=0,npt-1
+!!$        rho(i,j)=psi(i)*chi(j)
+!!$     end do
+!!$  end do
+!!$  !transform density rho into linear hilbert curve
+!!$  Lrho=hilbertcurve(rho)
+!!$  open(123,file='rho.dat')
+!!$  do i=0,npt-1
+!!$     do j=0,npt-1
+!!$        write(123,*)i,j,rho(i,j)
+!!$     end do
+!!$     write(123,*)
+!!$  end do
+!!$  close(123)
+!!$  open(123,file='Lrho.dat')
+!!$  do i=0,npt*npt-1
+!!$     write(123,*)i,Lrho(i)
+!!$  end do
+!!$  close(123)
+!!$  call system('gnuplot Lrho.plt')
+
+!!$  write(*,*)'test undoHilbertcurvemap returns proper matrix coordinates.'
+!!$  k=Hilbertcurvemap(64,12,34) !input coordinate (12,34) for 64x64 matrix
+!!$  call undoHilbertcurvemap(64,k,i,j)
+!!$  if(i.NE.12.or.j.NE.34)then
+!!$     write(*,*)'undoHilbertcurvemap does not return proper matrix coordinates.'
+!!$     stop 
+!!$  end if
+
+  write(*,*)'test Hilbert curve index returns proper matrix coordinates.'
+  !input coordinate (12,34) for 64x64 matrix  coord(1)=12
+  N=64
+  coord(1)=12
+  coord(2)=34
+  k=spacefilling_coord2index(N,coord,type='hilbert')
+  coord=spacefilling_index2coord(N,k,type='hilbert')
+  if(coord(1).NE.12.or.coord(2).NE.34)then
+     write(*,*)'Hilbert curve mapping does not return proper matrix coordinates.'
+     stop 
+  end if
+
+  write(*,*)'test Row-Major curve index returns proper matrix coordinates.'
+  !input coordinate (12,34) for 64x64 matrix  coord(1)=12
+  N=64
+  coord(1)=12
+  coord(2)=34
+  k=spacefilling_coord2index(N,coord,type='rowmajor')
+  coord=spacefilling_index2coord(N,k,type='rowmajor')
+  if(coord(1).NE.12.or.coord(2).NE.34)then
+     write(*,*)'Hilbert curve mapping does not return proper matrix coordinates.'
+     stop 
+  end if
 
 
   !test string module

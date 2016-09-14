@@ -27,6 +27,7 @@ AC_CONFIG_SRCDIR([src/testdrivercap.in])
 # auxilary files
 AC_CONFIG_SRCDIR([src/MDutils.f90])
 AC_CONFIG_SRCDIR([src/atomicunits.f90])
+AC_CONFIG_SRCDIR([src/lapack.f])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -38,6 +39,7 @@ AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 AC_CONFIG_FILES(Makefile)
 
 # Checks for programs.
+AC_PROG_F77
 AC_PROG_FC
 
 # make sure src and data directories are present in build directory
@@ -81,13 +83,19 @@ AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/*.dat $ac_top_srcdir/da
 AC_CONFIG_COMMANDS([create_cann_driver],[cp $ac_top_srcdir/src/cann_driver.f90 src/cann_driver.f90])
 
 ###### N O N A D M D   m o d u l e ######
-# nonadmd classes
+# nonadmd elements
 AC_CONFIG_SRCDIR([src/quasiparticle.f90])
 AC_CONFIG_SRCDIR([src/ham.f90])
 AC_CONFIG_SRCDIR([src/wavelet.f90])
+AC_CONFIG_SRCDIR([src/fauxnon.f90])
+ 
+# nonadmd models
 AC_CONFIG_SRCDIR([src/metiu.f90])
 AC_CONFIG_SRCDIR([src/cukier.f90])
- 
+
+# nonadmd engines
+AC_CONFIG_SRCDIR([src/GQFPE.f90])
+
 # nonadmd data files
 #AC_CONFIG_SRCDIR([data/XXXX.f90])
 
@@ -96,7 +104,6 @@ AC_CONFIG_SRCDIR([src/cukier.f90])
 
 # create unique drivers in build directory
 AC_CONFIG_COMMANDS([create_nonadmd_driver],[cp $ac_top_srcdir/src/nonadmd_driver.f90 src/nonadmd_driver.f90])
-
 
 
 ######  T E S T   D R I V E R   ######
