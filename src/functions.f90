@@ -4,6 +4,7 @@ module functions
   implicit none
   private
 
+  public:: cauchy,dcauchy
   public:: softplus,logistic,dlogistic
   public:: bernoulli,poisson
   public:: gaussian,mexhat
@@ -11,6 +12,18 @@ module functions
   public:: dtanh
 
 contains
+  !---------
+  function cauchy(x)
+    real(double),intent(in)::x(:)
+    real(double)::cauchy(size(x))
+    cauchy=1.0_double/(x*x+1.0_double)
+  end function cauchy
+  !---------
+  function dcauchy(x)
+    real(double),intent(in)::x(:)
+    real(double)::dcauchy(size(x))
+    dcauchy=-2.0_double*x*cauchy(x)**2
+  end function dcauchy
   !---------
   function softplus(x)
     real(double),intent(in)::x(:)

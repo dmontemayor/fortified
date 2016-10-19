@@ -393,11 +393,15 @@ contains
   !======================================================================
   !> \brief Computes the current state of ffn object.
   !> \param this is the ffn  object to be updated.
+  !> \param derivative is an optional boolean that when true will calcuate
+  !> the derivative of the activation function wrt to input at current input
+  !> \param weightcentered is an optional boolean that when true will calculate
+  !> input of source relative to weight instead of scaled by weight vector 
   !======================================================================
-  subroutine ffn_update(this,derivative)
+  subroutine ffn_update(this,derivative,weightcentered)
     type(ffn),intent(inout)::this
     real(double),allocatable::source(:)
-    logical,intent(in),optional::derivative
+    logical,intent(in),optional::derivative,weightcentered
 
     integer(long)::i
     logical::df
@@ -412,8 +416,15 @@ contains
        source(i)=this%source(i)%ptr
     end do
 
-    !update ffn layer input according to weight
-    this%layer%input(:)=matmul(this%W(:,:),source(:))
+    if(present(weightcentered).and.weightcentered)then
+       !update ffn layer input as source cartesian distance from weight
+       do i=1,size(this%layer%node)
+          this%layer%input(i)=sqrt(sum(source(:)-this%W(i,:))**2)
+       end do
+    else
+       !update ffn layer input as source scaled to weight
+       this%layer%input(:)=matmul(this%W(:,:),source(:))
+    end if
 
     !clean up copy of source state
     if(allocated(source))deallocate(source)

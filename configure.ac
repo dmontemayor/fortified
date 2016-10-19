@@ -24,11 +24,15 @@ AC_CONFIG_SRCDIR([src/testdriver3.in])
 AC_CONFIG_SRCDIR([src/testdriver4.in])
 AC_CONFIG_SRCDIR([src/testdrivercap.in])
 
+# Check for ontology parser
+AC_CONFIG_SRCDIR([src/ontologyparser.f90])
+
 # auxilary files
 AC_CONFIG_SRCDIR([src/MDutils.f90])
 AC_CONFIG_SRCDIR([src/atomicunits.f90])
 AC_CONFIG_SRCDIR([src/lapack.f])
 AC_CONFIG_SRCDIR([src/csv_io.f90])
+AC_CONFIG_SRCDIR([lapack-3.6.1.tgz])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -46,6 +50,16 @@ AC_PROG_FC
 # make sure src and data directories are present in build directory
 AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])
 AC_CONFIG_COMMANDS([create_user_datadir],[mkdir ./data/])
+
+# make sure libraries libraries are built in build directory 
+AC_CONFIG_COMMANDS([build_lapack],[tar -xzf $ac_top_srcdir/lapack-3.6.1.tgz
+cd lapack-3.6.1/
+cp make.inc.example make.inc
+cd BLAS/SRC/
+make
+cd ../../
+make
+cd ../])
 
 ################### F O R T I F I E D   M O D U L E S ###################
 
@@ -76,9 +90,10 @@ AC_CONFIG_SRCDIR([data/xor.seqdat])
 AC_CONFIG_SRCDIR([data/xorseq.plt])
 AC_CONFIG_SRCDIR([data/protstruct.seqdat])
 AC_CONFIG_SRCDIR([data/protstruct_test.seqdat])
+AC_CONFIG_SRCDIR([data/subject1perception.csv])
 
 # make local copy of datasets and scripts 
-AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/*.dat $ac_top_srcdir/data/*.seqdat $ac_top_srcdir/data/*.plt ./data/])
+AC_CONFIG_COMMANDS([cp_datasets],[cp $ac_top_srcdir/data/*.dat $ac_top_srcdir/data/*.seqdat $ac_top_srcdir/data/*.plt $ac_top_srcdir/data/*.csv ./data/])
 
 # create unique drivers in build directory
 AC_CONFIG_COMMANDS([create_cann_driver],[cp $ac_top_srcdir/src/cann_driver.f90 src/cann_driver.f90])
@@ -89,6 +104,7 @@ AC_CONFIG_SRCDIR([src/quasiparticle.f90])
 AC_CONFIG_SRCDIR([src/ham.f90])
 AC_CONFIG_SRCDIR([src/wavelet.f90])
 AC_CONFIG_SRCDIR([src/fauxnon.f90])
+AC_CONFIG_SRCDIR([src/wf.f90])
  
 # nonadmd models
 AC_CONFIG_SRCDIR([src/metiu.f90])

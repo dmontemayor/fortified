@@ -19,8 +19,9 @@ module som_class
      character(len=label)::name='som'
      type(ffn)::ffn
      integer(long)::ND1,ND2,ND3
+     real(double)::D1halfcell,D2halfcell,D3halfcell
      real(double),dimension(:,:),pointer::nodeCoord
-     logical::mexhat
+     logical::mexhat,PBC
      real(double)::sigmastart,sigmadecay
      real(double)::learningstart,learningdecay
   end type som
@@ -178,8 +179,21 @@ contains
   real(double) function cartdist(this,A,B)
     type(som),intent(inout)::this
     integer(long),intent(in)::A,B
+    real(double)::x,y,z
 
-    cartdist=sqrt(sum((this%nodecoord(A,:)-this%nodecoord(B,:))**2))
+    x=this%nodecoord(A,1)-this%nodecoord(B,1)
+    y=this%nodecoord(A,2)-this%nodecoord(B,2)
+    z=this%nodecoord(A,3)-this%nodecoord(B,3)
+    if(this%PBC)then
+       if(x.gt.this%D1halfcell)x=x-this%D1halfcell*2.0_double
+       if(x.le.-this%D1halfcell)x=x+this%D1halfcell*2.0_double
+       if(y.gt.this%D2halfcell)y=y-this%D2halfcell*2.0_double
+       if(y.le.-this%D2halfcell)y=y+this%D2halfcell*2.0_double
+       if(z.gt.this%D3halfcell)z=z-this%D3halfcell*2.0_double
+       if(z.le.-this%D3halfcell)z=z+this%D3halfcell*2.0_double
+    end if
+    !cartdist=sqrt(sum((this%nodecoord(A,:)-this%nodecoord(B,:))**2))
+    cartdist=sqrt(x*x+y*y+z*z)
 
     return
   end function cartdist
@@ -190,12 +204,13 @@ contains
   !> \param[in] file is an optional string containing the name of a previously backupd som file.
   !> \remark If no input file is provided the user must manually initialize THIS using stout.
   !=====================================================================
-  subroutine som_init(this,N,ND1,ND2,ND3,hcp,file)
+  subroutine som_init(this,N,ND1,ND2,ND3,hcp,file,activation)
     type(som),intent(inout)::this
     integer(long),intent(in),optional::N
     integer(long),intent(in),optional::ND1,ND2,ND3
     logical,intent(in),optional::hcp
     character*(*),intent(in),optional::file
+    character*(*),optional,intent(in)::activation
 
     real(double)::root3,third,twothirdsroot6
     integer(long)::i,j,k,M
@@ -216,7 +231,11 @@ contains
     this%ND3=1
     if(present(ND3))this%ND3=ND3
 
-    call make(this%ffn,N=this%ND1*this%ND2*this%ND3)
+    if(present(activation))then
+       call make(this%ffn,N=this%ND1*this%ND2*this%ND3,activation=activation)
+    else
+       call make(this%ffn,N=this%ND1*this%ND2*this%ND3)
+    end if
 
     !set node coordinates
     root3=sqrt(3.0_double)
@@ -242,6 +261,19 @@ contains
           end do
        end do
     end do
+    !cell length
+    if(present(hcp).and.hcp)then
+       this%D1halfcell=this%ND1*.5_double
+       this%D2halfcell=this%ND2*root3*.25_double
+       this%D3halfcell=this%ND3*twothirdsroot6*.25_double
+    else
+       this%D1halfcell=this%ND1*.5_double
+       this%D2halfcell=this%ND2*.5_double
+       this%D3halfcell=this%ND3*.5_double
+    end if
+
+    !set default value for priodic boundary condition option
+    this%PBC=.false.
 
     !set default value for mexhat neighborhood function option
     this%mexhat=.false.
@@ -480,17 +512,36 @@ contains
     use testing_class
     use filemanager
     use layer_class
+    use progressbar
+    use rand_class
     type(som)::this
     type(layer)::sourcelayer
 
     real(double),allocatable::vector(:),mat(:,:)
     real(double)::x,y,z
-    integer(long)::i,j,k,ierr,epoch,nres,count
+    integer(long)::i,j,k,kprime
+    integer(long)::ierr,epoch,nres,count,nepoch
     character::residue,resname(20),classifier
     character(len=1000)::seq,labseq
     character(len=label)::string
     integer(long)::unit
-    
+
+    integer(long),parameter::nmaxsubject=100,nmaxCID=500,nmaxrecord=1000
+    integer(long)::subjectlist(nmaxsubject),CIDlist(nmaxCID),nsubject,nCID
+    integer(long),allocatable::nrecordpersubject(:)
+    real(double)::dummy1,dummy2,dummy3,dummy4
+    real(double),allocatable::dataset(:,:),datasetvar(:),datasetbar(:)
+    real(double),allocatable::trainingbatch(:,:,:),trainingbatchlabel(:,:,:)
+    integer(long)::nx,pcaworksizemax,pcaworksize
+
+    real(double)::R0,RA,RB,RC,RD,norm,R0var,RDvar
+
+    real(double),allocatable::PCAeigenvector(:,:),PCAeigenvalue(:),PCAwork(:)
+    real(double)::RGBmin(3),RGBL(3)
+
+    real(double)::fitness,overlap,Finit,Ffinal
+    real(double),allocatable::activity(:)
+
     !verify som is compatible with current version
     include 'verification'
 
@@ -683,13 +734,30 @@ contains
          ,msg='learning function does not equal exp(-1)/100 at first learning step when learningdecay is set to 1.')
     call kill(this)
 
+
+    write(*,*)'test som manual feature PBC finds cardist of first and last node equal to 1.0 when true.'
+    call make(this,N=4)
+    this%PBC=.true.
+    call assert(cartdist(this,1,4).EQ.1.0,msg='PBC=.true. does not return cartdist&
+         & of 1.0 between first and last nodes for 1D SOM')
+    call kill(this)
+
+    write(*,*)'test som manual feature PBC finds cardist of first and last node equal to& 
+         & sqrt(2.0) when true for 3X3 surf.'
+    call make(this,N=9,ND1=3,ND2=3)
+    this%PBC=.true.
+    x=sqrt(2.0_double)
+    call assert(cartdist(this,1,9).EQ.x,msg='PBC=.true. does not return cartdist&
+         & of sqrt(2.0) between first and last nodes for 1D SOM')
+    call kill(this)
+
     write(*,*)'test som training step evolves node toward source node at 1.0'
     call make (sourcelayer,N=1)
     sourcelayer%node=1.0_double
     call make(this,N=1)
     call link(this%ffn,sourcelayer)
     this%ffn%W=0.0_double
-    x=0_double
+    x=0._double
     do i=0,this%ffn%nsource-1
        x=x+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
@@ -710,7 +778,7 @@ contains
     sourcelayer%node(1:2)=-1.0_double
     call make(this,N=1)
     call link(this%ffn,sourcelayer)
-    x=0_double
+    x=0.0_double
     do i=0,this%ffn%nsource-1
        x=x+(this%ffn%W(1,i)-this%ffn%source(i)%ptr)**2
     end do
@@ -758,7 +826,7 @@ contains
     call assert(x.LT.0.16.and.y.LT.0.05,msg='som did not evolve well 2 nodes toward the centers of the doublepotential.')
     call kill(this)
     call kill(sourcelayer)
-    
+
 
     write(*,*)'test training som with zpotential data set evolves 10 classifiers on 1D map toward z potential.'
     call make (sourcelayer,N=2)
@@ -998,6 +1066,1088 @@ contains
 !!$    call kill(this)
 !!$    call kill(sourcelayer)
 
+!!!!!!!!!!!!!!!!!
+
+    write(*,*)'choose training-validation and unknown data'
+    !perception data column labels 
+    !subjects #,CID,dilution,detection,intensity,pleasantness,familiarity,identification,edible,bakery,sweet,fruit,fish,garlic,spices,cold,sour,burnt,acid,warm,musky,sweaty,ammonia/urinous,decayed,wood,grass,flower,chemical
+    !allocate dataset
+    nx=24
+    if(allocated(dataset))deallocate(dataset)
+    allocate(dataset(nx,35090))
+
+    !load available data
+    dataset=0
+    subjectlist=0
+    CIDlist=0
+    nsubject=0
+    nCID=0
+    open(111,file='data/allsubjectperception.dat')
+    ierr=0
+    i=0
+    do while(ierr.EQ.0)
+       i=i+1
+       read(111,*,iostat=ierr)dummy1,dummy2,dummy3,dummy4,dataset(:,i)
+
+       !count unique CIDs and number of subjects
+       if(all(subjectlist.NE.int(dummy1)))then
+          nsubject=nsubject+1
+          subjectlist(nsubject)=int(dummy1)
+       end if
+       if(all(CIDlist.NE.int(dummy2)))then
+          nCID=nCID+1
+          CIDlist(nCID)=int(dummy2)
+       end if
+
+    end do
+    close(111)
+
+    write(*,*)nsubject,'subjects found'!,subjectlist(1:nsubject)
+    write(*,*)nCID,'CIDs found'!,CIDlist(1:nCID)
+
+    !randomly pick 70% of subjects 
+    do k=1,1000 !swap values in subjectlist 1000 times
+       i=ceiling(uran()*nsubject) !choose random array position to swap
+       j=ceiling(uran()*nsubject) !choose random array position to swap
+       !save value in position i
+       ierr=subjectlist(i)
+       !swap j value to position i
+       subjectlist(i)=subjectlist(j)
+       !return saved value to position j
+       subjectlist(j)=ierr
+    end do
+    open(123,file='knownsubjects.dat')
+    do i=1,int(nsubject*.7)
+       write(123,*)subjectlist(i)
+    end do
+    close(123)
+
+    !randomly pick 70% of CIDs 
+    do k=1,1000 !swap values in CIDlist 1000 times
+       i=ceiling(uran()*nCID) !choose random array position to swap
+       j=ceiling(uran()*nCID) !choose random array position to swap
+       !save value in position i
+       ierr=CIDlist(i)
+       !swap j value to position i
+       CIDlist(i)=CIDlist(j)
+       !return saved value to position j
+       CIDlist(j)=ierr
+    end do
+    open(123,file='knownCIDs.dat')
+    do i=1,int(nCID*.7)
+       write(123,*)CIDlist(i)
+    end do
+    close(123)
+
+    !clean up dataset memory
+    if(allocated(dataset))deallocate(dataset)
+
+!!!!!
+    write(*,*)'test training som with frist 3PCA perception data&
+         & set evolves 49 classifiers on 2D hcp map toward perception data.'
+    call make (sourcelayer,N=3)
+    call make(this,N=49,ND1=7,ND2=7,hcp=.true.)
+    call link(this%ffn,sourcelayer)
+
+
+    !get list of known subjects
+    open(123,file='knownsubjects.dat')
+    ierr=0
+    nsubject=0
+    subjectlist=0
+    do while (ierr.EQ.0)
+       nsubject=nsubject+1
+       read(123,*,iostat=ierr) subjectlist(nsubject)
+    end do
+    close(123)
+    !get list of known CIDs
+    open(123,file='knownCIDs.dat')
+    ierr=0
+    nCID=0
+    CIDlist=0
+    do while (ierr.EQ.0)
+       nCID=nCID+1
+       read(123,*,iostat=ierr) CIDlist(nCID)
+    end do
+    close(123)
+    !allocate number of records per known subjects array
+    if(allocated(nrecordpersubject))deallocate(nrecordpersubject)
+    allocate(nrecordpersubject(nsubject))
+    nrecordpersubject=0
+    !allocate dataset mean and variance 
+    if(allocated(datasetbar))deallocate(datasetbar)
+    allocate(datasetbar(nx))
+    datasetbar=0.0_double
+    if(allocated(datasetvar))deallocate(datasetvar)
+    allocate(datasetvar(nx))
+    datasetvar=0.0_double
+    !allocate training batches
+    nx=24
+    if(allocated(trainingbatch))deallocate(trainingbatch)
+    allocate(trainingbatch(nx,nmaxrecord,nsubject))
+    !get training data as batches of known subjects
+    open(111,file='data/allsubjectperception.dat')
+    ierr=0
+    nrecordpersubject=0
+    do while(ierr.EQ.0)
+       read(111,*,iostat=ierr)dummy1,dummy2,dummy3,dummy4,datasetbar
+       do i=1,nsubject
+          if (subjectlist(i).EQ.dummy1.and.any(CIDlist.EQ.int(dummy2)))then
+             nrecordpersubject(i)=nrecordpersubject(i)+1
+             call assert(nrecordpersubject(i).LE.nmaxrecord,msg='nrecord per subject is greater than nmaxrecord')
+             trainingbatch(:,nrecordpersubject(i),i)=datasetbar
+          end if
+       end do
+    end do
+    close(111)
+
+    !calculate dataset mean and variance per column
+    datasetbar=0._double
+    datasetbar=0._double
+    do i=1,nsubject
+       do j=1,nrecordpersubject(i)
+          datasetbar=datasetbar+trainingbatch(:,j,i)
+          datasetvar=datasetvar+trainingbatch(:,j,i)**2
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    datasetbar=datasetbar/norm
+    datasetvar=sqrt(datasetvar/norm-datasetbar**2)
+
+    write(*,*)"Perception label         mean          and          stdev"    
+    write(*,*)"intensity      ",datasetbar(1),datasetvar(1)  
+    write(*,*)"pleasantness   ",datasetbar(2),datasetvar(2)  
+    write(*,*)"familiarity    ",datasetbar(3),datasetvar(3)  
+    write(*,*)"identification ",datasetbar(4),datasetvar(4)  
+    write(*,*)"edible         ",datasetbar(5),datasetvar(5)  
+    write(*,*)"bakery         ",datasetbar(6),datasetvar(6)  
+    write(*,*)"sweet          ",datasetbar(7),datasetvar(7)  
+    write(*,*)"fruit          ",datasetbar(8),datasetvar(8)  
+    write(*,*)"fish           ",datasetbar(9),datasetvar(9)  
+    write(*,*)"garlic         ",datasetbar(10),datasetvar(10)
+    write(*,*)"spices         ",datasetbar(11),datasetvar(11)
+    write(*,*)"cold           ",datasetbar(12),datasetvar(12)
+    write(*,*)"sour           ",datasetbar(13),datasetvar(13)
+    write(*,*)"burnt          ",datasetbar(14),datasetvar(14)
+    write(*,*)"acid           ",datasetbar(15),datasetvar(15)
+    write(*,*)"warm           ",datasetbar(16),datasetvar(16)
+    write(*,*)"musky          ",datasetbar(17),datasetvar(17)
+    write(*,*)"sweaty         ",datasetbar(18),datasetvar(18)
+    write(*,*)"ammonia/urinous",datasetbar(19),datasetvar(19)
+    write(*,*)"decayed        ",datasetbar(20),datasetvar(20)
+    write(*,*)"wood           ",datasetbar(21),datasetvar(21)
+    write(*,*)"grass          ",datasetbar(22),datasetvar(22)
+    write(*,*)"flower         ",datasetbar(23),datasetvar(23)
+    write(*,*)"chemical       ",datasetbar(24),datasetvar(24)
+    write(*,*)
+
+    !allocate PCA eigenvecotor and eignevalue memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    allocate(PCAeigenvector(nx,nx))
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    allocate(PCAeigenvalue(nx))
+    if(allocated(PCAwork))deallocate(PCAwork)
+    pcaworksizemax=3*nx
+    allocate(PCAwork(pcaworksizemax))
+
+    !calculate correlation matrix
+    !write(*,*)'calculating perception correlation matrix'
+    PCAeigenvector=0._double
+    do k=1,nsubject
+       do i=1,nx
+          do j=i,nx
+             PCAeigenvector(i,j)=PCAeigenvector(i,j)&
+                  +sum((trainingbatch(i,1:nrecordpersubject(k),k)-datasetbar(i))&
+                  *(trainingbatch(j,1:nrecordpersubject(k),k)-datasetbar(j)))&
+                  /(datasetvar(i)*datasetvar(j))
+             !PCAeigenvector(j,i)=PCAeigenvector(i,j)
+          end do
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    PCAeigenvector=PCAeigenvector/norm
+
+    !query the optimal workspace
+    pcaworksize=-1
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    pcaworksize = min(pcaworksizemax,int(pcawork(1)))
+    !compute eigenvalues and eigenvectors of a real symmetric matrix
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    !check for convergence
+    call assert(i.EQ.0,msg='lapack routine dsyev failed to compute eigenvalues')
+
+    write(*,*)'PCA eigen values            percentage,                cumulative percentange,  1- cum percentage'
+    do i=1,nx
+       write(*,*)pcaeigenvalue(i),pcaeigenvalue(i)/sum(pcaeigenvalue)&
+            ,sum(pcaeigenvalue(1:i))/sum(pcaeigenvalue),1.0-sum(pcaeigenvalue(1:i))/sum(pcaeigenvalue)
+    end do
+    write(*,*)
+
+    write(*,*)"Perception label  PCA1 vector,               PCA2 vector,              PCA3 vector"    
+    write(*,*)"intensity      ",pcaeigenvector(nx,1),pcaeigenvector(nx-1,1),pcaeigenvector(nx-2,1)
+    write(*,*)"pleasantness   ",pcaeigenvector(nx,2),pcaeigenvector(nx-1,2),pcaeigenvector(nx-2,2)
+    write(*,*)"familiarity    ",pcaeigenvector(nx,3),pcaeigenvector(nx-1,3),pcaeigenvector(nx-2,3)
+    write(*,*)"identification ",pcaeigenvector(nx,4),pcaeigenvector(nx-1,4),pcaeigenvector(nx-2,4)
+    write(*,*)"edible         ",pcaeigenvector(nx,5),pcaeigenvector(nx-1,5),pcaeigenvector(nx-2,5)
+    write(*,*)"bakery         ",pcaeigenvector(nx,6),pcaeigenvector(nx-1,6),pcaeigenvector(nx-2,6)
+    write(*,*)"sweet          ",pcaeigenvector(nx,7),pcaeigenvector(nx-1,7),pcaeigenvector(nx-2,7)
+    write(*,*)"fruit          ",pcaeigenvector(nx,8),pcaeigenvector(nx-1,8),pcaeigenvector(nx-2,8)
+    write(*,*)"fish           ",pcaeigenvector(nx,9),pcaeigenvector(nx-1,9),pcaeigenvector(nx-2,9)
+    write(*,*)"garlic         ",pcaeigenvector(nx,10),pcaeigenvector(nx-1,10),pcaeigenvector(nx-2,10)
+    write(*,*)"spices         ",pcaeigenvector(nx,11),pcaeigenvector(nx-1,11),pcaeigenvector(nx-2,11)
+    write(*,*)"cold           ",pcaeigenvector(nx,12),pcaeigenvector(nx-1,12),pcaeigenvector(nx-2,12)
+    write(*,*)"sour           ",pcaeigenvector(nx,13),pcaeigenvector(nx-1,13),pcaeigenvector(nx-2,13)
+    write(*,*)"burnt          ",pcaeigenvector(nx,14),pcaeigenvector(nx-1,14),pcaeigenvector(nx-2,14)
+    write(*,*)"acid           ",pcaeigenvector(nx,15),pcaeigenvector(nx-1,15),pcaeigenvector(nx-2,15)
+    write(*,*)"warm           ",pcaeigenvector(nx,16),pcaeigenvector(nx-1,16),pcaeigenvector(nx-2,16)
+    write(*,*)"musky          ",pcaeigenvector(nx,17),pcaeigenvector(nx-1,17),pcaeigenvector(nx-2,17)
+    write(*,*)"sweaty         ",pcaeigenvector(nx,18),pcaeigenvector(nx-1,18),pcaeigenvector(nx-2,18)
+    write(*,*)"ammonia/urinous",pcaeigenvector(nx,19),pcaeigenvector(nx-1,19),pcaeigenvector(nx-2,19)
+    write(*,*)"decayed        ",pcaeigenvector(nx,20),pcaeigenvector(nx-1,20),pcaeigenvector(nx-2,20)
+    write(*,*)"wood           ",pcaeigenvector(nx,21),pcaeigenvector(nx-1,21),pcaeigenvector(nx-2,21)
+    write(*,*)"grass          ",pcaeigenvector(nx,22),pcaeigenvector(nx-1,22),pcaeigenvector(nx-2,22)
+    write(*,*)"flower         ",pcaeigenvector(nx,23),pcaeigenvector(nx-1,23),pcaeigenvector(nx-2,23)
+    write(*,*)"chemical       ",pcaeigenvector(nx,24),pcaeigenvector(nx-1,24),pcaeigenvector(nx-2,24)
+    write(*,*)
+
+    !rotate perception data
+    do k=1,nsubject
+       do j=1,nrecordpersubject(k)
+          trainingbatch(:,j,k)=matmul(transpose(pcaeigenvector),trainingbatch(:,j,k))
+       end do
+    end do
+
+    !dump som evolution in rgb coordinates
+    open(222,file='SOMperceptionRGB.dat')
+    !get rgb domain of ffn weights
+    RGBmin(1)=minval(this%ffn%W(:,1))
+    RGBL(1)=maxval(this%ffn%W(:,1))
+    RGBmin(2)=minval(this%ffn%W(:,2))
+    RGBL(2)=maxval(this%ffn%W(:,2))
+    RGBmin(3)=minval(this%ffn%W(:,3))
+    RGBL(3)=maxval(this%ffn%W(:,3))
+    RGBL=RGBL-RGBmin
+    do j=1,50 !dump 50 frames of initial state
+       do i=1,this%ffn%layer%N
+          !transform weights into rgb coords from 0-255
+          write(222,*)this%nodeCoord(i,1:2),int(256*(this%ffn%W(i,1:3)-RGBmin(1:3))/RGBL(1:3))
+       end do
+       write(222,*)!new data block for every epoch
+    end do
+    !train som
+    this%sigmastart=2.0
+    this%sigmadecay=0.0002
+    this%learningstart=1E-4
+    this%learningdecay=0.00005
+    nepoch=10000!0
+!!$    this%sigmastart=2.0
+!!$    this%sigmadecay=0.00001
+!!$    this%learningstart=5E-1
+!!$    this%learningdecay=0.0000001
+!!$    nepoch=1000!0
+    do epoch=0,nepoch
+       call progress(epoch,nepoch)
+       !k=ceiling(uran()*nsubject)
+       k=mod(epoch,nsubject)+1
+       do i=1,nrecordpersubject(k)
+          sourcelayer%input=trainingbatch(nx-2:nx,i,k)
+          !sourcelayer%input=dataset(nx-2:nx,i)
+          !j=ceiling(uran()*size(dataset,2))
+          !sourcelayer%input=dataset(nx-2:nx,j)
+          call update(sourcelayer)
+          call trainstep(this,epoch)
+       end do
+       if(mod(epoch,10).EQ.0)then !dump data for animation
+          !get rgb domain of ffn weights
+          RGBmin(1)=minval(this%ffn%W(:,1))
+          RGBL(1)=maxval(this%ffn%W(:,1))
+          RGBmin(2)=minval(this%ffn%W(:,2))
+          RGBL(2)=maxval(this%ffn%W(:,2))
+          RGBmin(3)=minval(this%ffn%W(:,3))
+          RGBL(3)=maxval(this%ffn%W(:,3))
+          RGBL=RGBL-RGBmin
+          do k=1,this%ffn%layer%N
+             !transform weights into rgb coords from 0-255
+             write(222,*)this%nodeCoord(k,1:2),int(256*(this%ffn%W(k,1:3)-RGBmin(1:3))/RGBL(1:3))
+          end do
+          write(222,*)!new data block for every animation frame
+       end if
+    end do
+    !get rgb domain of ffn weights
+    RGBmin(1)=minval(this%ffn%W(:,1))
+    RGBL(1)=maxval(this%ffn%W(:,1))
+    RGBmin(2)=minval(this%ffn%W(:,2))
+    RGBL(2)=maxval(this%ffn%W(:,2))
+    RGBmin(3)=minval(this%ffn%W(:,3))
+    RGBL(3)=maxval(this%ffn%W(:,3))
+    RGBL=RGBL-RGBmin
+    do j=1,50 !dump 50 frames of final state
+       do i=1,this%ffn%layer%N
+          !transform weights into rgb coords from 0-255
+          write(222,*)this%nodeCoord(i,1:2),int(256*(this%ffn%W(i,1:3)-RGBmin(1:3))/RGBL(1:3))
+       end do
+       write(222,*)!new data block for every epoch
+    end do
+    !close SOM evolution output file
+    close(222)
+    !animate SOM evolution
+    write(*,*)'animating SOM evolution and saving to file anim.gif'
+    call system('gnuplot SOMperceptionanim.plt')
+
+    !check neighboring gcells point to nearby coordinates in perception space
+    !compared to average distance of corrdiantes by any pair of gcells
+    !
+    !calculate expected cell pair pointer distance
+    R0=0.0_double
+    R0var=0.0_double
+    do i=1,this%ffn%layer%N
+       do j=i,this%ffn%layer%N
+          if(i.NE.j)then
+             !accumulate distance
+             x=sum((this%ffn%W(i,:)-this%ffn%W(j,:))**2)
+             R0=R0+sqrt(x)
+             R0var=R0var+x
+          end if
+       end do
+    end do
+    norm=.5_double*(this%ffn%layer%N**2-this%ffn%layer%N)
+    R0=R0/norm
+    R0var=R0var/norm-R0*R0
+    write(*,*)'average gcell pointer distance and stdev',R0,sqrt(R0var)
+    !Group A -compare cells around cell 09: 02,03,08,09,10,16,17 
+    RA=0.0_double
+    RA=RA+sqrt(sum((this%ffn%W(2,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(3,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(8,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(10,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(16,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(17,:)-this%ffn%W(9,:))**2))
+    RA=RA/6.0_double
+    write(*,*)'average group A gcell pointer distance',RA,RA/R0
+    !Group B -compare cells around cell 20: 12,13,19,20,21,26,27
+    RB=0.0_double
+    RB=RB+sqrt(sum((this%ffn%W(12,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(13,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(19,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(21,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(26,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(27,:)-this%ffn%W(20,:))**2))
+    RB=RB/6.0_double
+    write(*,*)'average group B gcell pointer distance',RB,RB/R0
+    !Group C -compare cells around cell 38: 31,32,37,38,39,45,46
+    RC=0.0_double
+    RC=RC+sqrt(sum((this%ffn%W(31,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(32,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(37,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(39,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(45,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(46,:)-this%ffn%W(38,:))**2))
+    RC=RC/6.0_double
+    write(*,*)'average group C gcell pointer distance',RC,RC/R0
+
+    !sigmadecay is too fast if neighbors point more than 50% of expected pair distance  
+    !call assert(RA/R0.LT.0.5,msg='group A nodes point more than 50% of expected pair distance.')
+    !call assert(RB/R0.LT.0.5,msg='group B nodes point more than 50% of expected pair distance.')
+    !call assert(RC/R0.LT.0.5,msg='group C nodes point more than 50% of expected pair distance.')
+    call assert((RA+RB+RC)/R0.LT.1.5,msg='group nodes point more than 50% of expected pair distance.')
+
+    !
+    !check that expected gcell pointer distance is the same magnitude as expected dataset distance  
+    !calculate expected dataset pair distance
+    RD=0.0_double
+    RDvar=0.0_double
+    do k=1,nsubject
+       do kprime=1,nsubject
+          do i=1,nrecordpersubject(k)
+             do j=1,nrecordpersubject(kprime)
+                !if(.not.((i.EQ.j).and.(k.EQ.kprime)))then
+                !accumulate distance
+                x=sum((trainingbatch(nx-2:nx,i,k)-trainingbatch(nx-2:nx,j,kprime))**2)
+                RD=RD+sqrt(x)
+                RDvar=RDvar+x
+             end do
+          end do
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    norm=norm*norm
+    RD=RD/norm
+    RDvar=RDvar/norm-RD*RD
+    write(*,*)'dataset average distance and stdev',RD,sqrt(RDvar)
+    call assert((RD-sqrt(RDvar).lt.R0).and.(RD+sqrt(RDvar).gt.R0)&
+         ,msg='average gcell pointer distance does not fit within one sigma of expected dataset distance&
+         &, adjust learning rate')
+
+    !cleanup training batches memory
+    if(allocated(trainingbatch))deallocate(trainingbatch)
+    !cleanup number of records per known subjects array memory
+    if(allocated(nrecordpersubject))deallocate(nrecordpersubject)
+    !cleanup som memory
+    call kill(this)
+    call kill(sourcelayer)
+    !deallocate PCA eigenvector memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    !cleanup dataset mean and variance memory
+    if(allocated(datasetbar))deallocate(datasetbar)
+    if(allocated(datasetvar))deallocate(datasetvar)
+    !!cleanup dataset memory
+    !if(allocated(dataset))deallocate(dataset)
+
+!!!!!!!!!!!!!!!!!
+
+    write(*,*)'test training som with all PCA perception data improves model fitness&
+         & on set of 49 classifiers on 2D hcp map.'
+    call make (sourcelayer,N=nx)
+    call make(this,N=49,ND1=7,ND2=7,hcp=.true.,activation='cauchy')
+    call link(this%ffn,sourcelayer)
+
+    !get list of known subjects
+    open(123,file='knownsubjects.dat')
+    ierr=0
+    nsubject=0
+    subjectlist=0
+    do while (ierr.EQ.0)
+       nsubject=nsubject+1
+       read(123,*,iostat=ierr) subjectlist(nsubject)
+    end do
+    close(123)
+    !get list of known CIDs
+    open(123,file='knownCIDs.dat')
+    ierr=0
+    nCID=0
+    CIDlist=0
+    do while (ierr.EQ.0)
+       nCID=nCID+1
+       read(123,*,iostat=ierr) CIDlist(nCID)
+    end do
+    close(123)
+    !allocate number of records per known subjects array
+    if(allocated(nrecordpersubject))deallocate(nrecordpersubject)
+    allocate(nrecordpersubject(nsubject))
+    nrecordpersubject=0
+    !allocate dataset mean and variance 
+    if(allocated(datasetbar))deallocate(datasetbar)
+    allocate(datasetbar(nx))
+    datasetbar=0.0_double
+    if(allocated(datasetvar))deallocate(datasetvar)
+    allocate(datasetvar(nx))
+    datasetvar=0.0_double
+    !allocate training batches
+    nx=24
+    if(allocated(trainingbatch))deallocate(trainingbatch)
+    allocate(trainingbatch(nx,nmaxrecord,nsubject))
+    if(allocated(trainingbatchlabel))deallocate(trainingbatchlabel)
+    allocate(trainingbatchlabel(4,nmaxrecord,nsubject))
+    !get training data as batches of known subjects
+    open(111,file='data/allsubjectperception.dat')
+    ierr=0
+    nrecordpersubject=0
+    do while(ierr.EQ.0)
+       read(111,*,iostat=ierr)dummy1,dummy2,dummy3,dummy4,datasetbar
+       do i=1,nsubject
+          if (subjectlist(i).EQ.dummy1.and.any(CIDlist.EQ.int(dummy2)))then
+             nrecordpersubject(i)=nrecordpersubject(i)+1
+             call assert(nrecordpersubject(i).LE.nmaxrecord,msg='nrecord per subject is greater than nmaxrecord')
+             trainingbatch(:,nrecordpersubject(i),i)=datasetbar
+             trainingbatchlabel(1,nrecordpersubject(i),i)=dummy1
+             trainingbatchlabel(2,nrecordpersubject(i),i)=dummy2
+             trainingbatchlabel(3,nrecordpersubject(i),i)=dummy3
+             trainingbatchlabel(4,nrecordpersubject(i),i)=dummy4
+          end if
+       end do
+    end do
+    close(111)
+
+    !calculate dataset mean and variance per column
+    datasetbar=0._double
+    datasetbar=0._double
+    do i=1,nsubject
+       do j=1,nrecordpersubject(i)
+          datasetbar=datasetbar+trainingbatch(:,j,i)
+          datasetvar=datasetvar+trainingbatch(:,j,i)**2
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    datasetbar=datasetbar/norm
+    datasetvar=sqrt(datasetvar/norm-datasetbar**2)
+
+    !allocate PCA eigenvecotor and eignevalue memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    allocate(PCAeigenvector(nx,nx))
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    allocate(PCAeigenvalue(nx))
+    if(allocated(PCAwork))deallocate(PCAwork)
+    pcaworksizemax=3*nx
+    allocate(PCAwork(pcaworksizemax))
+
+    !calculate correlation matrix
+    !write(*,*)'calculating perception correlation matrix'
+    PCAeigenvector=0._double
+    do k=1,nsubject
+       do i=1,nx
+          do j=i,nx
+             PCAeigenvector(i,j)=PCAeigenvector(i,j)&
+                  +sum((trainingbatch(i,1:nrecordpersubject(k),k)-datasetbar(i))&
+                  *(trainingbatch(j,1:nrecordpersubject(k),k)-datasetbar(j)))&
+                  /(datasetvar(i)*datasetvar(j))
+             !PCAeigenvector(j,i)=PCAeigenvector(i,j)
+          end do
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    PCAeigenvector=PCAeigenvector/norm
+
+    !query the optimal workspace
+    pcaworksize=-1
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    pcaworksize = min(pcaworksizemax,int(pcawork(1)))
+    !compute eigenvalues and eigenvectors of a real symmetric matrix
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    !check for convergence
+    call assert(i.EQ.0,msg='lapack routine dsyev failed to compute eigenvalues')
+
+    !rotate perception data
+    do k=1,nsubject
+       do j=1,nrecordpersubject(k)
+          trainingbatch(:,j,k)=matmul(transpose(pcaeigenvector),trainingbatch(:,j,k))
+       end do
+    end do
+
+    !allocate activity array memory
+    if(allocated(activity))deallocate(activity)
+    allocate(activity(this%ffn%layer%N))
+
+    !calculate initial model fitness
+    fitness=0.0_double
+    count=0
+    !loop over subject pairs
+    do i=1,nsubject
+       do j=i,nsubject
+          !loop over compound labels
+          do k=1,nrecordpersubject(i)
+             do kprime=1,nrecordpersubject(j)
+                !match for same coupound ID and concentration
+                if(trainingbatchlabel(2,k,i).EQ.trainingbatchlabel(2,kprime,j)&
+                     .and.&
+                     trainingbatchlabel(3,k,i).EQ.trainingbatchlabel(3,kprime,j))then
+                   !increment sample counter
+                   count=count+1
+                   !write(*,*)count,fitness/real(count)
+
+                   !load subject k data
+                   sourcelayer%input=trainingbatch(:,k,i)
+                   call update(sourcelayer)
+                   !calculate gcell activation 
+                   call update(this%ffn,weightcentered=.true.)
+                   !save subject k activation density
+                   activity=this%ffn%layer%node
+                   !write(*,*)activity
+
+                   !load subject kprime data
+                   sourcelayer%input=trainingbatch(:,k,i)
+                   call update(sourcelayer)
+                   !calculate gcell activation 
+                   call update(this%ffn,weightcentered=.true.)
+                   !calculate overlap of subject kprime activation density with that of subject k
+                   fitness=fitness+sum(activity*this%ffn%layer%node)
+
+                end if
+             end do
+          end do
+       end do
+    end do
+    !fitness=fitness*2.0_double/real(nsubject**2-nsubject,double)
+    fitness=fitness/real(count,double)
+    Finit=fitness
+    write(*,*)'initial fitness',Finit
+
+    !train som
+    this%sigmastart=2.0
+    this%sigmadecay=0.0002
+    this%learningstart=1E-4
+    this%learningdecay=0.00005
+    nepoch=10000!0
+!!$    this%sigmastart=2.0
+!!$    this%sigmadecay=0.00001
+!!$    this%learningstart=5E-1
+!!$    this%learningdecay=0.0000001
+!!$    nepoch=1000!0
+    do epoch=0,nepoch
+       call progress(epoch,nepoch)
+       !k=ceiling(uran()*nsubject)
+       k=mod(epoch,nsubject)+1
+       do i=1,nrecordpersubject(k)
+          sourcelayer%input=trainingbatch(:,i,k)
+          call update(sourcelayer)
+          call trainstep(this,epoch)
+       end do
+       if(mod(epoch,10).EQ.0)then !dump intermediate model fitness
+          fitness=0.0_double
+          count=0
+          !loop over subject pairs
+          do i=1,nsubject
+             do j=i,nsubject
+                !loop over compound labels
+                do k=1,nrecordpersubject(i)
+                   do kprime=1,nrecordpersubject(j)
+                      !match for same coupound ID and concentration
+                      if(trainingbatchlabel(2,k,i).EQ.trainingbatchlabel(2,kprime,j)&
+                           .and.&
+                           trainingbatchlabel(3,k,i).EQ.trainingbatchlabel(3,kprime,j))then
+                         !increment sample counter
+                         count=count+1
+                         !write(*,*)count,fitness/real(count)
+
+                         !load subject k data
+                         sourcelayer%input=trainingbatch(:,k,i)
+                         call update(sourcelayer)
+                         !calculate gcell activation 
+                         call update(this%ffn,weightcentered=.true.)
+                         !save subject k activation density
+                         activity=this%ffn%layer%node
+                         !write(*,*)activity
+
+                         !load subject kprime data
+                         sourcelayer%input=trainingbatch(:,k,i)
+                         call update(sourcelayer)
+                         !calculate gcell activation 
+                         call update(this%ffn,weightcentered=.true.)
+                         !calculate overlap of subject kprime activation density with that of subject k
+                         fitness=fitness+sum(activity*this%ffn%layer%node)
+
+                      end if
+                   end do
+                end do
+             end do
+          end do
+          !fitness=fitness*2.0_double/real(nsubject**2-nsubject,double)
+          fitness=fitness/real(count,double)
+          write(*,*)epoch,'fitness', fitness
+
+       end if
+    end do
+    !calculate final model fitness
+    fitness=0.0_double
+    count=0
+    !loop over subject pairs
+    do i=1,nsubject
+       do j=i,nsubject
+          !loop over compound labels
+          do k=1,nrecordpersubject(i)
+             do kprime=1,nrecordpersubject(j)
+                !match for same coupound ID and concentration
+                if(trainingbatchlabel(2,k,i).EQ.trainingbatchlabel(2,kprime,j)&
+                     .and.&
+                     trainingbatchlabel(3,k,i).EQ.trainingbatchlabel(3,kprime,j))then
+                   !increment sample counter
+                   count=count+1
+                   !write(*,*)count,fitness/real(count)
+
+                   !load subject k data
+                   sourcelayer%input=trainingbatch(:,k,i)
+                   call update(sourcelayer)
+                   !calculate gcell activation 
+                   call update(this%ffn,weightcentered=.true.)
+                   !save subject k activation density
+                   activity=this%ffn%layer%node
+                   !write(*,*)activity
+
+                   !load subject kprime data
+                   sourcelayer%input=trainingbatch(:,k,i)
+                   call update(sourcelayer)
+                   !calculate gcell activation 
+                   call update(this%ffn,weightcentered=.true.)
+                   !calculate overlap of subject kprime activation density with that of subject k
+                   fitness=fitness+sum(activity*this%ffn%layer%node)
+
+                end if
+             end do
+          end do
+       end do
+    end do
+    !fitness=fitness*2.0_double/real(nsubject**2-nsubject,double)
+    fitness=fitness/real(count,double)
+    Ffinal=fitness
+    write(*,*)'final fitness',Ffinal
+
+    !cleanup activity array memory
+    if(allocated(activity))deallocate(activity)
+
+    stop
+
+    !check neighboring gcells point to nearby coordinates in perception space
+    !compared to average distance of corrdiantes by any pair of gcells
+    !
+    !calculate expected cell pair pointer distance
+    R0=0.0_double
+    R0var=0.0_double
+    do i=1,this%ffn%layer%N
+       do j=i,this%ffn%layer%N
+          if(i.NE.j)then
+             !accumulate distance
+             x=sum((this%ffn%W(i,:)-this%ffn%W(j,:))**2)
+             R0=R0+sqrt(x)
+             R0var=R0var+x
+          end if
+       end do
+    end do
+    norm=.5_double*(this%ffn%layer%N**2-this%ffn%layer%N)
+    R0=R0/norm
+    R0var=R0var/norm-R0*R0
+    write(*,*)'average gcell pointer distance and stdev',R0,sqrt(R0var)
+    !Group A -compare cells around cell 09: 02,03,08,09,10,16,17 
+    RA=0.0_double
+    RA=RA+sqrt(sum((this%ffn%W(2,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(3,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(8,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(10,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(16,:)-this%ffn%W(9,:))**2))
+    RA=RA+sqrt(sum((this%ffn%W(17,:)-this%ffn%W(9,:))**2))
+    RA=RA/6.0_double
+    write(*,*)'average group A gcell pointer distance',RA,RA/R0
+    !Group B -compare cells around cell 20: 12,13,19,20,21,26,27
+    RB=0.0_double
+    RB=RB+sqrt(sum((this%ffn%W(12,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(13,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(19,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(21,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(26,:)-this%ffn%W(20,:))**2))
+    RB=RB+sqrt(sum((this%ffn%W(27,:)-this%ffn%W(20,:))**2))
+    RB=RB/6.0_double
+    write(*,*)'average group B gcell pointer distance',RB,RB/R0
+    !Group C -compare cells around cell 38: 31,32,37,38,39,45,46
+    RC=0.0_double
+    RC=RC+sqrt(sum((this%ffn%W(31,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(32,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(37,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(39,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(45,:)-this%ffn%W(38,:))**2))
+    RC=RC+sqrt(sum((this%ffn%W(46,:)-this%ffn%W(38,:))**2))
+    RC=RC/6.0_double
+    write(*,*)'average group C gcell pointer distance',RC,RC/R0
+
+    !sigmadecay is too fast if neighbors point more than 50% of expected pair distance  
+    call assert(RA/R0.LT.0.5,msg='group A nodes point more than 50% of expected pair distance.')
+    call assert(RB/R0.LT.0.5,msg='group B nodes point more than 50% of expected pair distance.')
+    call assert(RC/R0.LT.0.5,msg='group C nodes point more than 50% of expected pair distance.')
+
+    !
+    !check that expected gcell pointer distance is the same magnitude as expected dataset distance  
+    !calculate expected dataset pair distance
+    RD=0.0_double
+    RDvar=0.0_double
+    do k=1,nsubject
+       do kprime=1,nsubject
+          do i=1,nrecordpersubject(k)
+             do j=1,nrecordpersubject(kprime)
+                !accumulate distance
+                x=sum((trainingbatch(nx-2:nx,i,k)-trainingbatch(nx-2:nx,j,kprime))**2)
+                RD=RD+sqrt(x)
+                RDvar=RDvar+x
+             end do
+          end do
+       end do
+    end do
+    norm=real(sum(nrecordpersubject),double)
+    norm=norm*norm
+    RD=RD/norm
+    RDvar=RDvar/norm-RD*RD
+    write(*,*)'dataset average distance and stdev',RD,sqrt(RDvar)
+
+    call assert((RD-sqrt(RDvar).lt.R0).and.(RD+sqrt(RDvar).gt.R0)&
+         ,msg='average gcell pointer distance does not fit within one sigma of expected dataset distance&
+         &, adjust learning rate')
+
+    !cleanup training batches memory
+    if(allocated(trainingbatch))deallocate(trainingbatch)
+    if(allocated(trainingbatchlabel))deallocate(trainingbatchlabel)
+    !cleanup number of records per known subjects array memory
+    if(allocated(nrecordpersubject))deallocate(nrecordpersubject)
+    !cleanup som memory
+    call kill(this)
+    call kill(sourcelayer)
+    !deallocate PCA eigenvector memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    !cleanup dataset mean and variance memory
+    if(allocated(datasetbar))deallocate(datasetbar)
+    if(allocated(datasetvar))deallocate(datasetvar)
+    !!cleanup dataset memory
+    !if(allocated(dataset))deallocate(dataset)
+    stop
+!!!!!!!!!!!!!!!!!
+
+
+
+    stop
+
+    write(*,*)'test training som with all PCA all subject perception data&
+         & set evolves 100 classifiers on 2D hcp map toward perception data.'
+    !perception data column labels 
+    !subjects #,CID,dilution,detection,intensity,pleasantness,familiarity,identification,edible,bakery,sweet,fruit,fish,garlic,spices,cold,sour,burnt,acid,warm,musky,sweaty,ammonia/urinous,decayed,wood,grass,flower,chemical
+    !allocate dataset
+    nx=24
+    if(allocated(dataset))deallocate(dataset)
+    allocate(dataset(nx,35090))
+
+    call make (sourcelayer,N=nx)
+    call make(this,N=100,ND1=10,ND2=10,hcp=.true.)
+    call link(this%ffn,sourcelayer)
+
+    !record training set
+    dataset=0
+    subjectlist=0
+    CIDlist=0
+    nsubject=0
+    nCID=0
+    open(111,file='data/allsubjectperception.dat')
+    ierr=0
+    i=0
+    do while(ierr.EQ.0)
+       i=i+1
+       read(111,*,iostat=ierr)dummy1,dummy2,dummy3,dummy4,dataset(:,i)
+
+       !count unique CIDs and number of subjects
+       if(all(subjectlist.NE.int(dummy1)))then
+          nsubject=nsubject+1
+          subjectlist(nsubject)=int(dummy1)
+       end if
+       if(all(CIDlist.NE.int(dummy2)))then
+          nCID=nCID+1
+          CIDlist(nCID)=int(dummy2)
+       end if
+
+    end do
+    close(111)
+
+    write(*,*)nsubject,'subjects found'!,subjectlist(1:nsubject)
+    write(*,*)nCID,'CIDs found'!,CIDlist(1:nCID)
+
+    !randomly pick 70% of subjects 
+    do k=1,1000 !swap values in subjectlist 1000 times
+       i=ceiling(uran()*nsubject) !choose random array position to swap
+       j=ceiling(uran()*nsubject) !choose random array position to swap
+       !save value in position i
+       ierr=subjectlist(i)
+       !swap j value to position i
+       subjectlist(i)=subjectlist(j)
+       !return saved value to position j
+       subjectlist(j)=ierr
+    end do
+    open(123,file='knownsubjects.dat')
+    do i=1,int(nsubject*.7)
+       write(123,*)subjectlist(i)
+    end do
+    close(123)
+
+    !randomly pick 70% of CIDs 
+    do k=1,1000 !swap values in CIDlist 1000 times
+       i=ceiling(uran()*nCID) !choose random array position to swap
+       j=ceiling(uran()*nCID) !choose random array position to swap
+       !save value in position i
+       ierr=CIDlist(i)
+       !swap j value to position i
+       CIDlist(i)=CIDlist(j)
+       !return saved value to position j
+       CIDlist(j)=ierr
+    end do
+    open(123,file='knownCIDs.dat')
+    do i=1,int(nCID*.7)
+       write(123,*)CIDlist(i)
+    end do
+    close(123)
+
+    !stop
+    !allocate dataset mean and variance 
+    if(allocated(datasetbar))deallocate(datasetbar)
+    allocate(datasetbar(nx))
+    datasetbar=0.0_double
+    if(allocated(datasetvar))deallocate(datasetvar)
+    allocate(datasetvar(nx))
+    datasetvar=0.0_double
+    !calculate dataset mean and  variance per column
+    do i=1,size(dataset,2)
+       datasetbar=datasetbar+dataset(:,i)
+       datasetvar=datasetvar+dataset(:,i)**2
+    end do
+    datasetbar=datasetbar/real(size(dataset,2),double)
+    datasetvar=sqrt(datasetvar/real(size(dataset,2),double)-datasetbar**2)
+
+    write(*,*)"Perception label      mean                       stdev                    ratio"    
+    write(*,*)"intensity      ",datasetbar(1),datasetvar(1)  ,datasetbar(1)/datasetvar(1)  
+    write(*,*)"pleasantness   ",datasetbar(2),datasetvar(2)  ,datasetbar(2)/datasetvar(2)  
+    write(*,*)"familiarity    ",datasetbar(3),datasetvar(3)  ,datasetbar(3)/datasetvar(3)  
+    write(*,*)"identification ",datasetbar(4),datasetvar(4)  ,datasetbar(4)/datasetvar(4)  
+    write(*,*)"edible         ",datasetbar(5),datasetvar(5)  ,datasetbar(5)/datasetvar(5)  
+    write(*,*)"bakery         ",datasetbar(6),datasetvar(6)  ,datasetbar(6)/datasetvar(6)  
+    write(*,*)"sweet          ",datasetbar(7),datasetvar(7)  ,datasetbar(7)/datasetvar(7)  
+    write(*,*)"fruit          ",datasetbar(8),datasetvar(8)  ,datasetbar(8)/datasetvar(8)  
+    write(*,*)"fish           ",datasetbar(9),datasetvar(9)  ,datasetbar(9)/datasetvar(9)  
+    write(*,*)"garlic         ",datasetbar(10),datasetvar(10),datasetbar(10)/datasetvar(10)
+    write(*,*)"spices         ",datasetbar(11),datasetvar(11),datasetbar(11)/datasetvar(11)
+    write(*,*)"cold           ",datasetbar(12),datasetvar(12),datasetbar(12)/datasetvar(12)
+    write(*,*)"sour           ",datasetbar(13),datasetvar(13),datasetbar(13)/datasetvar(13)
+    write(*,*)"burnt          ",datasetbar(14),datasetvar(14),datasetbar(14)/datasetvar(14)
+    write(*,*)"acid           ",datasetbar(15),datasetvar(15),datasetbar(15)/datasetvar(15)
+    write(*,*)"warm           ",datasetbar(16),datasetvar(16),datasetbar(16)/datasetvar(16)
+    write(*,*)"musky          ",datasetbar(17),datasetvar(17),datasetbar(17)/datasetvar(17)
+    write(*,*)"sweaty         ",datasetbar(18),datasetvar(18),datasetbar(18)/datasetvar(18)
+    write(*,*)"ammonia/urinous",datasetbar(19),datasetvar(19),datasetbar(19)/datasetvar(19)
+    write(*,*)"decayed        ",datasetbar(20),datasetvar(20),datasetbar(20)/datasetvar(20)
+    write(*,*)"wood           ",datasetbar(21),datasetvar(21),datasetbar(21)/datasetvar(21)
+    write(*,*)"grass          ",datasetbar(22),datasetvar(22),datasetbar(22)/datasetvar(22)
+    write(*,*)"flower         ",datasetbar(23),datasetvar(23),datasetbar(23)/datasetvar(23)
+    write(*,*)"chemical       ",datasetbar(24),datasetvar(24),datasetbar(24)/datasetvar(24)
+
+    !allocate PCA eigenvecotor and eignevalue memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    allocate(PCAeigenvector(nx,nx))
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    allocate(PCAeigenvalue(nx))
+    if(allocated(PCAwork))deallocate(PCAwork)
+    pcaworksizemax=3*nx
+    allocate(PCAwork(pcaworksizemax))
+
+    !calculate PCA
+    PCAeigenvector=0._double 
+    do i=1,nx
+       do j=i,nx
+          PCAeigenvector(i,j)=sum((dataset(i,:)-datasetbar(i))*(dataset(j,:)-datasetbar(j)))&
+               /(datasetvar(i)*datasetvar(j))
+          !PCAeigenvector(j,i)=PCAeigenvector(i,j)
+       end do
+    end do
+    PCAeigenvector=PCAeigenvector/real(size(dataset,2),double)
+
+    !query the optimal workspace
+    pcaworksize=-1
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    pcaworksize = min(pcaworksizemax,int(pcawork(1)))
+    !compute eigenvalues and eigenvectors of a real symmetric matrix
+    call dsyev('V','U',nx,PCAeigenvector,nx,PCAeigenvalue,pcawork,pcaworksize,i)
+    !check for convergence
+    call assert(i.EQ.0,msg='lapack routine dsyev failed to compute eigenvalues')
+
+    write(*,*)'PCA eigen values, percentage, cumulative percentange'
+    do i=1,nx
+       write(*,*)pcaeigenvalue(i),pcaeigenvalue(i)/sum(pcaeigenvalue)&
+            ,sum(pcaeigenvalue(1:i))/sum(pcaeigenvalue),1.0-sum(pcaeigenvalue(1:i))/sum(pcaeigenvalue)
+    end do
+    write(*,*)
+
+    write(*,*)"Perception label  PCA1 vector,               PCA2 vector,              PCA3 vector"    
+    write(*,*)"intensity      ",pcaeigenvector(nx,1),pcaeigenvector(nx-1,1),pcaeigenvector(nx-2,1)
+    write(*,*)"pleasantness   ",pcaeigenvector(nx,2),pcaeigenvector(nx-1,2),pcaeigenvector(nx-2,2)
+    write(*,*)"familiarity    ",pcaeigenvector(nx,3),pcaeigenvector(nx-1,3),pcaeigenvector(nx-2,3)
+    write(*,*)"identification ",pcaeigenvector(nx,4),pcaeigenvector(nx-1,4),pcaeigenvector(nx-2,4)
+    write(*,*)"edible         ",pcaeigenvector(nx,5),pcaeigenvector(nx-1,5),pcaeigenvector(nx-2,5)
+    write(*,*)"bakery         ",pcaeigenvector(nx,6),pcaeigenvector(nx-1,6),pcaeigenvector(nx-2,6)
+    write(*,*)"sweet          ",pcaeigenvector(nx,7),pcaeigenvector(nx-1,7),pcaeigenvector(nx-2,7)
+    write(*,*)"fruit          ",pcaeigenvector(nx,8),pcaeigenvector(nx-1,8),pcaeigenvector(nx-2,8)
+    write(*,*)"fish           ",pcaeigenvector(nx,9),pcaeigenvector(nx-1,9),pcaeigenvector(nx-2,9)
+    write(*,*)"garlic         ",pcaeigenvector(nx,10),pcaeigenvector(nx-1,10),pcaeigenvector(nx-2,10)
+    write(*,*)"spices         ",pcaeigenvector(nx,11),pcaeigenvector(nx-1,11),pcaeigenvector(nx-2,11)
+    write(*,*)"cold           ",pcaeigenvector(nx,12),pcaeigenvector(nx-1,12),pcaeigenvector(nx-2,12)
+    write(*,*)"sour           ",pcaeigenvector(nx,13),pcaeigenvector(nx-1,13),pcaeigenvector(nx-2,13)
+    write(*,*)"burnt          ",pcaeigenvector(nx,14),pcaeigenvector(nx-1,14),pcaeigenvector(nx-2,14)
+    write(*,*)"acid           ",pcaeigenvector(nx,15),pcaeigenvector(nx-1,15),pcaeigenvector(nx-2,15)
+    write(*,*)"warm           ",pcaeigenvector(nx,16),pcaeigenvector(nx-1,16),pcaeigenvector(nx-2,16)
+    write(*,*)"musky          ",pcaeigenvector(nx,17),pcaeigenvector(nx-1,17),pcaeigenvector(nx-2,17)
+    write(*,*)"sweaty         ",pcaeigenvector(nx,18),pcaeigenvector(nx-1,18),pcaeigenvector(nx-2,18)
+    write(*,*)"ammonia/urinous",pcaeigenvector(nx,19),pcaeigenvector(nx-1,19),pcaeigenvector(nx-2,19)
+    write(*,*)"decayed        ",pcaeigenvector(nx,20),pcaeigenvector(nx-1,20),pcaeigenvector(nx-2,20)
+    write(*,*)"wood           ",pcaeigenvector(nx,21),pcaeigenvector(nx-1,21),pcaeigenvector(nx-2,21)
+    write(*,*)"grass          ",pcaeigenvector(nx,22),pcaeigenvector(nx-1,22),pcaeigenvector(nx-2,22)
+    write(*,*)"flower         ",pcaeigenvector(nx,23),pcaeigenvector(nx-1,23),pcaeigenvector(nx-2,23)
+    write(*,*)"chemical       ",pcaeigenvector(nx,24),pcaeigenvector(nx-1,24),pcaeigenvector(nx-2,24)
+    write(*,*)
+
+    !rotate perception data
+    do i=1,size(dataset,2)
+       dataset(:,i)=matmul(transpose(pcaeigenvector),dataset(:,i))
+       !write(*,*) dataset(:,i)
+    end do
+
+    !dump som evolution in rgb coordinates
+    open(222,file='SOMperceptionRGB-allPCAallSUB.dat')
+    !get rgb domain of ffn weights
+    RGBmin(1)=minval(this%ffn%W(:,nx-2))
+    RGBL(1)=maxval(this%ffn%W(:,nx-2))
+    RGBmin(2)=minval(this%ffn%W(:,nx-1))
+    RGBL(2)=maxval(this%ffn%W(:,nx-1))
+    RGBmin(3)=minval(this%ffn%W(:,nx))
+    RGBL(3)=maxval(this%ffn%W(:,nx))
+    RGBL=RGBL-RGBmin
+    do j=1,50 !dump 50 frames of initial state
+       do i=1,this%ffn%layer%N
+          !transform weights into rgb coords from 0-255
+          write(222,*)this%nodeCoord(i,1:2),int(256*(this%ffn%W(i,nx-2:nx)-RGBmin)/RGBL)
+       end do
+       write(222,*)!new data block for every epoch
+    end do
+    !train som
+    !    this%sigmastart=3.0
+    !    this%sigmadecay=0.002
+    !    this%learningstart=0.05
+    !    this%learningdecay=0.00001
+    !    nepoch=10000
+    !    !train som
+    !    this%sigmadecay=0.0001
+    !    this%learningdecay=0.001
+    nepoch=1000
+    do epoch=0,nepoch
+       call progress(epoch,nepoch)
+       do i=1,size(dataset,2)
+          sourcelayer%input=dataset(:,i)
+          !j=ceiling(uran()*size(dataset,2))
+          sourcelayer%input=dataset(:,j)
+          call update(sourcelayer)
+          call trainstep(this,epoch)
+       end do
+       !get rgb domain of ffn weights
+       RGBmin(1)=minval(this%ffn%W(:,nx-2))
+       RGBL(1)=maxval(this%ffn%W(:,nx-2))
+       RGBmin(2)=minval(this%ffn%W(:,nx-1))
+       RGBL(2)=maxval(this%ffn%W(:,nx-1))
+       RGBmin(3)=minval(this%ffn%W(:,nx))
+       RGBL(3)=maxval(this%ffn%W(:,nx))
+       RGBL=RGBL-RGBmin
+       do i=1,this%ffn%layer%N
+          !transform weights into rgb coords from 0-255
+          write(222,*)this%nodeCoord(i,1:2),int(256*(this%ffn%W(i,nx-2:nx)-RGBmin)/RGBL)
+       end do
+       write(222,*)!new data block for every epoch
+    end do
+    !get rgb domain of ffn weights
+    RGBmin(1)=minval(this%ffn%W(:,nx-2))
+    RGBL(1)=maxval(this%ffn%W(:,nx-2))
+    RGBmin(2)=minval(this%ffn%W(:,nx-1))
+    RGBL(2)=maxval(this%ffn%W(:,nx-1))
+    RGBmin(3)=minval(this%ffn%W(:,nx))
+    RGBL(3)=maxval(this%ffn%W(:,nx))
+    RGBL=RGBL-RGBmin
+    do j=1,50 !dump 50 frames of final state
+       do i=1,this%ffn%layer%N
+          !transform weights into rgb coords from 0-255
+          write(222,*)this%nodeCoord(i,1:2),int(256*(this%ffn%W(i,nx-2:nx)-RGBmin)/RGBL)
+       end do
+       write(222,*)!new data block for every epoch
+    end do
+    !close SOM evolution output file
+    close(222)
+
+    !cleanup som memory
+    call kill(this)
+    call kill(sourcelayer)
+    !deallocate PCA eigenvector memory
+    if(allocated(PCAeigenvector))deallocate(PCAeigenvector)
+    if(allocated(PCAeigenvalue))deallocate(PCAeigenvalue)
+    !cleanup dataset mean and variance memory
+    if(allocated(datasetbar))deallocate(datasetbar)
+    if(allocated(datasetvar))deallocate(datasetvar)
+    !cleanup dataset memory
+    if(allocated(dataset))deallocate(dataset)
 
   end subroutine som_test
   !-----------------------------------------

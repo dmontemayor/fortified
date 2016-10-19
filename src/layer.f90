@@ -185,6 +185,10 @@ contains
        this%node(1:this%N)=softmax(this%input)
        if(present(derivative).and.derivative)&
             this%dnode=diag(dsoftmax(-this%input))
+    case ('cauchy')
+       this%node(1:this%N)=cauchy(this%input)
+       if(present(derivative).and.derivative)&
+            this%dnode=dcauchy(this%input)
     case default
        this%node(1:this%N)=this%input
        if(present(derivative).and.derivative)this%dnode=1.0_double
