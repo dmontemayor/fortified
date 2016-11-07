@@ -49,7 +49,8 @@ module math
        !,6659,6689,6701,6761,6779,6791,6827,6869&
        !,6947,6959,7127,7211,7307,7331,7349,7457/)
 
-  public::iden,trace,cnorm,fnorm,krondelta,diag
+  public::iden,cnorm,fnorm,krondelta,diag
+  public::trace,imtrace
   public::numerov,solvestate,HOwf
   public::Hpoly
 
@@ -697,6 +698,22 @@ contains
        iden(i,i)=1._double
     end do
   end function iden
+!---------------------------
+  !> \brief trace of imaginary part of a complex matrix
+  !! \param[in] A matrix
+  !!<
+  function imtrace(A)
+    complex(double),intent(in)::A(:,:)
+    real(double)::imtrace
+    integer(long)::i,N
+    N=size(A,1)
+
+    imtrace=0._double
+    do i=1,N
+       imtrace=imtrace+aimag(A(i,i))
+    end do
+  end function imtrace
+  
 !---------------------------
   !> \brief trace of a complex matrix
   !! \param[in] A matrix

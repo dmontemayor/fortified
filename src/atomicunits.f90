@@ -38,4 +38,5 @@ module atomicunits
   real(double),parameter::ps=fs*1_double*1E3                      !<picosecond
   real(double),parameter::invcm=4.5663352672_double*1E-6*Eh/hbar  !<wavenumber(1/cm)
 
+  
 end module atomicunits
