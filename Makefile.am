@@ -4,7 +4,7 @@ EXTRA_DIST = m4 data testing
 corefiles = src/type_kinds.f90 src/math.f90 src/rand.f90 src/testing.f90 src/functions.f90 src/progressbar.f90 src/filemanager.f90 src/string.f90 src/template.f90
 testfiles = src/coretests.f90
 
-auxfiles = src/MDutils.f90 src/atomicunits.f90 src/csv_io.f90
+auxfiles = src/MDutils.f90 src/atomicunits.f90 src/csv_io.f90 src/molreader.f90
 
 lapack =  lapack-3.6.1/libtmglib.a lapack-3.6.1/liblapack.a lapack-3.6.1/librefblas.a 
 
@@ -26,10 +26,11 @@ cann_LDADD = $(lapack)
 ######################################################
 ###### NONADMD Non-Adiabatic Molecular Dynamics ###### 	
 nonadmd_FCFLAGS =  -fopenmp -J src/
-elements = src/wf.f90 src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/fauxnon.f90 src/lapack.f
+elements = src/wf.f90 src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/fauxnon.f90 #src/lapack.f
 models= #src/metiu.f90 src/cukier.f90 
-engines= src/GQFPE.f90
+engines= #src/GQFPE.f90
 nonadmd_SOURCES = $(corefiles) $(auxfiles) $(elements) $(models) $(engines) src/nonadmd_driver.f90
+nonadmd_LDADD = $(lapack)
 
 #########################
 ###### TEST module ######

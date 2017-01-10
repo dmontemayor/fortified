@@ -30,9 +30,10 @@ AC_CONFIG_SRCDIR([src/ontologyparser.f90])
 # auxilary files
 AC_CONFIG_SRCDIR([src/MDutils.f90])
 AC_CONFIG_SRCDIR([src/atomicunits.f90])
-AC_CONFIG_SRCDIR([src/lapack.f])
+#AC_CONFIG_SRCDIR([src/lapack.f])
 AC_CONFIG_SRCDIR([src/csv_io.f90])
 AC_CONFIG_SRCDIR([lapack-3.6.1.tgz])
+AC_CONFIG_SRCDIR([src/molreader.f90])
 
 # Setup where configuration results go so we can #include them easily 
 AC_CONFIG_HEADERS([config.h])
@@ -44,8 +45,8 @@ AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 AC_CONFIG_FILES(Makefile)
 
 # Checks for programs.
-AC_PROG_F77
 AC_PROG_FC
+#AC_PROG_F77
 
 # make sure src and data directories are present in build directory
 AC_CONFIG_COMMANDS([create_user_srcdir],[mkdir ./src/])

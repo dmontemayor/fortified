@@ -58,6 +58,21 @@ module math
   public::spacefilling_index2coord,spacefilling_coord2index
   public::Hilbertcurve,Rowmajorcurve
 
+  !statistics
+  public::mean,variance,covariance,correlation,autocovariance,autocorrelation
+
+  !sorting
+  public::sort
+
+  interface sort
+     module procedure sort3D_real
+  end interface sort
+  
+  interface trace
+     module procedure trace_real
+     module procedure trace_complex
+  end interface trace
+  
   interface Hilbertcurve
      module procedure hilbertcurve_real
      module procedure hilbertcurve_complex
@@ -78,6 +93,95 @@ module math
   end interface solvestate
 
 contains
+  function sort3D_real(A)
+    real(double),intent(in)::A(:,:,:)
+    integer(long)::sort3D_real(size(A),3)
+    logical::mask(size(A,1),size(A,2),size(A,3))
+    integer(long)::curr,loc(3)
+    sort3D_real=0
+    mask=.true.
+    curr=0
+    do while(curr.LT.size(A))
+       curr=curr+1
+       loc=minloc(A,mask)
+       sort3D_real(curr,:)=loc
+       mask(loc(1),loc(2),loc(3))=.false.
+    end do
+  end function sort3D_real
+  !-----------------------
+  function mean(A)
+    real(double),intent(in)::A(:)
+    real(double)::mean,norm
+    norm=real(size(A),double)
+    mean=sum(A)/norm
+  end function mean
+  !----------------
+  function variance(A)
+    real(double),intent(in)::A(:)
+    real(double)::variance,norm
+    norm=real(size(A),double)
+    variance=sum(A**2)/norm-mean(A)**2
+  end function variance
+  !--------------------
+  function covariance(A,B)
+    real(double),intent(in)::A(:),B(:)
+    real(double)::covariance,comean,norm
+    if(size(A).NE.size(B))then
+       write(*,*)'covariance error: Array sizes are not the same size'
+       stop
+    end if
+    norm=real(size(A),double)
+    comean=mean(A)*mean(B)
+    covariance=sum(A*B)/norm-comean
+  end function covariance
+  !----------------------
+  function correlation(A,B)
+    real(double),intent(in)::A(:),B(:)
+    real(double)::correlation
+    correlation=covariance(A,B)/sqrt(variance(A)*variance(B))
+  end function correlation
+  !-----------------------
+  function autocovariance(A,inc)
+    real(double),intent(in)::A(:)
+    integer(long),intent(in)::inc
+    real(double)::B(size(A)-inc)
+    real(double)::autocovariance
+    integer(long)::N,i
+    N=size(A)-inc
+    if(N.LT.0)then
+       write(*,*)'autocovariance error: increment parameter cannot be greater than size of input array'
+       stop
+    end if
+    if(N.EQ.0)then
+       autocovariance=variance(A)
+    else
+       do i=1,N
+          B(i)=A(i+inc)
+       end do
+       autocovariance=covariance(A(1:N),B(1:N))
+    end if
+  end function autocovariance
+  !-----------------------
+  function autocorrelation(A,inc)
+    real(double),intent(in)::A(:)
+    integer(long),intent(in)::inc
+    real(double)::B(size(A)-inc)
+    real(double)::autocorrelation
+    integer(long)::N,i
+    N=size(A)-inc
+    if(N.LT.0)then
+       write(*,*)'autocorrelation error: increment parameter cannot be greater than size of input array'
+       stop
+    end if
+    if(N.EQ.0)then
+       autocorrelation=1.0_double
+    else
+       do i=1,N
+          B(i)=A(i+inc)
+       end do
+       autocorrelation=correlation(A(1:N),B(1:N))
+    end if
+  end function autocorrelation
   !---------------------------
   !> \brief Matrix coordinate from space filling curve coordinate
   !! \param[in] N leading dimension of NxM matrix
@@ -715,21 +819,37 @@ contains
   end function imtrace
   
 !---------------------------
-  !> \brief trace of a complex matrix
+  !> \brief trace of a real matrix
   !! \param[in] A matrix
   !!<
-  function trace(A)
-    complex(double),intent(in)::A(:,:)
-    real(double)::trace
+  function trace_real(A)
+    real(double),intent(in)::A(:,:)
+    real(double)::trace_real
     integer(long)::i,N
     N=size(A,1)
 
-    trace=0._double
+    trace_real=0._double
     do i=1,N
-       trace=trace+sqrt(real(A(i,i)*conjg(A(i,i))))
+       trace_real=trace_real+A(i,i)
     end do
-  end function trace
+  end function trace_real
 
+!---------------------------
+  !> \brief trace of a complex matrix
+  !! \param[in] A matrix
+  !!<
+  function trace_complex(A)
+    complex(double),intent(in)::A(:,:)
+    real(double)::trace_complex
+    integer(long)::i,N
+    N=size(A,1)
+
+    trace_complex=(0._double,0._double)
+    do i=1,N
+       trace_complex=trace_complex+sqrt(real(A(i,i)*conjg(A(i,i))))
+    end do
+  end function trace_complex
+!--------------------------------
   !> \brief Entrywise p-norm of a complex square matrix with p=1
   !! \param[in] A matrix
   !!<
