@@ -110,6 +110,7 @@ AC_CONFIG_SRCDIR([src/wf.f90])
 # nonadmd models
 AC_CONFIG_SRCDIR([src/metiu.f90])
 AC_CONFIG_SRCDIR([src/cukier.f90])
+AC_CONFIG_SRCDIR([src/doublewell.f90])
 
 # nonadmd engines
 AC_CONFIG_SRCDIR([src/GQFPE.f90])

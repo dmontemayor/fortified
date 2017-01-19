@@ -1,71 +1,78 @@
 !!!!!!!! silcrow ATTRIBUTE LIST !!!!!!!!
-!!! use silcrow wizard to pre-generate
-!!! attribute source, checks, and tests.
-!!! usage:
-!!!
-!§ ATTRIBUTE TYPE MEMORY RANK DEPENDENCIES
-!!!
-!!! '!§' identifies the silcrow directive 
-!!! 'ATTRIBUTE' is the attribute name
-!!! 'TYPE' can be any of the known type_kinds
-!!!     or classes.
-!!! 'MEMORY' can be 'static' or 'dynamic'.
-!!! 'RANK' is an integer number of dimensions
-!!! 'DEPENDENCIES' is a list parameters of
-!!!     length RANK ued to define the size.
-!!!     Can be an integer for static memory
-!!!     or another static attribute of type
-!!!     integer for dynamic memory.
+!§ mass double static 0
+!§ E_b double static 0
+!§ E_p double static 0
+!§ omega_r double static 0
+!§ omega_b double static 0
+!§ omega_c double static 0
+!left off here need to make silcrow object factory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !>\brief
-!! template class
+!! doublewell class
 !!\details
-!! DO NOT OVERWRITE THIS FILE. 
-!! Make a copy and title it \a myclass.f90
-!! where 'myclass' is your choice one-word title for your new class.
-!! Then replace instances of the string 'template' with the same
-!! one-word title 'myclass' you chose before you begin building your class.
+!! A 1D asymmetric double harmonic well potential with inverted
+!! harmonic barrier.
 !!
-!! Use this template to help you start building a new object.
-!! Do not remove the \a make, \a kill, \a status, \a backup, \a update,
-!! \a reset, \a check, and \a test methods.
-!! These methods must be present for the class to integrate properly.
-!! Augment these methods to ensure the new object behaves properly.
-!! These methods will operate on the object attributes which need to be
-!! defined in the template type.
-!! Commented examples are provided to help build the object class.
+!! The barrier potential (V_b) is centered at the origin q=0
+!! with frequency omega_b and energy shift= Eb.
+!! The reactant potenial (V_r) is centered at q=q_r<0
+!! with frequency omega_r and no energy shift.
+!! The product potenial (V_p) is centered at q=q_p>0
+!! with frequency omega_p and with energy shift= Ep.
 !!
-!! A good start is to compose a description of the class and enter it
-!! in the description method. Throuought development ensure this
-!! description acurately represents the object as it will be the primary
-!! resource used by others to understand the object and how to use it.
+!! The potentials are written
+!! V_r(q)= 1/2 * mass * omega_r^2 * (q-q_r)^2
+!! V_b(q)=-1/2 * mass * omega_b^2 * q^2 + Eb
+!! V_p(q)= 1/2 * mass * omega_r^2 * (q-q_p)^2 +Ep
 !!
-!! Development should be test driven. Motivated by the object description,
-!! create unit tests in the test method that challenge the other object
-!! methods to behave properly. Write the tests first, ensure they fail, 
-!! then modify the class to correct test failure. Don't modify or remove
-!! previous tests.
-!! 
-!! The check method does not challenge the object to behave properly,
-!! rather it mearly checks that all of the objects attributes are within
-!! acceptable parameters. A unit test may ensure the check function returns
-!! an error after purposely assigning a bad attribute value but the check
-!! fucntion itself is not a unit test. Write checks after the unit test. 
+!! The barrier potential seamlessly connects to the reactant potenial
+!! at the point q_{r,b} and to the product potential at the point
+!! q_{p,b} such that
+!! V_r(q_{r,b}) = V_b(q_{r,b})
+!! and
+!! V_p(q_{p,b}) = V_b(q_{p,b})
+!!
+!! In addition,
+!! The double well potential is differentiable at all points so
+!! dV_r(q_{r,b})/dq = dV_b(q_{r,b})/dq
+!! and
+!! dV_p(q_{p,b})/dq = dV_b(q_{p,b})/dq
+!!
+!! which yields:
+!! q_{r,b} = q_r * omega_r^2 / (omega_r^2 + omega_b^2)
+!! and
+!! q_{p,b} = q_p * omega_p^2 / (omega_p^2 + omega_b^2)
+!! for the intersection points
+!! with
+!! q_r = sqrt(2/mass * Eb * (omega_r^2 + omega_b^2)) / (omega_r * omega_b)
+!! and
+!! q_p = sqrt(2/mass * (Eb-Ep) * (omega_p^2 + omega_b^2)) / (omega_p * omega_b)
+!! for the well centers
+!!
+!! System can thus be described by the 5 parameters:
+!! omega_r, omega_b, omega_p, Eb, and Ep
 !<------------------------------------------------------------------------
-module template_class
+module doublewell_class
   use type_kinds
+  use atomicunits
   implicit none
   private
 
-  public::template, template_test
+  public::doublewell, doublewell_test
   public::describe, check, make, kill, backup, update, reset, status
 
-  type template
+  type doublewell
      logical::initialized=.false.
-     character(len=label)::name='template'
+     character(len=label)::name='doublewell'
      
-     !***************      Enter template attributes here     ***************!
-
+     !***************      Enter doublewell attributes here     ***************!
+     !integer(long),private::npt    !dof discretization
+     real(double),private::mass    !mass of reaction
+     real(double),private::E_b     !barrier potential energy height
+     real(double),private::E_p     !product side potential energy difference
+     real(double),private::omega_r !reactant side potential energy frequency
+     real(double),private::omega_b !barrier potential energy frequency
+     real(double),private::omega_p !product side potential energy frequency
 
      !***********************************************************************!
      !=======================================================================!
@@ -78,71 +85,97 @@ module template_class
      ! real(double),dimension(:,:),pointer::matrix     !a real matrix        !
      ! complex(double),dimension(:,:),pointer::Zmatrix !a complex matrix     !
      !***********************************************************************!
-  end type template
+  end type doublewell
 
-  !> Creates the template object.
+  !> Creates the doublewell object.
   interface make
-     module procedure template_init
+     module procedure doublewell_init
   end interface
 
-  !> Destroys the template object.
+  !> Destroys the doublewell object.
   interface kill
-     module procedure template_kill
+     module procedure doublewell_kill
   end interface
 
-  !> Returns current state of the template object.
+  !> Returns current state of the doublewell object.
   interface status
-     module procedure template_status
+     module procedure doublewell_status
   end interface
 
-  !> Returns a plain text description of the template object.
+  !> Returns a plain text description of the doublewell object.
   interface describe
-     module procedure template_describe
+     module procedure doublewell_describe
   end interface
   
-  !> Returns the current state of the template object.
+  !> Returns the current state of the doublewell object.
   interface backup
-     module procedure template_backup
+     module procedure doublewell_backup
   end interface
 
-  !> Recaluclates the template object.
+  !> Recaluclates the doublewell object.
   interface update
-     module procedure template_update
+     module procedure doublewell_update
   end interface
 
-  !> Reinitializes the template object.
+  !> Reinitializes the doublewell object.
   interface reset
-     module procedure template_reset
+     module procedure doublewell_reset
   end interface
 
-  !> Checks the template object.
+  !> Checks the doublewell object.
   interface check
-     module procedure template_check
+     module procedure doublewell_check
   end interface
 
 contains
+  !> \brief Get function for reactant side minimum
+  real(double) function get_qr(this)
+    type(doublewell),intent(in)::this
+    get_qr=-sqrt(2.0_double*this%E_b*(this%omega_r**2+this%omega_b**2)/this%mass)&
+         /(this%omega_r*this%omega_b)
+  end function get_qr
+  !====================  
+  !> \brief Get function for product side minimum
+  real(double) function get_qp(this)
+    type(doublewell),intent(in)::this
+    get_qp=sqrt(2.0_double*(this%E_b-this%E_p)*(this%omega_p**2+this%omega_b**2)/this%mass)&
+         /(this%omega_p*this%omega_b)
+  end function get_qp
+  !====================  
+  !> \brief Get function for reactant-barrier intersection
+  real(double) function get_qrb(this)
+    type(doublewell),intent(in)::this
+    get_qrb=get_qr(this)*this%omega_r**2/(this%omega_r**2+this%omega_b**2)
+  end function get_qrb
+  !====================  
+  !> \brief Get function for product-barrier intersection
+  real(double) function get_qpb(this)
+    type(doublewell),intent(in)::this
+    get_qpb=get_qp(this)*this%omega_p**2/(this%omega_p**2+this%omega_b**2)
+  end function get_qpb
+  !====================  
   !======================================================================
-  !> \brief Retruns a description of template as a string.
-  !> \param[in] THIS is the template object.
+  !> \brief Retruns a description of doublewell as a string.
+  !> \param[in] THIS is the doublewell object.
   !======================================================================
-  character(len=comment) function template_describe(this)
-    type(template),intent(in)::this
+  character(len=comment) function doublewell_describe(this)
+    type(doublewell),intent(in)::this
     character(len=5)::FMT='(A)'
 
-    write(template_describe,FMT)'No description for template has been provided.'
+    write(doublewell_describe,FMT)'No description for doublewell has been provided.'
    
-  end function template_describe
+  end function doublewell_describe
 
   !======================================================================
-  !> \brief Creates and initializes template.
-  !! \param THIS is the template object.
+  !> \brief Creates and initializes doublewell.
+  !! \param THIS is the doublewell object.
   !! \param[in] FILE is an optional string containing the name of a
-  !! previously backuped template file.
+  !! previously backuped doublewell file.
   !=====================================================================
-  subroutine template_init(this,file)
+  subroutine doublewell_init(this,file)
     use filemanager
     use testing_class
-    type(template),intent(inout)::this
+    type(doublewell),intent(inout)::this
     character*(*),intent(in),optional::file
     integer(long)::unit
     logical::fileisopen=.false.
@@ -162,9 +195,9 @@ contains
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
        
-       !check if file is of type template
+       !check if file is of type doublewell
        read(unit,*)header
-       call assert(trim(header).EQ.this%name,msg='template_init: bad input file header in file'//file)
+       call assert(trim(header).EQ.this%name,msg='doublewell_init: bad input file header in file'//file)
        
        !read static parameters
        !***             example            ***
@@ -194,6 +227,13 @@ contains
        this%initialized=.true.
     else
        !Set static parameters to default settings
+       !this%npt=500
+       this%mass=mp
+       this%E_b=2000_double*invcm
+       this%E_p=0_double*invcm
+       this%omega_r=1200_double*invcm
+       this%omega_b=1200_double*invcm
+       this%omega_p=1200_double*invcm
        !***       example      ***
        !***set scalar parameter***
        !this%NNN=123
@@ -207,26 +247,26 @@ contains
     !finished making now update object
     call update(this)
 
-  end subroutine template_init
+  end subroutine doublewell_init
 
   !======================================================================
-  !> \brief Destroys the template object.
-  !> \param THIS is the template object to be destroyed.
+  !> \brief Destroys the doublewell object.
+  !> \param THIS is the doublewell object to be destroyed.
   !> \remarks kill is simply the reset method passed with a null flag 
   !====================================================================
-  subroutine template_kill(this)
-    type(template),intent(inout)::this
+  subroutine doublewell_kill(this)
+    type(doublewell),intent(inout)::this
  
     call reset(this,0)
 
-  end subroutine template_kill
+  end subroutine doublewell_kill
 
   !======================================================================
-  !> \brief Computes the current state of template object.
-  !> \param THIS is the template  object to be updated.
+  !> \brief Computes the current state of doublewell object.
+  !> \param THIS is the doublewell  object to be updated.
   !======================================================================
-  subroutine template_update(this)
-    type(template),intent(inout)::this
+  subroutine doublewell_update(this)
+    type(doublewell),intent(inout)::this
 
     !Recompute calculated variables that might have evolved
 
@@ -238,11 +278,11 @@ contains
     ! end do
     !**************************************************************************
 
-  end subroutine template_update
+  end subroutine doublewell_update
 
   !======================================================================
-  !> \brief Re-initiallizes the template object.
-  !> \param THIS is the template  object to be re-initialized.
+  !> \brief Re-initiallizes the doublewell object.
+  !> \param THIS is the doublewell  object to be re-initialized.
   !> \param STATE is an optional integer:
   !>        when 0, will create a null state by deallocating all dynamic
   !>        memory and returning the object to an un-initiallized state;
@@ -250,8 +290,8 @@ contains
   !>        when not present, object will reset based on current scalar
   !>        parameters.
   !======================================================================
-  subroutine template_reset(this,state)
-    type(template),intent(inout)::this
+  subroutine doublewell_reset(this,state)
+    type(doublewell),intent(inout)::this
     integer(long),intent(in),optional::STATE
     
     if(present(state))then
@@ -267,6 +307,12 @@ contains
           !***********************
           
           !set all scalar parameters to error values
+          !this%mass=-1.0_double
+          !this%E_b=huge(1_double)
+          !this%E_p=huge(1_double)
+          !this%omega_r=-1.0_double
+          !this%omega_b=-1.0_double
+          !this%omega_p=-1.0_double
           !**** example **********
           !this%nstate=-1
           !***********************
@@ -327,18 +373,18 @@ contains
     end if
     
 
-  end subroutine template_reset
+  end subroutine doublewell_reset
 
   !======================================================================
-  !> \brief Backups the current state of the template object to file.
-  !> \param[in] THIS is the template  object to be updated.
+  !> \brief Backups the current state of the doublewell object to file.
+  !> \param[in] THIS is the doublewell  object to be updated.
   !> \param[in] FILE is a string containing the location of the backup file.
   !======================================================================
-  subroutine template_backup(this,file)
+  subroutine doublewell_backup(this,file)
     use filemanager
     use string
     use testing_class
-    type(template),intent(in)::this
+    type(doublewell),intent(in)::this
     character*(*),intent(in)::file
     integer(short)::unit
     logical::fileisopen
@@ -349,11 +395,11 @@ contains
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
     
-    !check template object
-    call assert(check(this).EQ.0,msg='template object does not pass check.')
+    !check doublewell object
+    call assert(check(this).EQ.0,msg='doublewell object does not pass check.')
 
     !always write the data type on the first line
-    write(unit,*)'template'
+    write(unit,*)'doublewell'
 
     !******      Backup below all the derived type's attributes       ****
     !******         in the order the MAKE method reads them           ****
@@ -380,33 +426,33 @@ contains
 
     !finished writing all attributes - now close backup file
     close(unit)  
-  end subroutine template_backup
+  end subroutine doublewell_backup
   
   !======================================================================
-  !> \brief Retrun the current state of template as a string.
-  !> \param[in] THIS is the template object.
+  !> \brief Retrun the current state of doublewell as a string.
+  !> \param[in] THIS is the doublewell object.
   !> \param[in] MSG is an optional string message to annotate the status.
   !======================================================================
-  character(len=line) function template_status(this,msg)
-    type(template),intent(in)::this
+  character(len=line) function doublewell_status(this,msg)
+    type(doublewell),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
     
     !Edit the status prompt to suit your needs
-    write(template_status,FMT)'template status is currently not available'
+    write(doublewell_status,FMT)'doublewell status is currently not available'
     
-  end function template_status
+  end function doublewell_status
 
  !======================================================================
-  !> \brief Checks the template object.
-  !> \param[in] THIS is the template object to be checked.
+  !> \brief Checks the doublewell object.
+  !> \param[in] THIS is the doublewell object to be checked.
   !> \return 0 if all checks pass or exit at first failed check and returm non zero.
   !> \remark Will exit after first failed check.
   !======================================================================
-  integer(short)function template_check(this)
+  integer(short)function doublewell_check(this)
     use testing_class
-    type(template),intent(in)::this
-
+    type(doublewell),intent(in)::this
+    
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -429,84 +475,96 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     !initiate with no problems found 
-    template_check=0
+    doublewell_check=0
 
     !check that object is initialized
     call assert(this%initialized&
-         ,msg='template_check: template object not initialized.'&
-         ,iostat=template_check)
-    if(template_check.NE.0)return
+         ,msg='doublewell_check: doublewell object not initialized.'&
+         ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
 
     !check that object has correct name
-    call assert(this%name.EQ.'template'&
-         ,msg='template_check: template name is not set.'&
-         ,iostat=template_check)
-    if(template_check.NE.0)return
+    call assert(this%name.EQ.'doublewell'&
+         ,msg='doublewell_check: doublewell name is not set.'&
+         ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
 
     !Check all attributes are within acceptable values
 
-
     !**********   Example - check an object attribute 'that'  *********
     !call assert(check(this%that).EQ.0&
-    !     ,msg='template_check: that sub-object failed check'&
-    !     ,iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: that sub-object failed check'&
+    !     ,iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
     
     !***   Example - check an integer attribute 'ndim' is well behaved   ***
     !call assert(check(this%ndim).EQ.0&
-    !     ,msg='template_check: ndim failed check',iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: ndim failed check',iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
  
     !*** Example - add a constrain that says 'ndim' can only be positive ***
     !call assert(this%ndim.GT.0&
-    !     ,msg='template_check: ndim is not positive',iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: ndim is not positive',iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
 
     !***  Example - check a real valued attribute 'var' is well behaved  ***
     !call assert(check(this%var).EQ.0&
-    !     ,msg='template_check: var failed check',iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: var failed check',iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
 
     !***  Example - add a constrain that says 'var' can not be zero     ***
     !call assert(abs(this%var).GT.epsilon(this%var)&
-    !     ,msg='template_check: var is tiny',iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: var is tiny',iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
 
     !***  Example - check a real valued pointer attribute 'matrix'       ***
     !***            is well behaved                                      ***
     !call assert(check(this%matrix).EQ.0&
-    !     ,msg='template_check: matrix failed check',iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: matrix failed check',iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
 
     !********* Example - check an NxM matrix has right dimensions **********
     !call assert(size(this%matrix).EQ.N*M&
-    !     ,msg='template_check: number of matrix elements not = N*M.'&
-    !     ,iostat=template_check)
-    !if(template_check.NE.0)return
+    !     ,msg='doublewell_check: number of matrix elements not = N*M.'&
+    !     ,iostat=doublewell_check)
+    !if(doublewell_check.NE.0)return
     !***********************************************************************
 
-  end function template_check
+
+!!$    !well behaved real attribute mass
+!!$    
+!!$    call assert(check(this%ndim).EQ.0&
+!!$         ,msg='doublewell_check: ndim failed check',iostat=doublewell_check)
+!!$    if(doublewell_check.NE.0)return
+
+
+
+
+
+
+    
+  end function doublewell_check
   !-----------------------------------------
   !======================================================================
-  !> \brief Tests the template methods.
-  !> \param[in] this is the template object whose methods will be excercised.
+  !> \brief Tests the doublewell methods.
+  !> \param[in] this is the doublewell object whose methods will be excercised.
   !> \return Nothing if all tests pass or 1 and a stop for the first failed test.
   !> \remark Will stop after first failed check.
   !======================================================================
-  subroutine template_test
+  subroutine doublewell_test
     use testing_class
     use filemanager
-    type(template)::this
+    type(doublewell)::this
     character(len=label)::string
     integer(long)::unit
     
-    !verify template is compatible with current version
+    !verify doublewell is compatible with current version
     include 'verification'
 
     !======Unit testing=====
@@ -514,11 +572,59 @@ contains
     ! the developer and not by testers as it requires
     ! detailed knowledge of the internal program design.
 
-    
+!!$    write(*,*)'test kill doublewell breaks static parameter mass.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%mass).NE.0,&
+!!$         msg='kill doublewell does not break static parameter mass')
+!!$
+!!$    write(*,*)'test kill doublewell breaks static parameter E_b.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%E_b).NE.0,&
+!!$         msg='kill doublewell does not break static parameter E_b')
+!!$
+!!$    write(*,*)'test kill doublewell breaks static parameter E_p.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%E_p).NE.0,&
+!!$         msg='kill doublewell does not break static parameter E_p')
+!!$
+!!$    write(*,*)'test kill doublewell breaks static parameter omega_r.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%omega_r).NE.0,&
+!!$         msg='kill doublewell does not break static parameter omega_r')
+!!$
+!!$    write(*,*)'test kill doublewell breaks static parameter omega_b.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%omega_b).NE.0,&
+!!$         msg='kill doublewell does not break static parameter omega_b')
+!!$
+!!$    write(*,*)'test kill doublewell breaks static parameter omega_p.....'
+!!$    call make(this) !make doublewell
+!!$    call kill(this)
+!!$    call assert(check(this%omega_p).NE.0,&
+!!$         msg='kill doublewell does not break static parameter omega_p')
+
+        
     !======Functional testing======
     ! This type of testing igores the internal parts
     ! and focuses on the output as per requirements.
 
+    write(*,*)'test default potential is produced.....'
+    ! mass=mp, Eb=2000*invcm, Ep=0, and w0=1200*invcm where omega_r=omega_b=omega_p=w0
+    ! resulting in -qr=qp=0.8140 bohr and -qrb=qpb=qp/2=0.4070 bohr
+    call make(this)
+    call assert(get_qr(this),-0.8140_double,.0001_double&
+         ,msg='default reactant side minimum is not -0.8140 bohr')
+    call assert(get_qp(this),0.8140_double,.0001_double&
+         ,msg='default reactant side minimum is not 0.8140 bohr')
+    call assert(get_qrb(this),get_qr(this)/2_double,.0001_double&
+         ,msg='default reactant-barrier intersection is not -0.4070 bohr')
+    call assert(get_qpb(this),get_qp(this)/2_double,.0001_double&
+         ,msg='default product-barrier intersection is not 0.4070 bohr')
 
     !=====End-to-end testing=====
     ! Tests that mimics real-world use with physically
@@ -530,6 +636,8 @@ contains
     ! Examples include calculation speed as a function
     ! of parallel processors used, or as a funtion of
     ! system size.
+    
+
 
 
     !================== consider the following tests for =====================
@@ -537,11 +645,11 @@ contains
 
     !==================       static parameters             ==================
 
-    !!write(*,*)'test kill template breaks static parameter NNN.....'
-    !!call make(this) !make template
+    !!write(*,*)'test kill doublewell breaks static parameter NNN.....'
+    !!call make(this) !make doublewell
     !!call kill(this)
     !!call assert(check(this%NNN).NE.0,&
-    !!     msg='kill template does not break static parameter NNN')
+    !!     msg='kill doublewell does not break static parameter NNN')
     !! check method should be extended to optionally check individual
     !! attributes.
     !!Usage: check(this,element='NNN')
@@ -560,104 +668,104 @@ contains
     !!    end if
 
     !write(*,*)'test static parameter NNN is stored properly in backup file'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !this%NNN=MMM    !manually set static parameter to non-default value
-    !call system('rm -f template.tmpfile*') !remove any previous backup file(s)
-    !call backup(this,file='template.tmpfile') !create backup file
-    !call kill(this) !destroy template
-    !call make(this,file='template.tmpfile') !make new template from backup file
-    !call system('rm -f template.tmpfile*') !remove backup file(s)
+    !call system('rm -f doublewell.tmpfile*') !remove any previous backup file(s)
+    !call backup(this,file='doublewell.tmpfile') !create backup file
+    !call kill(this) !destroy doublewell
+    !call make(this,file='doublewell.tmpfile') !make new doublewell from backup file
+    !call system('rm -f doublewell.tmpfile*') !remove backup file(s)
     !!assert non default parameter is conserved
     !call assert(this%NNN.EQ.MMM,&
-    !     msg='template static parameter NNN is not stored properly')
-    !call kill(this)    !destroy template to clean up memory
+    !     msg='doublewell static parameter NNN is not stored properly')
+    !call kill(this)    !destroy doublewell to clean up memory
 
     !write(*,*)'test make sets correct default value for static parameter NNN'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !call assert(this%NNN.EQ.MMM,&
-    !     msg='template default static parameter NNN is not MMM')
+    !     msg='doublewell default static parameter NNN is not MMM')
     !call kill(this)
 
-    !write(*,*)'test edge case for static parameter NNN breaks template'
-    !call make(this) !make template
+    !write(*,*)'test edge case for static parameter NNN breaks doublewell'
+    !call make(this) !make doublewell
     !this%NNN=MMM
     !call assert(check(this).NE.0,&
     !     msg='edge case value MMM for static parameter NNN &
-    !     &does not break template')
+    !     &does not break doublewell')
     !call kill(this)
 
     !==================    dynamic arrays and pointers      ==================
 
     !write(*,*)'test make allocates memory for dyanamic pointer array PPP'
     !call make(this)
-    !call assert(associated(this%PPP),msg='template dynamic pointer array &
+    !call assert(associated(this%PPP),msg='doublewell dynamic pointer array &
     !     &PPP remains associated after killed.')
     !call kill(this)
 
     !write(*,*)'test kill deallocates memory for dynamic pointer array PPP'
     !call make(this)
     !call kill(this)
-    !call assert(.not.associated(this%PPP),msg='template dynamic pointer array &
+    !call assert(.not.associated(this%PPP),msg='doublewell dynamic pointer array &
     !     &PPP remains associated after killed.')
 
     !write(*,*)'test dynamic pointer array PPP is saved properly in backup file'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !this%PPP=YYY    !manually set dynamic pointer array to non-default value
-    !call system('rm -f template.tmpfile*') !remove any previous backup file(s)
-    !call backup(this,file='template.tmpfile') !create backup file
-    !call kill(this) !destroy template
-    !call make(this,file='template.tmpfile') !make new template from backup file
-    !call system('rm -f template.tmpfile*') !remove backup file(s)
+    !call system('rm -f doublewell.tmpfile*') !remove any previous backup file(s)
+    !call backup(this,file='doublewell.tmpfile') !create backup file
+    !call kill(this) !destroy doublewell
+    !call make(this,file='doublewell.tmpfile') !make new doublewell from backup file
+    !call system('rm -f doublewell.tmpfile*') !remove backup file(s)
     !!assert non default parameter is conserved
     !call assert(all(this%PPP.EQ.YYY),&
-    !     msg='template dynamic pointer array PPP is not stored properly')
-    !call kill(this)    !destroy template to clean up memory
+    !     msg='doublewell dynamic pointer array PPP is not stored properly')
+    !call kill(this)    !destroy doublewell to clean up memory
 
     !write(*,*)'test make allocates dynamic pointer array PPP of default size'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !!assert dynamic pointer array has proper size for all dimensions
     !call assert(size(this%PPP,J).EQ.N),&
-    !     msg='template dynamic pointer array PPP is not of size N for &
+    !     msg='doublewell dynamic pointer array PPP is not of size N for &
     !     &dimension J')
     !call assert(size(this%PPP,I).EQ.N),&
-    !     msg='template dynamic pointer array PPP is not of size N for &
+    !     msg='doublewell dynamic pointer array PPP is not of size N for &
     !     &dimension I')
-    !call kill(this)    !destroy template to clean up memory
+    !call kill(this)    !destroy doublewell to clean up memory
     
     !write(*,*)'test dynamic pointer array PPP can be resized by adjusting &
     !     & static parameter NNN then reseting with state=1'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !this%NNN=MMM !adjust static parameter NNN to non-default value
-    !call reset(this,state=1) !reset template to reallocate dynamic memory
+    !call reset(this,state=1) !reset doublewell to reallocate dynamic memory
     !!assert dynamic pointer array size has changed properly
     !call assert(size(this%PPP,J).EQ.MMM),&
-    !     msg='template dynamic pointer array PPP did not change size upon &
+    !     msg='doublewell dynamic pointer array PPP did not change size upon &
     !     &reset with state=1')
-    !call kill(this)    !destroy template to clean up memory
+    !call kill(this)    !destroy doublewell to clean up memory
 
-    !write(*,*)'test edge case for dynamic pointer array PPP breaks template'
-    !call make(this) !make template
+    !write(*,*)'test edge case for dynamic pointer array PPP breaks doublewell'
+    !call make(this) !make doublewell
     !this%PPP=YYY !set edge case value
-    !assert edge case value breaks template
+    !assert edge case value breaks doublewell
     !call assert(check(this).NE.0,&
     !     msg='edge case value YYY for dynamic pointer array PPP &
-    !     &does not break template')
-    !call kill(this)    !destroy template to clean up memory
+    !     &does not break doublewell')
+    !call kill(this)    !destroy doublewell to clean up memory
 
     !==================        calculated variables         ==================
 
     !write(*,*)'test make sets default value for calculated variable XXX'
-    !call make(this) !make template
+    !call make(this) !make doublewell
     !call assert(this%XXX.EQ.YYY,&
-    !     msg='template default calculated variable XXX is not YYY')
+    !     msg='doublewell default calculated variable XXX is not YYY')
     !call kill(this)
 
-    !write(*,*)'test edge case for calculated variable XXX breaks template'
-    !call make(this) !make template
+    !write(*,*)'test edge case for calculated variable XXX breaks doublewell'
+    !call make(this) !make doublewell
     !this%XXX=YYY
     !call assert(check(this).NE.0,&
     !     msg='edge case value YYY for calculated variable XXX &
-    !     &does not break template')
+    !     &does not break doublewell')
     !call kill(this)
     !========================================================================
 
@@ -665,9 +773,9 @@ contains
 
 
 
-    write(*,*)'ALL template TESTS PASSED!'
-  end subroutine template_test
+    write(*,*)'ALL doublewell TESTS PASSED!'
+  end subroutine doublewell_test
   !-----------------------------------------
 
-end module template_class
+end module doublewell_class
 

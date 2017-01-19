@@ -23,11 +23,12 @@ cann_FCFLAGS =  -fopenmp -J src/
 cannfiles = src/layer.f90 src/bpg.f90 src/ffn.f90 src/som.f90 src/device.f90
 cann_SOURCES = $(corefiles) $(auxfiles) $(cannfiles) src/cann_driver.f90
 cann_LDADD = $(lapack)
+
 ######################################################
 ###### NONADMD Non-Adiabatic Molecular Dynamics ###### 	
 nonadmd_FCFLAGS =  -fopenmp -J src/
 elements = src/wf.f90 src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/fauxnon.f90 #src/lapack.f
-models= #src/metiu.f90 src/cukier.f90 
+models= src/doublewell.f90 #src/metiu.f90 src/cukier.f90 
 engines= #src/GQFPE.f90
 nonadmd_SOURCES = $(corefiles) $(auxfiles) $(elements) $(models) $(engines) src/nonadmd_driver.f90
 nonadmd_LDADD = $(lapack)
