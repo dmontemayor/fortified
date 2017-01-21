@@ -7,7 +7,7 @@
 !! The system consists of one proton and one electron allowed to move in 1D between two points D and A representing a Donor and Acceptor sites respectively. Also present is a solvent represented as a boson bath with known spectral density.
 !!
 !! System  variables:
-!! x      - the proton position 
+!! x      - the proton position
 !! V(x)   - electronic coupling matrix (diabatic representation)
 !!
 !! System parameters:
@@ -33,7 +33,7 @@ module cukier_class
   type cukier
      logical::initialized=.false.
      character(len=label)::name='cukier'
-     
+
      !***************      Enter cukier attributes here     ***************!
      type(wavelet),private::proton !quantum mechanical proton
      integer(long)::npt      !proton dof discretization
@@ -41,7 +41,7 @@ module cukier_class
      real(double),dimension(:),pointer::adiabat !adiabatic state energies
      real(double)::xmin,xmax !proton dof boundaries
 
-     real(double)::rate
+     !real(double)::rate
      real(double)::mass
 
      !type(wavelet),private::bath
@@ -79,7 +79,7 @@ module cukier_class
   interface describe
      module procedure cukier_describe
   end interface
-  
+
   !> Returns the current state of the cukier object.
   interface backup
      module procedure cukier_backup
@@ -110,7 +110,7 @@ contains
     character(len=5)::FMT='(A)'
 
     write(cukier_describe,FMT)'A proton coupled electron transfer model system as described in Cukier, JPC 98, 2377 (1994).'
-   
+
   end function cukier_describe
 
   !======================================================================
@@ -134,20 +134,20 @@ contains
     !call make(this%object)
     !************************
     call make(this%proton)
-    
+
     !check input file
-    if(present(file))then 
-       
+    if(present(file))then
+
        !open input file if not open and get unit number
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-       
+
        !check if file is of type cukier
        read(unit,*)header
        call assert(trim(header).EQ.this%name&
             ,msg='cukier_init: bad input file header in file'//file)
-              
+
        !READ static parameters
        !***          example            ***
        !***read scalar parameter from file***
@@ -167,7 +167,7 @@ contains
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%XXX-1)
        !************************
-    
+
        !READ sub-objects
        !***      example     ***
        !read(unit,*)infile
@@ -181,7 +181,7 @@ contains
 
        !declare initialization complete
        this%initialized=.true.
-       
+
     else
        !Set static parameters to default settings
        !***       example      ***
@@ -192,7 +192,7 @@ contains
        this%nstate=2
        this%xmin=-1.2_double*a0
        this%xmax=1.2_double*a0
-       
+
        !Use reset to make a default object
        call reset(this,state=1)
     end if
@@ -210,7 +210,7 @@ contains
   !====================================================================
   subroutine cukier_kill(this)
     type(cukier),intent(inout)::this
- 
+
     call reset(this,state=0)
 
   end subroutine cukier_kill
@@ -227,10 +227,10 @@ contains
     real(double),parameter::gamma=1.0!ion-electron interaction decay distance
     real(double),parameter::mass=mp  !mobile ion mass (H+)
     real(double),parameter::Eb=2000*invcm !double well barrier height
-    real(double),parameter::w0=1200*invcm !well frequency in harmonic approx 
-    real(double),parameter::D=Eb/(hbar*w0)!Dimensionless barrier height 
+    real(double),parameter::w0=1200*invcm !well frequency in harmonic approx
+    real(double),parameter::D=Eb/(hbar*w0)!Dimensionless barrier height
     real(double),parameter::a=sqrt(hbar/(mass*w0))!spring cutoff distance
-    
+
 
     real(double)::V(0:this%npt-1)                   !proton potential
     real(double)::psi(0:this%nstate-1,0:this%npt-1) !proton wf
@@ -247,7 +247,7 @@ contains
        V(i)=y*(1-y/(4*D))   !potential energy
     end do
     V=Eb-(hbar*w0)*V
-    
+
     !initiate square wavefunction
     psi=1.0_double
 
@@ -262,10 +262,10 @@ contains
 
     !!normalize wavefunctions
     !normalize electron wavefunction
-    this%proton%wf=psi(0,:)/sqrt(sum(psi(0,:)**2))
- 
+    this%proton%wf(:,0)=psi(0,:)/sqrt(sum(psi(0,:)**2))
+
     !***************************      Example     *****************************
-    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
+    !** attribute 'var' is always equall to the trace of the denisity matrix **
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
@@ -292,15 +292,17 @@ contains
     integer(long),intent(in),optional::STATE
     integer(long)::i
     real(double)::dx
-    
+
     if(present(state))then
+      !un-initialize cukier object until properly reset
+      this%initialized=.false.
        if(state.EQ.0)then
           !nullify all pointers
           !******        Example - cleanup pointer attribute 'PPP'       ****
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
           if(associated(this%adiabat))nullify(this%adiabat)
-          
+
           !kill all objects
           !**** example **********
           !call kill(this%object)
@@ -313,62 +315,62 @@ contains
           this%xmin=huge(this%xmin)
           this%xmax=huge(this%xmax)
 
-          !un-initialized cukier object
-          this%initialized=.false.
        else
+         if(checkparam(this).EQ.0) then
 
-          !allocate dynamic memory
-          !***  Example - cleanup pointer attribute 'PPP'     ***
-          !***            then reallocate memory              ***
-          !if(associated(this%PPP))nullify(this%PPP)
-          !allocate(this%PPP(0:this%npt-1))
-          !******************************************************
-          if(associated(this%adiabat))nullify(this%adiabat)
-          allocate(this%adiabat(0:this%nstate-1))
+           !reallocate dynamic memory
+           !***  Example - cleanup pointer attribute 'PPP'     ***
+           !***            then reallocate memory              ***
+           !if(associated(this%PPP))nullify(this%PPP)
+           !allocate(this%PPP(0:this%npt-1))
+           !******************************************************
+           if(associated(this%adiabat))nullify(this%adiabat)
+           allocate(this%adiabat(0:this%nstate-1))
 
-          !Set default dynamic memory values
-          !***  Example - set values in pointer 'PPP' to zero ***
-          !this%PPP(:)=0.0_double
-          !******************************************************
-                    
-          !overwrite sub-object default static parameters
-          !***       example      ***
-          !***set object static parameter***
-          !this%object%XXX=123
-          !**************************
-          this%proton%npt=this%npt
+           !Set default dynamic memory values
+           !***  Example - set values in pointer 'PPP' to zero ***
+           !this%PPP(:)=0.0_double
+           !******************************************************
 
-          !reset all sub objects to correct any memory issues
-          !***      example     ***
-          !call reset(this%object,state=1)
-          !************************
-          call reset(this%proton,state=1)
-          
-          !overwrite sub-object default dynamic parameters
-          !***       example      ***
-          !***set object pointer array values***
-          !this%object%PPP(:)=XXX
-          !**************************
-          !define proton grid
-          !dx=0.018*angstrom
-          dx=(this%xmax-this%xmin)/real(this%npt,double)
-          do i=0,this%npt-1
+           !overwrite sub-object default static parameters
+           !***       example      ***
+           !***set object static parameter***
+           !this%object%XXX=123
+           !**************************
+           this%proton%npt=this%npt
+
+           !reset all sub objects to correct any memory issues
+           !***      example     ***
+           !call reset(this%object,state=1)
+           !************************
+           call reset(this%proton,state=1)
+
+           !overwrite sub-object default dynamic parameters
+           !***       example      ***
+           !***set object pointer array values***
+           !this%object%PPP(:)=XXX
+           !**************************
+           !define proton grid
+           !dx=0.018*angstrom
+           dx=(this%xmax-this%xmin)/real(this%npt,double)
+           do i=0,this%npt-1
              this%proton%grid(i,0)=(i-this%npt/2)*dx
-          end do
+           end do
 
-          !declare initialization complete
-          this%initialized=.true.
-          
+           !declare initialization complete
+           this%initialized=.true.
+
+         end if
        end if
-    end if
-    
+     end if
+
     !reset object based on current static parameters
     if(this%initialized)then
 
        !Sample Random parameters
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
-       
+
        !Reset sub-objects
        !**** example **********
        !call reset(this%object)
@@ -378,7 +380,7 @@ contains
        !update now that object is fully reset and not in null state
        call update(this)
     end if
-    
+
   end subroutine cukier_reset
 
   !======================================================================
@@ -394,12 +396,12 @@ contains
     integer(short)::unit
     logical::fileisopen
     integer(long)::i,j
-    
+
     !check input file
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
-    
+
     !always write the data type on the first line
     write(unit,*)'cukier'
 
@@ -415,7 +417,7 @@ contains
     write(unit,*)this%xmin
     write(unit,*)this%xmax
 
-    
+
     !Second, Dynamic attributes
     !***       Example - Backup an NxM matrix attribute                ***
     ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
@@ -430,11 +432,11 @@ contains
     call backup(this%proton,file//'.proton')
     write(unit,*)quote(file//'.proton')!write the object location
 
-     
+
     !finished writing all attributes - now close backup file
-    close(unit)  
+    close(unit)
   end subroutine cukier_backup
-  
+
   !======================================================================
   !> \brief Retrun the current state of cukier as a string.
   !> \param[in] THIS is the cukier object.
@@ -444,12 +446,76 @@ contains
     type(cukier),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-    
+
     !Edit the status prompt to suit your needs
     write(cukier_status,FMT)'cukier status is currently not available'
-    
-  end function cukier_status
 
+  end function cukier_status
+  !======================================================================
+  !> \brief Checks the cukier object parameters are good.
+  !> \remark Will stop program after first failed check.
+  !======================================================================
+  integer(short)function checkparam(this)
+    use testing_class
+    type(cukier),intent(in)::this
+
+    !initiate with no problems found
+    checkparam=0
+
+    !***   check npt is well behaved   ***
+    call assert(check(this%npt).EQ.0&
+         ,msg='checkparam: npt failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   check npt is positive   ***
+    call assert(this%npt.GT.0&
+         ,msg='checkparam: npt is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   check nstate is well behaved   ***
+    call assert(check(this%nstate).EQ.0&
+         ,msg='checkparam: nstate failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   check nstate is positive   ***
+    call assert(this%nstate.GT.0&
+         ,msg='checkparam: nstate is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   check xmin is well behaved   ***
+    call assert(check(this%xmin).EQ.0&
+          ,msg='checkparam: xmin failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   check xmax is well behaved   ***
+    call assert(check(this%xmax).EQ.0&
+         ,msg='checkparam: xmax failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   Example - check an integer parameter 'ndim' is well behaved   ***
+    !call assert(check(this%ndim).EQ.0&
+    !     ,msg='checkparam: ndim failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !*** Example - add a constrain that says 'ndim' can only be positive ***
+    !call assert(this%ndim.GT.0&
+    !     ,msg='checkparam: ndim is not positive',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - check a real valued parameter 'var' is well behaved  ***
+    !call assert(check(this%var).EQ.0&
+    !     ,msg='checkparam: var failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - add a constrain that says 'var' can not be zero     ***
+    !call assert(abs(this%var).GT.epsilon(this%var)&
+    !     ,msg='checkparam: var is tiny',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+  end function checkparam
  !======================================================================
   !> \brief Checks the cukier object.
   !> \param[in] THIS is the cukier object to be checked.
@@ -461,7 +527,7 @@ contains
     type(cukier),intent(in)::this
     integer(long)::istate
 
-    !initiate with no problems found 
+    !initiate with no problems found
     cukier_check=0
 
     !check that object is initialized
@@ -476,27 +542,38 @@ contains
          ,iostat=cukier_check)
     if(cukier_check.NE.0)return
 
-    !Check all attributes are within acceptable values
-
-    !***   check npt is well behaved   ***
-    call assert(check(this%npt).EQ.0&
-         ,msg='cukier_check: npt failed check',iostat=cukier_check)
+    !check all parameters are within acceptable values
+    call assert(checkparam(this).EQ.0&
+         ,msg='cukier_check: unacceptable parameters found!'&
+         ,iostat=cukier_check)
     if(cukier_check.NE.0)return
 
-    !***   check npt is positive   ***
-    call assert(this%npt.GT.0&
-         ,msg='cukier_check: npt is not positive',iostat=cukier_check)
+    !Check all sub-objects
+    !**********   Example - check an object attribute 'that'  *********
+    !call assert(check(this%that).EQ.0&
+    !     ,msg='cukier_check: that sub-object failed check'&
+    !     ,iostat=cukier_check)
+    !if(cukier_check.NE.0)return
+    !***********************************************************************
+
+    !***   check proton has one dof   ***
+    call assert(this%proton%ndof.EQ.1&
+         ,msg='cukier_check: proton does not have 1 dof.',iostat=cukier_check)
     if(cukier_check.NE.0)return
 
-    !***   check nstate is well behaved   ***
-    call assert(check(this%nstate).EQ.0&
-         ,msg='cukier_check: nstate failed check',iostat=cukier_check)
-    if(cukier_check.NE.0)return
-
-    !***   check nstate is positive   ***
-    call assert(this%nstate.GT.0&
-         ,msg='cukier_check: nstate is not positive',iostat=cukier_check)
-    if(cukier_check.NE.0)return
+    !Check dynamic attributes
+    !***  Example - check a real valued pointer attribute 'matrix'       ***
+    !***            is well behaved                                      ***
+    !call assert(check(this%matrix).EQ.0&
+    !     ,msg='cukier_check: matrix failed check',iostat=cukier_check)
+    !if(cukier_check.NE.0)return
+    !***********************************************************************
+    !********* Example - check an NxM matrix has right dimensions **********
+    !call assert(size(this%matrix).EQ.N*M&
+    !     ,msg='cukier_check: number of matrix elements not = N*M.'&
+    !     ,iostat=cukier_check)
+    !if(cukier_check.NE.0)return
+    !***********************************************************************
 
     !***   check Adiabat is well behaved   ***
     call assert(check(this%adiabat).EQ.0&
@@ -513,66 +590,6 @@ contains
        istate=istate+1
     end do
 
-    !***   check xmin is well behaved   ***
-    call assert(check(this%xmin).EQ.0&
-         ,msg='cukier_check: xmin failed check',iostat=cukier_check)
-    if(cukier_check.NE.0)return
-
-    !***   check xmax is well behaved   ***
-    call assert(check(this%xmax).EQ.0&
-         ,msg='cukier_check: xmax failed check',iostat=cukier_check)
-    if(cukier_check.NE.0)return
-
-    !***   check proton has one dof   ***
-    call assert(this%proton%ndof.EQ.1&
-         ,msg='cukier_check: proton does not have 1 dof.',iostat=cukier_check)
-    if(cukier_check.NE.0)return
-
-    !**********   Example - check an object attribute 'primitive'  *********
-    !call assert(check(this%primitive).EQ.0&
-    !     ,msg='cukier_check: primitive sub-object failed check'&
-    !     ,iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-    
-    !***   Example - check an integer attribute 'ndim' is well behaved   ***
-    !call assert(check(this%ndim).EQ.0&
-    !     ,msg='cukier_check: ndim failed check',iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
- 
-    !*** Example - add a constrain that says 'ndim' can only be positive ***
-    !call assert(this%ndim.GT.0&
-    !     ,msg='cukier_check: ndim is not positive',iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-
-    !***  Example - check a real valued attribute 'var' is well behaved  ***
-    !call assert(check(this%var).EQ.0&
-    !     ,msg='cukier_check: var failed check',iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-
-    !***  Example - add a constrain that says 'var' can not be zero     ***
-    !call assert(abs(this%var).GT.epsilon(this%var)&
-    !     ,msg='cukier_check: var is tiny',iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-
-    !***  Example - check a real valued pointer attribute 'matrix'       ***
-    !***            is well behaved                                      ***
-    !call assert(check(this%matrix).EQ.0&
-    !     ,msg='cukier_check: matrix failed check',iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-
-    !********* Example - check an NxM matrix has right dimensions **********
-    !call assert(size(this%matrix).EQ.N*M&
-    !     ,msg='cukier_check: number of matrix elements not = N*M.'&
-    !     ,iostat=cukier_check)
-    !if(cukier_check.NE.0)return
-    !***********************************************************************
-
   end function cukier_check
   !-----------------------------------------
   !======================================================================
@@ -588,7 +605,7 @@ contains
     character(len=label)::string
     integer(long)::unit
     integer(short)::ierr
-    
+
     !diagnostic vars
     integer(long)::i
     integer(long)::Rnpt
@@ -629,7 +646,7 @@ contains
     call make(this,file='cukier.tmpfile')
     !Then, assert non default attribute values are conserved
     call assert(this%npt.EQ.200,msg='cukier npt is not stored properly')
-    call kill(this)    
+    call kill(this)
     call system('rm -f cukier.tmpfile*')
 
     write(*,*)'test negative nstate breaks cukier object.'
@@ -653,12 +670,12 @@ contains
     call make(this,file='cukier.tmpfile')
     !Then, assert non default attribute values are conserved
     call assert(this%nstate.EQ.4,msg='cukier nstate is not stored properly')
-    call kill(this)    
+    call kill(this)
     call system('rm -f cukier.tmpfile*')
 
     write(*,*)'test make calculates normalized proton wf.'
     call make(this)
-    call assert(real(sum(this%proton%wf*conjg(this%proton%wf)))&
+    call assert(real(sum(this%proton%wf(:,0)*conjg(this%proton%wf(:,0))))&
          ,1._double,tol=1E-8_double&
          ,msg='proton wave function is not normalized.')
     call kill(this)
@@ -694,7 +711,7 @@ contains
     !Then, assert non default attribute values are conserved
     call assert(this%xmin.EQ.-2.0_double,&
          msg='cukier xmin is not stored properly')
-    call kill(this)    
+    call kill(this)
     call system('rm -f cukier.tmpfile*')
 
     write(*,*)'test xmax attribute is stored properly in backup file'
@@ -708,7 +725,7 @@ contains
     !Then, assert non default attribute values are conserved
     call assert(this%xmax.EQ.2.0_double,&
          msg='cukier xmax is not stored properly')
-    call kill(this)    
+    call kill(this)
     call system('rm -f cukier.tmpfile*')
 
     write(*,*)'test cukier model break when proton has more than 1 dof.'
@@ -728,27 +745,27 @@ contains
     call assert(abs(x-y).GT.0.1*x,msg='ground and 2st excited states are degenerate.')
     call kill(this)
 
-    write(*,*)'test model predicts correct iostope effect on PCET rate.'
-    call make(this)
-    this%mass=mp !H+
-    !this%D(0)=1.0_double !donor definition
-    !this%D(1)=1.0_double
-    !this%A(0)=1.0_double !acceptor definition
-    !this%A(1)=-1.0_double
-    call reset(this,state=1)
-    x=this%rate !kH
-    call kill(this)
-    call make(this)
-    this%mass=mp+mn !D+
-    !this%D(0)=1.0_double !donor definition
-    !this%D(1)=1.0_double
-    !this%A(0)=1.0_double !acceptor definition
-    !this%A(1)=-1.0_double
-    call reset(this,state=1)
-    y=this%rate !kD
-    call kill(this)
-    call assert(x/y,1.4_double,0.4_double,&
-         msg='iostope effect kH/kD is not between 1.0-1.8')
+    !write(*,*)'test model predicts correct isotope effect on PCET rate.'
+    !call make(this)
+    !this%mass=mp !H+
+    !!this%D(0)=1.0_double !donor definition
+    !!this%D(1)=1.0_double
+    !!this%A(0)=1.0_double !acceptor definition
+    !!this%A(1)=-1.0_double
+    !call reset(this,state=1)
+    !x=this%rate !kH
+    !call kill(this)
+    !call make(this)
+    !this%mass=mp+mn !D+
+    !!this%D(0)=1.0_double !donor definition
+    !!this%D(1)=1.0_double
+    !!this%A(0)=1.0_double !acceptor definition
+    !!this%A(1)=-1.0_double
+    !call reset(this,state=1)
+    !y=this%rate !kD
+    !call kill(this)
+    !call assert(x/y,1.4_double,0.4_double,&
+  !       msg='isotope effect kH/kD is not between 1.0-1.8')
 
     !================== consider the following tests ========================
     !-----  make tests -----
@@ -778,7 +795,7 @@ contains
     !call make(this,file='cukier.tmpfile')
     !call assert(this%var.EQ.XXX)!Then, assert non default attribute values are conserved
     !call system('rm -f cukier.tmpfile*')
-    !call kill(this)    
+    !call kill(this)
     !**********************************
 
     !----- status tests -----
@@ -786,7 +803,7 @@ contains
     !----- update tests -----
 
     !----- reset tests -----
-    
+
     !----- fail cases -----
 
     !========================================================================
@@ -798,4 +815,3 @@ contains
   !-----------------------------------------
 
 end module cukier_class
-

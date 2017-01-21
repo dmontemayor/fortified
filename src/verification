@@ -1,5 +1,5 @@
 !current version verification process to be included in every object.
-!This process should ensure object compatiblity. 
+!This process should ensure object compatibility.
 !---------------------------------------------------------------------
 write(*,*)'Begin Verification Process.'
     write(*,*)'test object can be checked.'
@@ -43,7 +43,7 @@ write(*,*)'Begin Verification Process.'
     call make(this,file='object.tmpfile')
     call assert(check(this).EQ.0,msg='object was not created properly from backupfile.')
     call system('rm -f object.tmpfile*')
-    
+
     write(*,*)'test backup file begins with object name in first line'
     call make(this)
     call system('rm -f object.tmpfile*')
@@ -55,7 +55,7 @@ write(*,*)'Begin Verification Process.'
     call assert(trim(string).EQ.trim(this%name),msg='save file does not have object name on first line.')
     call system('rm -f object.tmpfile*')
     call kill(this)
-    
+
     write(*,*)'test object can be updated'
     call make(this)
     call update(this)

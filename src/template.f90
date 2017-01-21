@@ -1,7 +1,26 @@
+!!!!!!!! silcrow ATTRIBUTE LIST !!!!!!!!
+!!! use silcrow wizard to pre-generate
+!!! attribute source, checks, and tests.
+!!! usage:
+!!!
+!§ ATTRIBUTE TYPE MEMORY RANK DEPENDENCIES
+!!!
+!!! '!§' identifies the silcrow directive
+!!! 'ATTRIBUTE' is the attribute name
+!!! 'TYPE' can be any of the known type_kinds
+!!!     or classes.
+!!! 'MEMORY' can be 'static' or 'dynamic'.
+!!! 'RANK' is an integer number of dimensions
+!!! 'DEPENDENCIES' is a list parameters of
+!!!     length RANK ued to define the size.
+!!!     Can be an integer for static memory
+!!!     or another static attribute of type
+!!!     integer for dynamic memory.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !>\brief
 !! template class
 !!\details
-!! DO NOT OVERWRITE THIS FILE. 
+!! DO NOT OVERWRITE THIS FILE.
 !! Make a copy and title it \a myclass.f90
 !! where 'myclass' is your choice one-word title for your new class.
 !! Then replace instances of the string 'template' with the same
@@ -23,15 +42,15 @@
 !!
 !! Development should be test driven. Motivated by the object description,
 !! create unit tests in the test method that challenge the other object
-!! methods to behave properly. Write the tests first, ensure they fail, 
+!! methods to behave properly. Write the tests first, ensure they fail,
 !! then modify the class to correct test failure. Don't modify or remove
 !! previous tests.
-!! 
+!!
 !! The check method does not challenge the object to behave properly,
 !! rather it mearly checks that all of the objects attributes are within
 !! acceptable parameters. A unit test may ensure the check function returns
 !! an error after purposely assigning a bad attribute value but the check
-!! fucntion itself is not a unit test. Write checks after the unit test. 
+!! fucntion itself is not a unit test. Write checks after the unit test.
 !<------------------------------------------------------------------------
 module template_class
   use type_kinds
@@ -44,7 +63,7 @@ module template_class
   type template
      logical::initialized=.false.
      character(len=label)::name='template'
-     
+
      !***************      Enter template attributes here     ***************!
 
 
@@ -80,7 +99,7 @@ module template_class
   interface describe
      module procedure template_describe
   end interface
-  
+
   !> Returns the current state of the template object.
   interface backup
      module procedure template_backup
@@ -96,7 +115,7 @@ module template_class
      module procedure template_reset
   end interface
 
-  !> Checks that the template object.
+  !> Checks the template object.
   interface check
      module procedure template_check
   end interface
@@ -111,7 +130,7 @@ contains
     character(len=5)::FMT='(A)'
 
     write(template_describe,FMT)'No description for template has been provided.'
-   
+
   end function template_describe
 
   !======================================================================
@@ -136,41 +155,41 @@ contains
     !************************
 
     !check input file
-    if(present(file))then 
-       
+    if(present(file))then
+
        !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-       
+
        !check if file is of type template
        read(unit,*)header
        call assert(trim(header).EQ.this%name,msg='template_init: bad input file header in file'//file)
-       
+
        !read static parameters
        !***             example            ***
        !***read scalar parameters from file***
        !read(unit,*)this%NNN
        !**************************************
-       
+
        !use reset to manage dynamic memory
        !, reset sub-objects, and set calculated variable seeds
        call reset(this,state=1)
-       
+
        !READ dynamic array values
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%NNN-1)
        !************************
-       
+
        !READ sub-objects
        !***      example     ***
        !read(unit,*)infile
        !call make(this%object,file=trim(infile))
        !************************
-       
+
        !finished reading all attributes - now close backup file
        if(.not.fileisopen)close(unit)
-       
+
        !declare initialization complete
        this%initialized=.true.
     else
@@ -179,7 +198,7 @@ contains
        !***set scalar parameter***
        !this%NNN=123
        !**************************
-       
+
        !Use reset to make a default object
        call reset(this,state=1)
     end if
@@ -193,11 +212,11 @@ contains
   !======================================================================
   !> \brief Destroys the template object.
   !> \param THIS is the template object to be destroyed.
-  !> \remarks kill is simply the reset method passed with a null flag 
+  !> \remarks kill is simply the reset method passed with a null flag
   !====================================================================
   subroutine template_kill(this)
     type(template),intent(inout)::this
- 
+
     call reset(this,0)
 
   end subroutine template_kill
@@ -212,7 +231,7 @@ contains
     !Recompute calculated variables that might have evolved
 
     !***************************      Example     *****************************
-    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
+    !** attribute 'var' is always equall to the trace of the denisity matrix **
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
@@ -234,69 +253,70 @@ contains
   subroutine template_reset(this,state)
     type(template),intent(inout)::this
     integer(long),intent(in),optional::STATE
-    
+
     if(present(state))then
+      !un-initialize template object until properly reset
+      this%initialized=.false.
        if(state.EQ.0)then
           !nullify all pointers
           !******        Example - cleanup pointer attribute 'PPP'       ****
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
-          
+
           !kill all sub-objects
           !**** example **********
           !call kill(this%object)
           !***********************
-          
+
           !set all scalar parameters to error values
           !**** example **********
           !this%nstate=-1
           !***********************
 
-          !un-initialized metiu object
-          this%initialized=.false.
        else
-          !allocate dynamic memory
-          !***  Example - cleanup pointer attribute 'PPP'     ***
-          !***            then reallocate memory              ***
-          !if(associated(this%PPP))nullify(this%PPP)
-          !allocate(this%PPP(0:this%npt-1))
-          !******************************************************
-          
-          !Set default dynamic memory values
-          !***  Example - set values in pointer 'PPP' to zero ***
-          !this%PPP(:)=0.0_double
-          !******************************************************
-                    
-          !overwrite sub-object default static parameters
-          !***       example      ***
-          !***set object static parameter***
-          !this%object%NNN=123
-          !**************************
+         if(checkparam(this).EQ.0) then
+           !reallocate dynamic memory
+           !***  Example - cleanup pointer attribute 'PPP'     ***
+           !***            then reallocate memory              ***
+           !if(associated(this%PPP))nullify(this%PPP)
+           !allocate(this%PPP(0:this%npt-1))
+           !******************************************************
 
-          !reset all sub objects to correct any memory issues
-          !***      example     ***
-          !call reset(this%object,state=1)
-          !************************
+           !Set default dynamic memory values
+           !***  Example - set values in pointer 'PPP' to zero ***
+           !this%PPP(:)=0.0_double
+           !******************************************************
 
-          !overwrite sub-object default dynamic array
-          !***       example      ***
-          !***set object pointer array values***
-          !this%object%PPP(:)=XXX
-          !**************************
+           !overwrite sub-object default static parameters
+           !***       example      ***
+           !***set object static parameter***
+           !this%object%NNN=123
+           !**************************
 
-          !declare initialization complete
-          this%initialized=.true.
-          
+           !reset all sub objects to correct any memory issues
+           !***      example     ***
+           !call reset(this%object,state=1)
+           !************************
+
+           !overwrite sub-object default dynamic array
+           !***       example      ***
+           !***set object pointer array values***
+           !this%object%PPP(:)=XXX
+           !**************************
+
+           !declare initialization complete
+           this%initialized=.true.
+         end if
        end if
     end if
-    
+
     !reset object based on current static parameters
     if(this%initialized)then
 
        !Sample calculated variable seeds
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
-       
+
        !Resample sub-objects
        !**** example **********
        !call reset(this%object)
@@ -306,7 +326,7 @@ contains
        call update(this)
 
     end if
-    
+
 
   end subroutine template_reset
 
@@ -324,12 +344,12 @@ contains
     integer(short)::unit
     logical::fileisopen
     integer(long)::i,j
-    
+
     !check input file
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
-    
+
     !check template object
     call assert(check(this).EQ.0,msg='template object does not pass check.')
 
@@ -357,12 +377,12 @@ contains
     ! call backup(this%object,file//'.object')
     ! write(unit,*)quote(file//'.object')!write the object location
     !*********************************************************************
-    
+
 
     !finished writing all attributes - now close backup file
-    close(unit)  
+    close(unit)
   end subroutine template_backup
-  
+
   !======================================================================
   !> \brief Retrun the current state of template as a string.
   !> \param[in] THIS is the template object.
@@ -372,13 +392,47 @@ contains
     type(template),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-    
+
     !Edit the status prompt to suit your needs
     write(template_status,FMT)'template status is currently not available'
-    
-  end function template_status
 
- !======================================================================
+  end function template_status
+  !======================================================================
+  !> \brief Checks the template object parameters are good.
+  !> \remark Will stop program after first failed check.
+  !======================================================================
+  integer(short)function checkparam(this)
+    use testing_class
+    type(template),intent(in)::this
+
+    !initiate with no problems found
+    checkparam=0
+
+    !***   Example - check an integer parameter 'ndim' is well behaved   ***
+    !call assert(check(this%ndim).EQ.0&
+    !     ,msg='checkparam: ndim failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !*** Example - add a constrain that says 'ndim' can only be positive ***
+    !call assert(this%ndim.GT.0&
+    !     ,msg='checkparam: ndim is not positive',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - check a real valued parameter 'var' is well behaved  ***
+    !call assert(check(this%var).EQ.0&
+    !     ,msg='checkparam: var failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - add a constrain that says 'var' can not be zero     ***
+    !call assert(abs(this%var).GT.epsilon(this%var)&
+    !     ,msg='checkparam: var is tiny',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+  end function checkparam
+  !======================================================================
   !> \brief Checks the template object.
   !> \param[in] THIS is the template object to be checked.
   !> \return 0 if all checks pass or exit at first failed check and returm non zero.
@@ -388,28 +442,7 @@ contains
     use testing_class
     type(template),intent(in)::this
 
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !! check method should be extended to optionally check individual
-    !! attributes.
-    !!Usage: check(this,element='NNN')
-    !!check method
-    !!    if(present(element))
-    !!      select case(element)
-    !!        case (element='NNN')
-    !!             ...
-    !!        case (element='XXX')
-    !!             ...
-    !!        default
-    !!             throw error unkown element
-    !!      end select
-    !!    else
-    !!      run all checks
-    !!    end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    !initiate with no problems found 
+    !initiate with no problems found
     template_check=0
 
     !check that object is initialized
@@ -424,40 +457,21 @@ contains
          ,iostat=template_check)
     if(template_check.NE.0)return
 
-    !Check all attributes are within acceptable values
+    !check all parameters are within acceptable values
+    call assert(checkparam(this).EQ.0&
+         ,msg='template_check: unacceptable parameters found!'&
+         ,iostat=template_check)
+    if(template_check.NE.0)return
 
-
+    !Check all sub-objects
     !**********   Example - check an object attribute 'that'  *********
     !call assert(check(this%that).EQ.0&
     !     ,msg='template_check: that sub-object failed check'&
     !     ,iostat=template_check)
     !if(template_check.NE.0)return
     !***********************************************************************
-    
-    !***   Example - check an integer attribute 'ndim' is well behaved   ***
-    !call assert(check(this%ndim).EQ.0&
-    !     ,msg='template_check: ndim failed check',iostat=template_check)
-    !if(template_check.NE.0)return
-    !***********************************************************************
- 
-    !*** Example - add a constrain that says 'ndim' can only be positive ***
-    !call assert(this%ndim.GT.0&
-    !     ,msg='template_check: ndim is not positive',iostat=template_check)
-    !if(template_check.NE.0)return
-    !***********************************************************************
 
-    !***  Example - check a real valued attribute 'var' is well behaved  ***
-    !call assert(check(this%var).EQ.0&
-    !     ,msg='template_check: var failed check',iostat=template_check)
-    !if(template_check.NE.0)return
-    !***********************************************************************
-
-    !***  Example - add a constrain that says 'var' can not be zero     ***
-    !call assert(abs(this%var).GT.epsilon(this%var)&
-    !     ,msg='template_check: var is tiny',iostat=template_check)
-    !if(template_check.NE.0)return
-    !***********************************************************************
-
+    !Check dynamic attributes
     !***  Example - check a real valued pointer attribute 'matrix'       ***
     !***            is well behaved                                      ***
     !call assert(check(this%matrix).EQ.0&
@@ -486,16 +500,39 @@ contains
     type(template)::this
     character(len=label)::string
     integer(long)::unit
-    
+
     !verify template is compatible with current version
     include 'verification'
+
+    !======Unit testing=====
+    ! Testing of individual components. Typically done by
+    ! the developer and not by testers as it requires
+    ! detailed knowledge of the internal program design.
+
+
+    !======Functional testing======
+    ! This type of testing igores the internal parts
+    ! and focuses on the output as per requirements.
+
+
+    !=====End-to-end testing=====
+    ! Tests that mimics real-world use with physically
+    ! reasonable inputs or well established examples.
+
+
+    !=====Load testing=====
+    ! Test performance behavior under various loads.
+    ! Examples include calculation speed as a function
+    ! of parallel processors used, or as a funtion of
+    ! system size.
+
 
     !================== consider the following tests for =====================
     !=========================================================================
 
     !==================       static parameters             ==================
 
-    !!write(*,*)'test kill template breaks static parameter NNN'
+    !!write(*,*)'test kill template breaks static parameter NNN.....'
     !!call make(this) !make template
     !!call kill(this)
     !!call assert(check(this%NNN).NE.0,&
@@ -581,7 +618,7 @@ contains
     !     msg='template dynamic pointer array PPP is not of size N for &
     !     &dimension I')
     !call kill(this)    !destroy template to clean up memory
-    
+
     !write(*,*)'test dynamic pointer array PPP can be resized by adjusting &
     !     & static parameter NNN then reseting with state=1'
     !call make(this) !make template
@@ -628,4 +665,3 @@ contains
   !-----------------------------------------
 
 end module template_class
-

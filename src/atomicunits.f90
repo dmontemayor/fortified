@@ -28,7 +28,7 @@ module atomicunits
   real(double),parameter::kb=3.166815203_double*1E-6*Eh/Kel       !<boltzman constant
   real(double),parameter::eV=3.674932587_double*1E-2*Eh           !<Electon volt
   real(double),parameter::c0=137.0359996287515_double*hbar/(a0*me)!<speed of light
-  real(double),parameter::eps0=1.0_double/(4*pi*kC)             !<vacuum permittivity
+  real(double),parameter::eps0=1.0_double/(4*pi*kC)               !<vacuum permittivity
   real(double),parameter::Debye=.3934302014076827_double*e*a0     !<Dipole moment
   real(double),parameter::Deg=twopi/360_double*rad                !<Degrees
 

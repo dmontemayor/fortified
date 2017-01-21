@@ -2,7 +2,7 @@
 !! wf class
 !!\details
 !! Quantum object prototype specifying multiple states, in multiple dofs
-!! in delta function represention  
+!! in delta function represention
 !<------------------------------------------------------------------------
 module wf_class
   use type_kinds
@@ -15,7 +15,7 @@ module wf_class
   type wf
      logical::initialized=.false.
      character(len=label)::name='wf'
-     
+
      integer(long)::nstate
      integer(long)::ndof
      integer(long)::npt
@@ -57,7 +57,7 @@ module wf_class
   interface describe
      module procedure wf_describe
   end interface
-  
+
   !> Returns the current state of the wf object.
   interface backup
      module procedure wf_backup
@@ -88,7 +88,7 @@ contains
     character(len=5)::FMT='(A)'
 
     write(wf_describe,FMT)'No description for wf has been provided.'
-   
+
   end function wf_describe
 
   !======================================================================
@@ -113,41 +113,41 @@ contains
     !************************
 
     !check input file
-    if(present(file))then 
-       
+    if(present(file))then
+
        !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-       
+
        !check if file is of type wf
        read(unit,*)header
        call assert(trim(header).EQ.this%name,msg='wf_init: bad input file header in file'//file)
-       
+
        !read static parameters
        !***             example            ***
        !***read scalar parameters from file***
        !read(unit,*)this%NNN
        !**************************************
-       
+
        !use reset to manage dynamic memory
        !, reset sub-objects, and set calculated variable seeds
        call reset(this,state=1)
-       
+
        !READ dynamic array values
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%NNN-1)
        !************************
-       
+
        !READ sub-objects
        !***      example     ***
        !read(unit,*)infile
        !call make(this%object,file=trim(infile))
        !************************
-       
+
        !finished reading all attributes - now close backup file
        if(.not.fileisopen)close(unit)
-       
+
        !declare initialization complete
        this%initialized=.true.
     else
@@ -156,7 +156,8 @@ contains
        !***set scalar parameter***
        !this%NNN=123
        !**************************
-       
+       this%nstate=1
+
        !Use reset to make a default object
        call reset(this,state=1)
     end if
@@ -170,11 +171,11 @@ contains
   !======================================================================
   !> \brief Destroys the wf object.
   !> \param THIS is the wf object to be destroyed.
-  !> \remarks kill is simply the reset method passed with a null flag 
+  !> \remarks kill is simply the reset method passed with a null flag
   !====================================================================
   subroutine wf_kill(this)
     type(wf),intent(inout)::this
- 
+
     call reset(this,0)
 
   end subroutine wf_kill
@@ -189,7 +190,7 @@ contains
     !Recompute calculated variables that might have evolved
 
     !***************************      Example     *****************************
-    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
+    !** attribute 'var' is always equall to the trace of the denisity matrix **
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
@@ -211,23 +212,24 @@ contains
   subroutine wf_reset(this,state)
     type(wf),intent(inout)::this
     integer(long),intent(in),optional::STATE
-    
+
     if(present(state))then
        if(state.EQ.0)then
           !nullify all pointers
           !******        Example - cleanup pointer attribute 'PPP'       ****
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
-          
+
           !kill all sub-objects
           !**** example **********
           !call kill(this%object)
           !***********************
-          
+
           !set all scalar parameters to error values
           !**** example **********
           !this%nstate=-1
           !***********************
+          this%nstate=-1
 
           !un-initialized metiu object
           this%initialized=.false.
@@ -238,12 +240,12 @@ contains
           !if(associated(this%PPP))nullify(this%PPP)
           !allocate(this%PPP(0:this%npt-1))
           !******************************************************
-          
+
           !Set default dynamic memory values
           !***  Example - set values in pointer 'PPP' to zero ***
           !this%PPP(:)=0.0_double
           !******************************************************
-                    
+
           !overwrite sub-object default static parameters
           !***       example      ***
           !***set object static parameter***
@@ -263,17 +265,17 @@ contains
 
           !declare initialization complete
           this%initialized=.true.
-          
+
        end if
     end if
-    
+
     !reset object based on current static parameters
     if(this%initialized)then
 
        !Sample calculated variable seeds
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
-       
+
        !Resample sub-objects
        !**** example **********
        !call reset(this%object)
@@ -283,7 +285,7 @@ contains
        call update(this)
 
     end if
-    
+
 
   end subroutine wf_reset
 
@@ -301,12 +303,12 @@ contains
     integer(short)::unit
     logical::fileisopen
     integer(long)::i,j
-    
+
     !check input file
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
-    
+
     !check wf object
     call assert(check(this).EQ.0,msg='wf object does not pass check.')
 
@@ -334,12 +336,12 @@ contains
     ! call backup(this%object,file//'.object')
     ! write(unit,*)quote(file//'.object')!write the object location
     !*********************************************************************
-    
+
 
     !finished writing all attributes - now close backup file
-    close(unit)  
+    close(unit)
   end subroutine wf_backup
-  
+
   !======================================================================
   !> \brief Retrun the current state of wf as a string.
   !> \param[in] THIS is the wf object.
@@ -349,10 +351,10 @@ contains
     type(wf),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-    
+
     !Edit the status prompt to suit your needs
     write(wf_status,FMT)'wf status is currently not available'
-    
+
   end function wf_status
 
  !======================================================================
@@ -386,7 +388,7 @@ contains
     !!    end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    !initiate with no problems found 
+    !initiate with no problems found
     wf_check=0
 
     !check that object is initialized
@@ -410,13 +412,13 @@ contains
     !     ,iostat=wf_check)
     !if(wf_check.NE.0)return
     !***********************************************************************
-    
+
     !***   Example - check an integer attribute 'ndim' is well behaved   ***
     !call assert(check(this%ndim).EQ.0&
     !     ,msg='wf_check: ndim failed check',iostat=wf_check)
     !if(wf_check.NE.0)return
     !***********************************************************************
- 
+
     !*** Example - add a constrain that says 'ndim' can only be positive ***
     !call assert(this%ndim.GT.0&
     !     ,msg='wf_check: ndim is not positive',iostat=wf_check)
@@ -463,7 +465,7 @@ contains
     type(wf)::this
     character(len=label)::string
     integer(long)::unit
-    
+
     !verify wf is compatible with current version
     include 'verification'
 
@@ -640,7 +642,7 @@ contains
     !     msg='wf dynamic pointer array PPP is not of size N for &
     !     &dimension I')
     !call kill(this)    !destroy wf to clean up memory
-    
+
     !write(*,*)'test dynamic pointer array PPP can be resized by adjusting &
     !     & static parameter NNN then reseting with state=1'
     !call make(this) !make wf
@@ -687,4 +689,3 @@ contains
   !-----------------------------------------
 
 end module wf_class
-
