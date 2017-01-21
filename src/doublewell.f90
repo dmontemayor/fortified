@@ -55,6 +55,7 @@
 module doublewell_class
   use type_kinds
   use atomicunits
+  use wavelet_class
   implicit none
   private
 
@@ -64,16 +65,21 @@ module doublewell_class
   type doublewell
      logical::initialized=.false.
      character(len=label)::name='doublewell'
-     
-     !***************      Enter doublewell attributes here     ***************!
-     !integer(long),private::npt    !dof discretization
-     real(double),private::mass    !mass of reaction
-     real(double),private::E_b     !barrier potential energy height
-     real(double),private::E_p     !product side potential energy difference
-     real(double),private::omega_r !reactant side potential energy frequency
-     real(double),private::omega_b !barrier potential energy frequency
-     real(double),private::omega_p !product side potential energy frequency
 
+     !***************      Enter doublewell attributes here     ***************!
+     real(double)::E_b     !barrier potential energy height
+     real(double)::E_p     !product side potential energy difference
+     real(double)::omega_r !reactant side potential energy frequency
+     real(double)::omega_b !barrier potential energy frequency
+     real(double)::omega_p !product side potential energy frequency
+     real(double)::mass    !mass of reaction
+     real(double),dimension(:),pointer::V       !reaction potential
+     real(double)::xmin,xmax     !reaction coordinate boundaries
+     integer(long)::npt          !reaction coordinate discretization
+     integer(long)::nstate       !number of quantum states
+     real(double),dimension(:),pointer::adiabat !quantum state energies
+     real(double),dimension(:,:),pointer::psi   !quantum state wavefunctions
+     type(wavelet)::rxn          !reaction wf in delta function representation
      !***********************************************************************!
      !=======================================================================!
      !***   Here are some example attributes your derived type may have   ***!
@@ -106,7 +112,7 @@ module doublewell_class
   interface describe
      module procedure doublewell_describe
   end interface
-  
+
   !> Returns the current state of the doublewell object.
   interface backup
      module procedure doublewell_backup
@@ -134,26 +140,26 @@ contains
     get_qr=-sqrt(2.0_double*this%E_b*(this%omega_r**2+this%omega_b**2)/this%mass)&
          /(this%omega_r*this%omega_b)
   end function get_qr
-  !====================  
+  !====================
   !> \brief Get function for product side minimum
   real(double) function get_qp(this)
     type(doublewell),intent(in)::this
     get_qp=sqrt(2.0_double*(this%E_b-this%E_p)*(this%omega_p**2+this%omega_b**2)/this%mass)&
          /(this%omega_p*this%omega_b)
   end function get_qp
-  !====================  
+  !====================
   !> \brief Get function for reactant-barrier intersection
   real(double) function get_qrb(this)
     type(doublewell),intent(in)::this
     get_qrb=get_qr(this)*this%omega_r**2/(this%omega_r**2+this%omega_b**2)
   end function get_qrb
-  !====================  
+  !====================
   !> \brief Get function for product-barrier intersection
   real(double) function get_qpb(this)
     type(doublewell),intent(in)::this
     get_qpb=get_qp(this)*this%omega_p**2/(this%omega_p**2+this%omega_b**2)
   end function get_qpb
-  !====================  
+  !====================
   !======================================================================
   !> \brief Retruns a description of doublewell as a string.
   !> \param[in] THIS is the doublewell object.
@@ -163,7 +169,7 @@ contains
     character(len=5)::FMT='(A)'
 
     write(doublewell_describe,FMT)'No description for doublewell has been provided.'
-   
+
   end function doublewell_describe
 
   !======================================================================
@@ -181,64 +187,84 @@ contains
     logical::fileisopen=.false.
     character(len=label)::header
     character(len=path)::infile
+    integer(long)::i,j
 
     !initialize all sub-objects
     !***      example     ***
     !call make(this%object)
     !************************
+    call make(this%rxn)
 
     !check input file
-    if(present(file))then 
-       
+    if(present(file))then
+
        !check input file
        inquire(file=file,opened=fileisopen,number=unit)
        if(unit.LT.0)unit=newunit()
        if(.not.fileisopen)open(unit,file=file)
-       
+
        !check if file is of type doublewell
        read(unit,*)header
        call assert(trim(header).EQ.this%name,msg='doublewell_init: bad input file header in file'//file)
-       
+
        !read static parameters
        !***             example            ***
        !***read scalar parameters from file***
        !read(unit,*)this%NNN
        !**************************************
-       
+       read(unit,*)this%E_b     !barrier potential energy height
+       read(unit,*)this%E_p     !product side potential energy difference
+       read(unit,*)this%omega_r !reactant side potential energy frequency
+       read(unit,*)this%omega_b !barrier potential energy frequency
+       read(unit,*)this%omega_p !product side potential energy frequency
+       read(unit,*)this%mass    !mass of reaction
+       read(unit,*)this%xmin    !reaction coordinate boundaries
+       read(unit,*)this%xmax    !reaction coordinate boundaries
+       read(unit,*)this%npt     !reaction coordinate discretization
+       read(unit,*)this%nstate  !number of quantum states
+
        !use reset to manage dynamic memory
        !, reset sub-objects, and set calculated variable seeds
        call reset(this,state=1)
-       
+
        !READ dynamic array values
        !***      example     ***
        !read(unit,*)(this%PPP(i),i=0,this%NNN-1)
        !************************
-       
+       !read(unit,*)(this%V(i),i=0,this%npt-1)          !reaction potential
+       !read(unit,*)(this%adiabat(i),i=0,this%nstate-1) !rxn Eigenstate energies
+       !read(unit,*)((this%psi(i,j),j=0,this%npt-1),i=0,this%nstate-1) !rxn wf
+
        !READ sub-objects
        !***      example     ***
        !read(unit,*)infile
        !call make(this%object,file=trim(infile))
        !************************
-       
+       !read(unit,*)infile
+       !call make(this%rxn,file=trim(infile)) !reaction eignenstate wavefunctions
+
        !finished reading all attributes - now close backup file
        if(.not.fileisopen)close(unit)
-       
+
        !declare initialization complete
        this%initialized=.true.
     else
        !Set static parameters to default settings
-       !this%npt=500
-       this%mass=mp
-       this%E_b=2000_double*invcm
-       this%E_p=0_double*invcm
-       this%omega_r=1200_double*invcm
-       this%omega_b=1200_double*invcm
-       this%omega_p=1200_double*invcm
        !***       example      ***
        !***set scalar parameter***
        !this%NNN=123
        !**************************
-       
+       this%E_b=2000_double*invcm     !barrier potential energy height
+       this%E_p=0_double              !product side potential energy difference
+       this%omega_r=1200_double*invcm !reactant side potential energy frequency
+       this%omega_b=1200_double*invcm !barrier potential energy frequency
+       this%omega_p=1200_double*invcm !product side potential energy frequency
+       this%mass=mp                   !mass of reaction
+       this%xmin=-1.2_double*a0       !reaction coordinate maxiumum boundary
+       this%xmax=1.2_double*a0        !reaction coordinate maxiumum boundary
+       this%npt=255                   !reaction coordinate discretization
+       this%nstate=1                  !number of quantum states
+
        !Use reset to make a default object
        call reset(this,state=1)
     end if
@@ -252,11 +278,11 @@ contains
   !======================================================================
   !> \brief Destroys the doublewell object.
   !> \param THIS is the doublewell object to be destroyed.
-  !> \remarks kill is simply the reset method passed with a null flag 
+  !> \remarks kill is simply the reset method passed with a null flag
   !====================================================================
   subroutine doublewell_kill(this)
     type(doublewell),intent(inout)::this
- 
+
     call reset(this,0)
 
   end subroutine doublewell_kill
@@ -268,10 +294,72 @@ contains
   subroutine doublewell_update(this)
     type(doublewell),intent(inout)::this
 
+    real(double)::V(0:this%npt-1)                   !reaction potential
+    real(double)::psi(0:this%nstate-1,0:this%npt-1) !reaction wf
+    real(double)::qrb,qpb,qr,qp
+    real(double)::omega,x0,shift,konst
+    real(double)::x,y,dx
+    integer(long)::i
+
+    !get well extrema and intersection points
+    qr=get_qr(this)
+    qp=get_qp(this)
+    qrb=get_qrb(this)
+    qpb=get_qpb(this)
+
+    !calculate reaction potential
+    dx=(this%xmax-this%xmin)/real(this%npt,double)
+    do i=0,this%npt-1
+      x=this%rxn%grid(i,0)
+      if(x.LT.qrb)then
+        !reactant potential
+        x0=qr
+        omega=this%omega_r
+        shift=0_double
+        konst=0.5_double
+      else
+        if(x.LT.qpb)then
+          !barrier potential
+          x0=0_double
+          omega=this%omega_b
+          shift=this%E_b
+          konst=-0.5_double
+        else
+          !product potential
+          x0=qp
+          omega=this%omega_p
+          shift=this%E_p
+          konst=0.5_double
+        end if
+      end if
+      !piecewise potential energy
+      V(i)=konst*this%mass*(omega*(x-x0))**2+shift
+    end do
+
+    !initiate square wavefunction
+    psi=1.0_double
+
+    !initiate zero valued adiabatic energies
+    this%adiabat=0.0_double
+
+    !calculate reaction quantum states
+    do i=0,this%nstate-1
+       call solvestate(i,E=this%adiabat(i)&
+            ,wf=psi(i,:),V=V,mass=this%mass,dx=dx)
+            !normalize wavefuntion
+            psi(i,:)=psi(i,:)/sqrt(sum(psi(i,:)**2))
+    end do
+
+    !return normalized wavefunction and reaction potential
+    this%rxn%wf(:,0)=psi(0,:)
+    this%V=V
+    this%psi=0.0_double
+    if(all(psi.EQ.psi))this%psi=psi
+
     !Recompute calculated variables that might have evolved
 
     !***************************      Example     *****************************
-    !** attribute 'var' is always equall to the trace of the denisity matrix ** 
+    !** attribute 'var' is always equall to the trace of the denisity matrix **
     ! this%var=0._double
     ! do istate=1,this%object%nstate
     !    this%var=this%var+this%den(istate,istate)
@@ -293,85 +381,111 @@ contains
   subroutine doublewell_reset(this,state)
     type(doublewell),intent(inout)::this
     integer(long),intent(in),optional::STATE
-    
+    integer(long)::i
+    real(double)::dx
+
     if(present(state))then
+      !un-initialize doublewell object until properly reset
+      this%initialized=.false.
        if(state.EQ.0)then
           !nullify all pointers
           !******        Example - cleanup pointer attribute 'PPP'       ****
           !if(associated(this%PPP))nullify(this%PPP)
           !******************************************************************
-          
+          if(associated(this%V))nullify(this%V)
+          if(associated(this%adiabat))nullify(this%adiabat)
+          if(associated(this%psi))nullify(this%psi)
+
           !kill all sub-objects
           !**** example **********
           !call kill(this%object)
           !***********************
-          
+          call kill(this%rxn)
+
           !set all scalar parameters to error values
-          !this%mass=-1.0_double
-          !this%E_b=huge(1_double)
-          !this%E_p=huge(1_double)
-          !this%omega_r=-1.0_double
-          !this%omega_b=-1.0_double
-          !this%omega_p=-1.0_double
           !**** example **********
           !this%nstate=-1
           !***********************
-
-          !un-initialized metiu object
-          this%initialized=.false.
+          this%E_b=huge(1_double)     !barrier potential energy height
+          this%E_p=huge(1_double)     !product side potential energy difference
+          this%omega_r=-1_double      !reactant side potential energy frequency
+          this%omega_b=-1_double      !barrier potential energy frequency
+          this%omega_p=-1_double      !product side potential energy frequency
+          this%mass=-1_double         !mass of reaction
+          this%xmin=huge(1_double)    !reaction coordinate min boundary
+          this%xmax=huge(1_double)    !reaction coordinate max boundary
+          this%npt=-1                 !reaction coordinate discretization
+          this%nstate=-1              !number of quantum states
        else
-          !allocate dynamic memory
-          !***  Example - cleanup pointer attribute 'PPP'     ***
-          !***            then reallocate memory              ***
-          !if(associated(this%PPP))nullify(this%PPP)
-          !allocate(this%PPP(0:this%npt-1))
-          !******************************************************
-          
-          !Set default dynamic memory values
-          !***  Example - set values in pointer 'PPP' to zero ***
-          !this%PPP(:)=0.0_double
-          !******************************************************
-                    
-          !overwrite sub-object default static parameters
-          !***       example      ***
-          !***set object static parameter***
-          !this%object%NNN=123
-          !**************************
+         if(checkparam(this).EQ.0) then
+           !reallocate dynamic memory
+           !***  Example - cleanup pointer attribute 'PPP'     ***
+           !***            then reallocate memory              ***
+           !if(associated(this%PPP))nullify(this%PPP)
+           !allocate(this%PPP(0:this%npt-1))
+           !******************************************************
+           if(associated(this%V))nullify(this%V)
+           allocate(this%V(0:this%npt-1))
+           if(associated(this%adiabat))nullify(this%adiabat)
+           allocate(this%adiabat(0:this%nstate-1))
+           if(associated(this%psi))nullify(this%psi)
+           allocate(this%psi(0:this%nstate-1,0:this%npt-1))
 
-          !reset all sub objects to correct any memory issues
-          !***      example     ***
-          !call reset(this%object,state=1)
-          !************************
+           !Set default dynamic memory values
+           !***  Example - set values in pointer 'PPP' to zero ***
+           !this%PPP(:)=0.0_double
+           !******************************************************
 
-          !overwrite sub-object default dynamic array
-          !***       example      ***
-          !***set object pointer array values***
-          !this%object%PPP(:)=XXX
-          !**************************
 
-          !declare initialization complete
-          this%initialized=.true.
-          
+           !overwrite sub-object default static parameters
+           !***       example      ***
+           !***set object static parameter***
+           !this%object%NNN=123
+           !**************************
+           this%rxn%npt=this%npt
+
+           !reset all sub objects to correct any memory issues
+           !***      example     ***
+           !call reset(this%object,state=1)
+           !************************
+           call reset(this%rxn,state=1)
+
+           !overwrite sub-object default dynamic array
+           !***       example      ***
+           !***set object pointer array values***
+           !this%object%PPP(:)=XXX
+           !**************************
+           !define reaction coordinate grid
+           !dx=0.018*angstrom
+           dx=(this%xmax-this%xmin)/real(this%npt,double)
+           do i=0,this%npt-1
+             this%rxn%grid(i,0)=this%xmin+i*dx
+           end do
+
+           !declare initialization complete
+           this%initialized=.true.
+         end if
        end if
     end if
-    
+
     !reset object based on current static parameters
     if(this%initialized)then
 
        !Sample calculated variable seeds
        !***  Example - attribute 'var' samples a Gaussian random number
        ! this%var=gran()
-       
+
        !Resample sub-objects
        !**** example **********
        !call reset(this%object)
        !***********************
+       call reset(this%rxn)
 
        !update now that object is fully reset and not in null state
        call update(this)
 
     end if
-    
+
 
   end subroutine doublewell_reset
 
@@ -389,12 +503,12 @@ contains
     integer(short)::unit
     logical::fileisopen
     integer(long)::i,j
-    
+
     !check input file
     inquire(file=file,opened=fileisopen,number=unit)
     if(unit.LT.0)unit=newunit()
     if(.not.fileisopen)open(unit,file=file)
-    
+
     !check doublewell object
     call assert(check(this).EQ.0,msg='doublewell object does not pass check.')
 
@@ -409,12 +523,25 @@ contains
     !******          Example - Backup a scalar parameter            ******
     ! write(unit,*)this%var
     !*********************************************************************
+    write(unit,*)this%E_b     !barrier potential energy height
+    write(unit,*)this%E_p     !product side potential energy difference
+    write(unit,*)this%omega_r !reactant side potential energy frequency
+    write(unit,*)this%omega_b !barrier potential energy frequency
+    write(unit,*)this%omega_p !product side potential energy frequency
+    write(unit,*)this%mass    !mass of reaction
+    write(unit,*)this%xmin    !reaction coordinate max boundary
+    write(unit,*)this%xmax    !reaction coordinate max boundary
+    write(unit,*)this%npt     !reaction coordinate discretization
+    write(unit,*)this%nstate  !number of quantum states
 
 
     !Second, Dynamic arrays
     !***       Example - Backup an NxM matrix                          ***
     ! write(unit,*)((this%matrix(i,j),j=1,M),i=1,N)
     !*********************************************************************
+    !write(unit,*)(this%V(i),i=0,this%npt-1)          !reaction potential
+    !write(unit,*)(this%adiabat(i),i=0,this%nstate-1) !rxn Eigenstate energies
+    !write(unit,*)((this%psi(i,j),j=0,this%npt-1),i=0,this%nstate-1) !rxn wfs
 
 
     !Last,objects
@@ -422,12 +549,14 @@ contains
     ! call backup(this%object,file//'.object')
     ! write(unit,*)quote(file//'.object')!write the object location
     !*********************************************************************
-    
+    !call backup(this%rxn,file//'.rxn')  !backup the reaction object
+    !write(unit,*)quote(file//'.rxn')    !write the object location
+
 
     !finished writing all attributes - now close backup file
-    close(unit)  
+    close(unit)
   end subroutine doublewell_backup
-  
+
   !======================================================================
   !> \brief Retrun the current state of doublewell as a string.
   !> \param[in] THIS is the doublewell object.
@@ -437,13 +566,131 @@ contains
     type(doublewell),intent(in)::this
     character*(*),intent(in),optional::msg
     character(len=5)::FMT='(A)'
-    
+
     !Edit the status prompt to suit your needs
     write(doublewell_status,FMT)'doublewell status is currently not available'
-    
-  end function doublewell_status
 
- !======================================================================
+  end function doublewell_status
+  !======================================================================
+  !> \brief Checks the doublewell object parameters are good.
+  !> \remark Will stop program after first failed check.
+  !======================================================================
+  integer(short)function checkparam(this)
+    use testing_class
+    type(doublewell),intent(in)::this
+
+    !initiate with no problems found
+    checkparam=0
+
+    !barrier potential energy height
+    !is well behaved
+    call assert(check(this%E_b).EQ.0&
+         ,msg='checkparam: E_b failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !product side potential energy difference
+    !is well behaved
+    call assert(check(this%E_p).EQ.0&
+         ,msg='checkparam: E_p failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !reactant side potential energy frequency
+    !is well behaved
+    call assert(check(this%omega_r).EQ.0&
+         ,msg='checkparam: omega_r failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(abs(this%omega_r).GT.0_double&
+         ,msg='checkparam: omega_r is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !barrier potential energy frequency
+    !is well behaved
+    call assert(check(this%omega_b).EQ.0&
+         ,msg='checkparam: omega_b failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(abs(this%omega_b).GT.0_double&
+         ,msg='checkparam: omega_b is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !product side potential energy frequency
+    !is well behaved
+    call assert(check(this%omega_p).EQ.0&
+         ,msg='checkparam: omega_p failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(abs(this%omega_p).GT.0_double&
+         ,msg='checkparam: omega_p is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !mass of reaction
+    !is well behaved
+    call assert(check(this%mass).EQ.0&
+         ,msg='checkparam: mass failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(abs(this%mass).GT.0_double&
+         ,msg='checkparam: mass is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !reaction coordinate min boundary
+    !is well behaved
+    call assert(check(this%xmin).EQ.0&
+         ,msg='checkparam: xmin failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !reaction coordinate max boundary
+    !is well behaved
+    call assert(check(this%xmax).EQ.0&
+         ,msg='checkparam: xmax failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !reaction coordinate discretization
+    !is well behaved
+    call assert(check(this%npt).EQ.0&
+    ,msg='checkparam: npt failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(this%npt.GT.0&
+    ,msg='checkparam: npt is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !number of quantum states
+    !is well behaved
+    call assert(check(this%nstate).EQ.0&
+    ,msg='checkparam: nstate failed check',iostat=checkparam)
+    if(checkparam.NE.0)return
+    !is positive
+    call assert(this%nstate.GT.0&
+    ,msg='checkparam: nstate is not positive',iostat=checkparam)
+    if(checkparam.NE.0)return
+
+    !***   Example - check an integer parameter 'ndim' is well behaved   ***
+    !call assert(check(this%ndim).EQ.0&
+    !     ,msg='checkparam: ndim failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !*** Example - add a constrain that says 'ndim' can only be positive ***
+    !call assert(this%ndim.GT.0&
+    !     ,msg='checkparam: ndim is not positive',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - check a real valued parameter 'var' is well behaved  ***
+    !call assert(check(this%var).EQ.0&
+    !     ,msg='checkparam: var failed check',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+
+    !***  Example - add a constrain that says 'var' can not be zero     ***
+    !call assert(abs(this%var).GT.epsilon(this%var)&
+    !     ,msg='checkparam: var is tiny',iostat=checkparam)
+    !if(checkparam.NE.0)return
+    !***********************************************************************
+  end function checkparam
+  !======================================================================
   !> \brief Checks the doublewell object.
   !> \param[in] THIS is the doublewell object to be checked.
   !> \return 0 if all checks pass or exit at first failed check and returm non zero.
@@ -452,29 +699,9 @@ contains
   integer(short)function doublewell_check(this)
     use testing_class
     type(doublewell),intent(in)::this
-    
+    integer(long)::istate
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !! check method should be extended to optionally check individual
-    !! attributes.
-    !!Usage: check(this,element='NNN')
-    !!check method
-    !!    if(present(element))
-    !!      select case(element)
-    !!        case (element='NNN')
-    !!             ...
-    !!        case (element='XXX')
-    !!             ...
-    !!        default
-    !!             throw error unkown element
-    !!      end select
-    !!    else
-    !!      run all checks
-    !!    end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    !initiate with no problems found 
+    !initiate with no problems found
     doublewell_check=0
 
     !check that object is initialized
@@ -489,66 +716,88 @@ contains
          ,iostat=doublewell_check)
     if(doublewell_check.NE.0)return
 
-    !Check all attributes are within acceptable values
+    !check all parameters are within acceptable values
+    call assert(checkparam(this).EQ.0&
+         ,msg='doublewell_check: unacceptable parameters found!'&
+         ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
 
+    !Check all sub-objects
     !**********   Example - check an object attribute 'that'  *********
     !call assert(check(this%that).EQ.0&
     !     ,msg='doublewell_check: that sub-object failed check'&
     !     ,iostat=doublewell_check)
     !if(doublewell_check.NE.0)return
     !***********************************************************************
-    
-    !***   Example - check an integer attribute 'ndim' is well behaved   ***
-    !call assert(check(this%ndim).EQ.0&
-    !     ,msg='doublewell_check: ndim failed check',iostat=doublewell_check)
-    !if(doublewell_check.NE.0)return
-    !***********************************************************************
- 
-    !*** Example - add a constrain that says 'ndim' can only be positive ***
-    !call assert(this%ndim.GT.0&
-    !     ,msg='doublewell_check: ndim is not positive',iostat=doublewell_check)
-    !if(doublewell_check.NE.0)return
-    !***********************************************************************
+    !***   check rxn has one dof   ***
+    call assert(this%rxn%ndof.EQ.1&
+         ,msg='doublewell_check: rxn does not have 1 dof.',iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
 
-    !***  Example - check a real valued attribute 'var' is well behaved  ***
-    !call assert(check(this%var).EQ.0&
-    !     ,msg='doublewell_check: var failed check',iostat=doublewell_check)
-    !if(doublewell_check.NE.0)return
-    !***********************************************************************
-
-    !***  Example - add a constrain that says 'var' can not be zero     ***
-    !call assert(abs(this%var).GT.epsilon(this%var)&
-    !     ,msg='doublewell_check: var is tiny',iostat=doublewell_check)
-    !if(doublewell_check.NE.0)return
-    !***********************************************************************
-
+    !Check dynamic attributes
     !***  Example - check a real valued pointer attribute 'matrix'       ***
     !***            is well behaved                                      ***
     !call assert(check(this%matrix).EQ.0&
     !     ,msg='doublewell_check: matrix failed check',iostat=doublewell_check)
     !if(doublewell_check.NE.0)return
     !***********************************************************************
-
     !********* Example - check an NxM matrix has right dimensions **********
     !call assert(size(this%matrix).EQ.N*M&
     !     ,msg='doublewell_check: number of matrix elements not = N*M.'&
     !     ,iostat=doublewell_check)
     !if(doublewell_check.NE.0)return
     !***********************************************************************
+    !***   check Potential is well behaved   ***
+    call assert(check(this%V).EQ.0&
+         ,msg='doublewell_check: V failed check',iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check Potential is size npt  ***
+    call assert(size(this%V).EQ.this%npt&
+         ,msg='doublewell_check: V is not size npt',iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check Adiabat is well behaved   ***
+    call assert(check(this%adiabat).EQ.0&
+         ,msg='doublewell_check: adiabat failed check',iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check Adiabat dim 1 is size nstate  ***
+    call assert(size(this%adiabat,1).EQ.this%nstate&
+         ,msg='doublewell_check: adiabat dim 1 is not size nstate'&
+        ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check Adiabats are ordered in ascending energy   ***
+    istate=0
+    do while(istate.LT.this%nstate-1.and.this%nstate.GT.1)
+       call assert(all(this%adiabat(istate+1:this%nstate-1)&
+            .GE.this%adiabat(istate))&
+            ,msg='doublewell_check: adiabats are not in ascending order'&
+            ,iostat=doublewell_check)
+       if(doublewell_check.NE.0)return
+       istate=istate+1
+    end do
+
+    !***   check psi is well behaved   ***
+    call assert(check(this%psi).EQ.0&
+         ,msg='doublewell_check: psi failed check',iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check psi dim 1 is size nstate  ***
+    call assert(size(this%psi,1).EQ.this%nstate&
+         ,msg='doublewell_check: psi dim 1 is not size nstate'&
+        ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
+
+    !***   check psi dim 2 is size npt ***
+    call assert(size(this%psi,2).EQ.this%npt&
+         ,msg='doublewell_check: psi dim 2 is not size npt'&
+        ,iostat=doublewell_check)
+    if(doublewell_check.NE.0)return
 
 
-!!$    !well behaved real attribute mass
-!!$    
-!!$    call assert(check(this%ndim).EQ.0&
-!!$         ,msg='doublewell_check: ndim failed check',iostat=doublewell_check)
-!!$    if(doublewell_check.NE.0)return
 
-
-
-
-
-
-    
   end function doublewell_check
   !-----------------------------------------
   !======================================================================
@@ -563,7 +812,8 @@ contains
     type(doublewell)::this
     character(len=label)::string
     integer(long)::unit
-    
+    real(double)::norm,tol
+
     !verify doublewell is compatible with current version
     include 'verification'
 
@@ -572,43 +822,7 @@ contains
     ! the developer and not by testers as it requires
     ! detailed knowledge of the internal program design.
 
-!!$    write(*,*)'test kill doublewell breaks static parameter mass.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%mass).NE.0,&
-!!$         msg='kill doublewell does not break static parameter mass')
-!!$
-!!$    write(*,*)'test kill doublewell breaks static parameter E_b.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%E_b).NE.0,&
-!!$         msg='kill doublewell does not break static parameter E_b')
-!!$
-!!$    write(*,*)'test kill doublewell breaks static parameter E_p.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%E_p).NE.0,&
-!!$         msg='kill doublewell does not break static parameter E_p')
-!!$
-!!$    write(*,*)'test kill doublewell breaks static parameter omega_r.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%omega_r).NE.0,&
-!!$         msg='kill doublewell does not break static parameter omega_r')
-!!$
-!!$    write(*,*)'test kill doublewell breaks static parameter omega_b.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%omega_b).NE.0,&
-!!$         msg='kill doublewell does not break static parameter omega_b')
-!!$
-!!$    write(*,*)'test kill doublewell breaks static parameter omega_p.....'
-!!$    call make(this) !make doublewell
-!!$    call kill(this)
-!!$    call assert(check(this%omega_p).NE.0,&
-!!$         msg='kill doublewell does not break static parameter omega_p')
 
-        
     !======Functional testing======
     ! This type of testing igores the internal parts
     ! and focuses on the output as per requirements.
@@ -625,7 +839,19 @@ contains
          ,msg='default reactant-barrier intersection is not -0.4070 bohr')
     call assert(get_qpb(this),get_qp(this)/2_double,.0001_double&
          ,msg='default product-barrier intersection is not 0.4070 bohr')
+    call assert(this%V(this%npt/2),2000_double*invcm,1_double*invcm&
+         ,msg='default potential is not 2000 invcm at origin')
+    call kill(this)
 
+    write(*,*)'test wavefunction is generated for default potential'
+    call make(this)
+    call assert(real(this%rxn%wf(0,0),double).LT.&
+        real(this%rxn%wf(1,0),double)&
+        ,msg='ground state wavfunction not generated')
+    call assert(real(sum(this%rxn%wf(:,0)*conjg(this%rxn%wf(:,0))),double)&
+        ,1.0_double,(this%xmax-this%xmin)/real(this%npt,double)&
+        ,msg='ground state not normalized')
+    call kill(this)
     !=====End-to-end testing=====
     ! Tests that mimics real-world use with physically
     ! reasonable inputs or well established examples.
@@ -636,8 +862,6 @@ contains
     ! Examples include calculation speed as a function
     ! of parallel processors used, or as a funtion of
     ! system size.
-    
-
 
 
     !================== consider the following tests for =====================
@@ -731,7 +955,7 @@ contains
     !     msg='doublewell dynamic pointer array PPP is not of size N for &
     !     &dimension I')
     !call kill(this)    !destroy doublewell to clean up memory
-    
+
     !write(*,*)'test dynamic pointer array PPP can be resized by adjusting &
     !     & static parameter NNN then reseting with state=1'
     !call make(this) !make doublewell
@@ -769,13 +993,8 @@ contains
     !call kill(this)
     !========================================================================
 
-
-
-
-
     write(*,*)'ALL doublewell TESTS PASSED!'
   end subroutine doublewell_test
   !-----------------------------------------
 
 end module doublewell_class
-
