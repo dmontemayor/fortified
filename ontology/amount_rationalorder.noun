@@ -1,0 +1,3 @@
+desc 'AMOUNT_RATIONALORDER specifies order of amount expressed as a rational number'
+is self_evident
+as rationalnumber

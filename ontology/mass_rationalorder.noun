@@ -1,0 +1,3 @@
+desc 'MASS_RATIONALORDER specifies order of mass expressed as a rational number'
+is self_evident
+as rationalnumber

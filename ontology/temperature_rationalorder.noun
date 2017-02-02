@@ -1,0 +1,3 @@
+desc 'TEMPERATURE_RATIONALORDER specifies order of temperature expressed as a rational number'
+is self_evident
+as rationalnumber

@@ -1,0 +1,4 @@
+desc 'This is an example of a DIMENSION in the FORTIFIED project.'
+is self_evident
+has positiveconstraint
+as integer

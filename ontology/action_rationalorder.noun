@@ -1,0 +1,3 @@
+desc 'ACTION_RATIONALORDER specifies order of action expressed as a rational number'
+is self_evident
+as rationalnumber
