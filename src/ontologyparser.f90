@@ -1,4 +1,5 @@
-!purpose: Reads ontology table ontology.tab to create object classes and thier test used by fortress and folly respectively.
+!purpose: Creates object class and its tests using ontology definitions
+!found in the ontology/ directory.
 
 program main
 

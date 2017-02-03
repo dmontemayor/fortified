@@ -1,0 +1,9 @@
+Tests should be written as test_"domain"_"entity"_"testname".f90.
+Tests should be self contained executables that return nothing for pass
+and throw an error message when fail.
+A test script called "folly" should appear in the main directory, compile the
+tests if necessary, and be used to run tests with input args.
+Calling folly "domain" will run all test associated to entities within the
+entire domain. Current domains include core, cann, nonadmd, and ontology.
+Calling folly "domain"_"entity" will run all test associated to a single entity.
+Calling folly "domain"_"entity"_"testname" will run individual tests.
