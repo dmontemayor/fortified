@@ -1,0 +1,3 @@
+desc 'MAGNITUDE is the measured value of a PHYSICAL_QUANTITY'
+is self_evident
+as realnumber
