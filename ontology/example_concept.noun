@@ -1,0 +1,7 @@
+desc 'This is an example of a CONCEPT in the FORTIFIED project.'
+is self_evident
+has example_dimension
+has example_quantity
+has example_instantial
+has example_subconcept
+as object

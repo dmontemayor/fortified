@@ -1,0 +1,5 @@
+desc 'This is an example of an INSTANTIAL_MATRIX.'
+is self_evident
+of example_dimension
+of example_dimension2
+as realarray
