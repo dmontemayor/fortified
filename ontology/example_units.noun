@@ -1,0 +1,10 @@
+desc 'PHYSICAL_UNITS describe the fundamental observable aspects of a PHYSICAL_QUANTITY'
+is self_evident
+has length_rationalorder
+has mass_rationalorder
+has action_rationalorder
+has charge_rationalorder
+has temperature_rationalorder
+has amount_rationalorder
+has angle_rationalorder
+as rationalnumberarray of_size 7

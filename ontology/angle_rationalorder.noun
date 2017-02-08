@@ -1,0 +1,3 @@
+desc 'ANGLE_RATIONALORDER specifies order of angle expressed as a rational number'
+is self_evident
+as rationalnumber

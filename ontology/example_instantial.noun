@@ -1,0 +1,5 @@
+desc 'This is an example of an INSTANTIAL_VECTOR.'
+is self_evident
+of example_dimension
+has positive_constraint
+as realarray

@@ -1,0 +1,3 @@
+desc 'CHARGE_RATIONALORDER specifies order of CHARGE expressed as a rational number'
+is self_evident
+as rationalnumber
