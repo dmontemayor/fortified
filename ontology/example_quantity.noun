@@ -1,0 +1,6 @@
+desc 'This is an example of a PHYSICAL_QUANTITY in the FORTIFIED project.'
+is self_evident
+has positive_constraint
+has magnitude
+has physical_units
+as physical_quantity
