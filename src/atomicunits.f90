@@ -35,7 +35,9 @@ module atomicunits
   !Converstion Factors
   real(double),parameter::angstrom=1.889726133921252_double*a0    !<angstrom
   real(double),parameter::fs=41.34137337414122_double*hbar/Eh     !<femtosecond
-  real(double),parameter::ps=fs*1_double*1E3                      !<picosecond
+  real(double),parameter::ps=fs*1E3                               !<picosecond
+  real(double),parameter::PHz=1/fs                                !<petahertz
+  real(double),parameter::GHz=1/ps                                !<gigahertz
   real(double),parameter::invcm=4.5663352672_double*1E-6*Eh/hbar  !<wavenumber(1/cm)
 
   

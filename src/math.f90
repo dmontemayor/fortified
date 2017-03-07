@@ -752,7 +752,7 @@ contains
   end function numerov
 
 !---------------------------
-  !> \brief diagonal elements of a square matirx
+  !> \brief return diagonal elements of a square matrix
   !! \param[in] A square real matrix
   !!<
   function diag(A)
