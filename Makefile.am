@@ -26,7 +26,7 @@ cann_LDADD = $(lapack)
 
 ######################################################
 ###### NONADMD Non-Adiabatic Molecular Dynamics ###### 	
-nonadmd_FCFLAGS =  -fopenmp -J src/
+nonadmd_FCFLAGS = -fopenmp -J src/ #-pg
 elements = src/wf.f90 src/quasiparticle.f90 src/ham.f90 src/wavelet.f90 src/fauxnon.f90 #src/lapack.f
 models= src/doublewell.f90 #src/metiu.f90 src/cukier.f90 
 engines= #src/GQFPE.f90
