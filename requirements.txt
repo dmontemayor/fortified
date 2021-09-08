@@ -1,0 +1,5 @@
+autoconf
+automake
+gfortran_osx-64
+libgfortran
+lapack
